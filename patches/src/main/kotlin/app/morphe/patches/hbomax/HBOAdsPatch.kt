@@ -65,11 +65,19 @@ val hboAdsPatch = bytecodePatch(
         // Patch 4: SsaiInfoTimelineBuilder.access$buildAdBreaksFromAdSparxAdBreaks()
         // Synthetic accessor used by buildTimeline inner lambdas.
         // return-void at entry closes the lambda call path.
+        // Optional: newer builds removed this synthetic accessor entirely
+        // (the lambda calls the private method directly, already neutralized
+        // by Patch 3), so this fingerprint may legitimately find no match.
         // ─────────────────────────────────────────────────────────────────────
-        SsaiInfoTimelineBuilderAccessorFingerprint.method.addInstructions(
-            0,
-            "return-void",
-        )
+        try {
+            SsaiInfoTimelineBuilderAccessorFingerprint.method.addInstructions(
+                0,
+                "return-void",
+            )
+        } catch (_: Exception) {
+            // Accessor not present in this build — Patch 3 already covers
+            // the only remaining call path, so nothing else to do here.
+        }
 
         // ─────────────────────────────────────────────────────────────────────
         // Patch 5: GenerateLiveTimelineEntriesForAdBreakKt.generateLiveTimelineEntriesForAdBreak()

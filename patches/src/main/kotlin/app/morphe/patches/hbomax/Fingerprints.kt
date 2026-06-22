@@ -11,8 +11,11 @@ import app.morphe.patcher.Fingerprint
 
 internal object BoltNonLinearAdsRequestWriteSelfFingerprint : Fingerprint(
     custom = { method, _ ->
+        // Newer builds mangle this to write$Self$_libraries_adtech_bolt_ad_fetcher
+        // (a stable Kotlin Multiplatform module-disambiguation suffix), so match
+        // by prefix rather than exact name to survive both naming schemes.
         method.definingClass == "Lcom/wbd/adtech/bolt/BoltNonLinearAdsRequest;" &&
-            method.name == "write\$Self"
+            method.name.startsWith("write\$Self")
     },
 )
 
