@@ -75,6 +75,10 @@ public class PeacockWebViewHelper {
         "doubleclick.net",
         "rlcdn.com",
         "nbcuas.com",
+        "mparticle.com",
+
+        // ── Ad creative delivery — serves the actual ad asset, not a beacon
+        "2mdn.net",
     };
 
     // Netskrt CDN — block all shards except -ns (content delivery)
@@ -133,7 +137,8 @@ public class PeacockWebViewHelper {
             || url.contains("conviva.com")
             || url.contains("doubleverify.com")
             || url.contains("adsafeprotected.com")
-            || url.contains("placed.com");
+            || url.contains("placed.com")
+            || url.contains("mparticle.com");
     }
 
     private static boolean shouldBlock(String url) {

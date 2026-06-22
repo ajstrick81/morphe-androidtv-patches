@@ -53,9 +53,30 @@ public class AdBlockInterceptor implements Interceptor {
     // blocking that shard breaks sports highlights and game replay playback.
     // See the AdGuard user rules' "USE With Caution" section, where the
     // equivalent DNS rule was disabled for the same reason.
+    //
+    // All six shard letters from the AdGuard DNS regex
+    // (prd-(cf|cc|ak|ph|dc|at)) must be mirrored here — v2.7 only had
+    // ak/cf, leaving cc/ph/dc/at unblocked at the OkHttp layer.
     private static final String[] AD_CDN_SUFFIXES = {
         "prd-ak.cdn.peacocktv.com",
         "prd-cf.cdn.peacocktv.com",
+        "prd-cc.cdn.peacocktv.com",
+        "prd-ph.cdn.peacocktv.com",
+        "prd-dc.cdn.peacocktv.com",
+        "prd-at.cdn.peacocktv.com",
+    };
+
+    // Netskrt CDN — block all shards except -ns (content delivery), mirrors
+    // PeacockWebViewHelper's NETSKRT_DOMAIN/NETSKRT_SAFE_SUFFIX logic. Catches
+    // ad segments fetched directly by ExoPlayer/OkHttp rather than WebView.
+    private static final String NETSKRT_DOMAIN = ".prd.pck.netskrt.net";
+    private static final String NETSKRT_SAFE_SUFFIX = "-ns.prd.pck.netskrt.net";
+
+    // Ad creative delivery — serves the actual ad video/image asset, not just
+    // a beacon. Treated like AD_CDN_SUFFIXES (503/204 skip response) rather
+    // than ANALYTICS_DOMAINS (200/204 accepted-beacon response).
+    private static final String[] AD_CREATIVE_DOMAINS = {
+        "2mdn.net",
     };
 
     // Analytics and ad decision endpoints reachable via OkHttp
@@ -78,6 +99,7 @@ public class AdBlockInterceptor implements Interceptor {
         "doubleclick.net",
         "rlcdn.com",
         "nbcuas.com",
+        "mparticle.com",
     };
 
     @Override
@@ -86,6 +108,16 @@ public class AdBlockInterceptor implements Interceptor {
 
         for (final String suffix : AD_CDN_SUFFIXES) {
             if (host.endsWith(suffix)) {
+                return randomAdResponse(chain);
+            }
+        }
+
+        if (host.endsWith(NETSKRT_DOMAIN) && !host.endsWith(NETSKRT_SAFE_SUFFIX)) {
+            return randomAdResponse(chain);
+        }
+
+        for (final String domain : AD_CREATIVE_DOMAINS) {
+            if (host.contains(domain)) {
                 return randomAdResponse(chain);
             }
         }
