@@ -29,7 +29,10 @@ object AppCompatibilities {
     name = "HBO Max Android TV",
     packageName = "com.wbd.hbomax",
     appIconColor = 0xFFFFFF,
-    targets = listOf(AppTarget("7.2.0.41")),
+    targets = listOf(
+        AppTarget("7.5.0.73"),
+        AppTarget("7.2.0.41"),
+    ),
     )
 
     val MLB_TV = Compatibility(
