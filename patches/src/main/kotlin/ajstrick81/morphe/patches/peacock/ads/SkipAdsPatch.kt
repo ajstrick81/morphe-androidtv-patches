@@ -1,16 +1,58 @@
 package ajstrick81.morphe.patches.peacock.ads
 
 import ajstrick81.morphe.patches.peacock.shared.Constants
+import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.removeInstruction
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+
+// Locates the setWebViewClient(...) call inside one of XTVWebView's
+// constructors and injects a wrapClient() call immediately before it,
+// reassigning whatever register holds the client. Finding the index and
+// register dynamically (rather than trusting a hardcoded offset) matters
+// here specifically: v7.5.102 -> v7.6.100 dropped the maxRendererCrashes/
+// rendererCrashWindowMs field assignments from all three constructors,
+// shifting setWebViewClient's instruction index by -4 in every one of them
+// (56->52, 56->52, 57->53) while leaving the holding register unchanged.
+// A fixed-offset injection would have silently landed 4 instructions late
+// on v7.6.100, re-breaking Layer 7 the same way the original single-overload
+// version of this patch did.
+private fun wrapXtvClientSetter(fingerprint: Fingerprint) {
+    val method = fingerprint.method
+    val instructions = method.implementation!!.instructions
+    val setClientIndex = instructions.indexOfFirst { instruction ->
+        instruction.opcode == Opcode.INVOKE_VIRTUAL &&
+            ((instruction as ReferenceInstruction).reference as? MethodReference)?.name == "setWebViewClient"
+    }
+    val clientRegister = (instructions[setClientIndex] as FiveRegisterInstruction).registerD
+    val totalRegisters = method.implementation!!.registerCount
+    val paramRegisters = method.parameters.size + 1 // +1 for the implicit `this` (p0)
+    val firstParamRegister = totalRegisters - paramRegisters
+    val registerName = if (clientRegister >= firstParamRegister) {
+        "p${clientRegister - firstParamRegister}"
+    } else {
+        "v$clientRegister"
+    }
+
+    method.addInstructions(
+        setClientIndex,
+        """
+            invoke-static {$registerName}, Lajstrick81/morphe/extension/peacock/ads/PeacockWebViewHelper;->wrapClient(Landroid/webkit/WebViewClient;)Landroid/webkit/WebViewClient;
+            move-result-object $registerName
+        """.trimIndent(),
+    )
+}
 
 @Suppress("unused")
 val skipAdsPatch = bytecodePatch(
     name = "Skip ads",
     description = "Disables ad delivery via Sky SDK surgical targets (FreeWheel DI module " +
         "skip, MediaTailor SSAI layers, ad-break-started no-op), OkHttp interceptor, and " +
-        "WebView shouldInterceptRequest wrapper. Validated v7.5.102.",
+        "WebView shouldInterceptRequest wrapper. Validated v7.5.102 and v7.6.100.",
 ) {
     compatibleWith(Constants.COMPATIBILITY)
 
@@ -115,37 +157,12 @@ val skipAdsPatch = bytecodePatch(
         //
         // Each wraps xtvClient via PeacockWebViewHelper.wrapClient(), which
         // adds shouldInterceptRequest with randomized responses to avoid
-        // FreeWheel fraud detection.
-
-        // 1-arg <init>(Context) — instruction index 56, register v1.
-        XtvClientWrapFingerprint.method.addInstructions(
-            56,
-            """
-                invoke-static {v1}, Lajstrick81/morphe/extension/peacock/ads/PeacockWebViewHelper;->wrapClient(Landroid/webkit/WebViewClient;)Landroid/webkit/WebViewClient;
-                move-result-object v1
-            """.trimIndent(),
-        )
-
-        // 2-arg <init>(Context, AttributeSet) — the constructor actually
-        // invoked when inflating VirtualDpadXTVWebView from
-        // activity_main.xml. Instruction index 56, register v0.
-        XtvClientWrapTwoArgFingerprint.method.addInstructions(
-            56,
-            """
-                invoke-static {v0}, Lajstrick81/morphe/extension/peacock/ads/PeacockWebViewHelper;->wrapClient(Landroid/webkit/WebViewClient;)Landroid/webkit/WebViewClient;
-                move-result-object v0
-            """.trimIndent(),
-        )
-
-        // 3-arg <init>(Context, AttributeSet, int) — instruction index 57,
-        // register p3.
-        XtvClientWrapThreeArgFingerprint.method.addInstructions(
-            57,
-            """
-                invoke-static {p3}, Lajstrick81/morphe/extension/peacock/ads/PeacockWebViewHelper;->wrapClient(Landroid/webkit/WebViewClient;)Landroid/webkit/WebViewClient;
-                move-result-object p3
-            """.trimIndent(),
-        )
+        // FreeWheel fraud detection. The injection point and register are
+        // located dynamically per-constructor (see wrapXtvClientSetter) so
+        // this stays correct across versions even as field layout shifts.
+        wrapXtvClientSetter(XtvClientWrapFingerprint)
+        wrapXtvClientSetter(XtvClientWrapTwoArgFingerprint)
+        wrapXtvClientSetter(XtvClientWrapThreeArgFingerprint)
 
         // ── Layer 8 ─────────────────────────────────────────────────────────
         // Sky SDK FreeWheel DI module surgical removal.
