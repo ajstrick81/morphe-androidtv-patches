@@ -7,24 +7,60 @@
  * Coverage:
  *   ✅ VOD ads              — createVodStreamRequest() empty zzdm →
  *                             IMA SDK throws → fallback to pre-cached CDN URL
- *   ✅ MLB EVI ads          — CONFIRMED BLOCKED (logcat 06-18: zero EVI segments)
- *                             ExoMediaPlayerMetadataFingerprint blocks TXXX dispatch
- *   ✅ SSAI media source    — Lb6/h;.b0() blocked → no SSAI startup →
- *                             requestStream() never called → no DAI manifest URL
- *   ✅ DAI StreamManager    — Lb6/h;.m0() blocked → no ad segment scheduling
- *   ✅ TXXX dispatch        — CONFIRMED BLOCKED (logcat: zero TXXX entries)
- *   ⚠️  Live games           — UNCONFIRMED. Lb6/h itself has no VOD/live
- *                             branch (see below), but cross-app prior art
- *                             in this repo (Paramount+, HBO Max, Disney+)
- *                             shows live ad suppression on IMA-style SSAI
- *                             stacks routinely depends on mechanisms that
- *                             live VOD-only, outside the shared media-source
- *                             wrapper class — so "no branch inside Lb6/h"
- *                             is NOT sufficient evidence that live is safe.
- *                             Needs an on-device confirmation pass during
- *                             a real live-game ad break before being trusted.
+ *   ✅ Ad-break content     — Patch 5 overlay: shows "Commercial Break in
+ *                             Progress" full-screen over the IMA ad-overlay
+ *                             ViewGroup for the duration of every ad break
+ *                             (network-level VOD/EVI/SSAI/DAI ad plumbing is
+ *                             left completely untouched — see below).
+ *   ⚠️  Live games           — Patch 5 is believed safe for live (nothing in
+ *                             the playback pipeline is touched, only the
+ *                             pre-existing no-op onAdBreakStarted/
+ *                             onAdBreakEnded callbacks are hooked), but has
+ *                             not been confirmed on-device during a real
+ *                             live-game ad break.
  *
- * DIAGNOSIS BASED ON 06-18 LOGCAT:
+ * ARCHITECTURE (current default — Patches 2/3/4 disabled, Patch 5 added):
+ *
+ *   Patches 2/3 (voiding Lb6/h;.b0()/m0()) and Patch 4 (voiding
+ *   onMetadata()) are now DISABLED BY DEFAULT (see inline comments below for
+ *   full rationale). Both were found, on closer trace, to sever the exact
+ *   callback chain Patch 5's overlay depends on:
+ *     - Patches 2/3 block the entire SSAI/DAI session, which prevents
+ *       onAdBreakStarted()/onAdBreakEnded() from ever firing.
+ *     - Patch 4 blocks onMetadata(), which prevents TXXX/ID3 timed metadata
+ *       from reaching onUserTextReceived() — the standard IMA DAI mechanism
+ *       that feeds the SDK's internal ad-break boundary detection, which is
+ *       what ultimately triggers onAdBreakStarted()/onAdBreakEnded().
+ *
+ *   With all three disabled, the ad break (VOD or live, EVI or DAI) plays
+ *   out completely normally end-to-end, and Patch 5 suppresses it at the
+ *   presentation layer instead — consistent behavior for both VOD and live,
+ *   since nothing in the playback pipeline itself is modified. The original
+ *   network-level blocking code for Patches 2/3/4 is preserved (commented
+ *   out, not deleted) for anyone who wants VOD-only network-level blocking
+ *   back instead of the overlay.
+ *
+ * PRE-DAI VOD FALLBACK INVESTIGATION (dead end, static analysis only):
+ *   Searched for an app-level "fallback to pre-cached CDN URL" mechanism
+ *   upstream of Lb6/h that would explain why VOD recovers ad-free after
+ *   Patches 1a/1b corrupt createVodStreamRequest(). Exhaustively confirmed:
+ *     - Lb6/k;->a()Landroid/net/Uri; (the only code that constructs the
+ *       ssai://dai.google.com/... URI) is never called anywhere in the
+ *       decompiled dex.
+ *     - Lb6/k; is never referenced from outside the b6/ package.
+ *     - The literal strings "ssai"/"dai.google.com" appear only in
+ *       g6/n.smali (router), b6/e.smali (a sanity-check Runnable), and
+ *       b6/k.smali (the parser) itself.
+ *   Conclusion: the SSAI-vs-plain-URL decision (ad-supported vs. ad-free
+ *   stream) is made server-side by MLB's backend in the playback API
+ *   response, not by any local app-level fallback/retry code. There is no
+ *   code-level mechanism to find here — going further would require
+ *   inspecting live network/API responses, out of scope for static
+ *   bytecode analysis. This investigation is what motivated the pivot to
+ *   the presentation-layer overlay (Patch 5) instead of chasing VOD/live
+ *   parity in the network-blocking approach.
+ *
+ * SUPERSEDED DIAGNOSIS (06-18 LOGCAT, from when Patches 2/3/4 were active):
  *   MLB EVI (/EVI/ segments): ZERO — confirmed blocked ✅
  *   TXXX metadata:            ZERO — confirmed blocked ✅
  *   dclk_video_ads:           22 segments — still fetching ❌
@@ -33,9 +69,11 @@
  *   succeeded anyway — IMA SDK uses server-side AdsLoader session state,
  *   not StreamRequest parameters, to generate the DAI manifest URL.
  *
- *   Fix: block Lb6/h;.b0() BEFORE requestStream() is called at all.
+ *   The fix at the time was to block Lb6/h;.b0() before requestStream() is
+ *   called at all (Patch 2) — superseded by the overlay approach above.
  *
- * LIVE-GAME RISK ANALYSIS (static trace, no device — see git history for
+ * LIVE-GAME RISK ANALYSIS FOR PATCHES 2/3 (kept for reference; these patches
+ * are disabled by default — static trace, no device, see git history for
  * the full session):
  *   Lb6/k;.b(Landroid/net/Uri;) — the helper that builds the StreamRequest —
  *   branches on the "assetKey" query param: present → createLiveStreamRequest
@@ -97,11 +135,17 @@ package app.morphe.patches.mlbtv
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patches.shared.compat.AppCompatibilities
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
 @Suppress("unused")
 val atbatPatch = bytecodePatch(
     name = "MLB At Bat Android TV",
-    description = "Removes VOD ads and between-innings gambling ads while preserving live game playback.",
+    description = "Shows a \"Commercial Break in Progress\" overlay during between-innings " +
+        "ad breaks (suppressing harmful gambling ad content) and removes VOD ads, " +
+        "while preserving live game playback.",
 ) {
     compatibleWith(AppCompatibilities.MLB_TV)
 
@@ -133,51 +177,91 @@ val atbatPatch = bytecodePatch(
         )
 
         // ------------------------------------------------------------------
-        // Patch 2: SSAI MediaSource Startup — Lb6/h;.b0(Lq5/w;)V
+        // Patches 2/3: SSAI MediaSource Startup / DAI StreamManager Handler
+        // — DISABLED in favor of Patch 5 (overlay).
         //
-        // Verified: string="ImaServerSideAdInsertionMediaSource" (UNIQUE in APK)
-        // proto=(Lq5/w;)V, registers=10
-        //
-        // Called when ImaServerSideAdInsertionMediaSource starts up.
-        // return-void prevents: Lb6/h$g; construction → requestStream()
-        // call → DAI manifest URL generation → dclk_video_ads segments.
-        //
-        // NOTE: If live games break, comment this patch out only.
-        // Patches 1a/1b and 4 are independent and safe to keep.
+        // Voiding Lb6/h;.b0()/m0() blocks the entire SSAI/DAI session, which
+        // also prevents onAdBreakStarted()/onAdBreakEnded() from ever firing
+        // — the exact callbacks Patch 5's overlay depends on. Their effect
+        // on live games was also never confirmed on-device (see the
+        // LIVE-GAME RISK ANALYSIS above). Disabled by default so the ad
+        // break runs normally end-to-end and Patch 5 can suppress its
+        // content at the presentation layer instead, consistently for both
+        // VOD and live. Re-enable below only if you specifically want
+        // network-level VOD ad blocking back and don't need the overlay.
         // ------------------------------------------------------------------
-        SsaiMediaSourceStartupFingerprint.method.addInstructions(
-            0,
-            """
-                return-void
-            """.trimIndent(),
-        )
-
-        // ------------------------------------------------------------------
-        // Patch 3: DAI StreamManager Event Handler — Lb6/h;.m0(StreamManager)V
-        //
-        // Verified: strings="IMA DAI Stream Event: ", "GSTREAM:DAI"
-        // Belt-and-suspenders: prevents StreamManager from processing DAI
-        // stream and scheduling ad segments even if Patch 2 is bypassed.
-        // ------------------------------------------------------------------
-        DaiStreamManagerHandlerFingerprint.method.addInstructions(
-            0,
-            """
-                return-void
-            """.trimIndent(),
-        )
+        // SsaiMediaSourceStartupFingerprint.method.addInstructions(
+        //     0,
+        //     """
+        //         return-void
+        //     """.trimIndent(),
+        // )
+        // DaiStreamManagerHandlerFingerprint.method.addInstructions(
+        //     0,
+        //     """
+        //         return-void
+        //     """.trimIndent(),
+        // )
 
         // ------------------------------------------------------------------
         // Patch 4: TXXX Metadata Dispatcher — Lu70/i;.onMetadata(Ll5/t;)V
+        // — DISABLED in favor of Patch 5 (overlay).
         //
-        // CONFIRMED WORKING (logcat 06-18: zero TXXX, zero EVI segments).
-        // Blocks ALL HLS timed metadata dispatch:
-        //   → Lz70/b;.o() never called → MLB EVI coroutines never launched
-        //   → Lb6/h$c;.onMetadata() never called → IMA cues suppressed
+        // CONFIRMED WORKING in isolation (logcat 06-18: zero TXXX, zero EVI
+        // segments), but Lb6/h$c;.onMetadata() forwards TXXX entries to
+        // Lb6/h$i;->a (the VideoStreamPlayerCallback list) via
+        // onUserTextReceived(String) — the standard IMA DAI mechanism apps
+        // use to feed ID3/TXXX timed metadata into the SDK so it can track
+        // ad-break boundaries internally. Blocking onMetadata() upstream
+        // therefore also starves IMA's ad-break detection, which means
+        // Patch 5's onAdBreakStarted()/onAdBreakEnded() hooks would never
+        // fire either. Disabled by default so TXXX reaches IMA normally and
+        // the overlay can suppress ad content at the presentation layer
+        // instead. Re-enable below only if you don't need the overlay and
+        // specifically want EVI/TXXX dispatch blocked again.
         // ------------------------------------------------------------------
-        ExoMediaPlayerMetadataFingerprint.method.addInstructions(
+        // ExoMediaPlayerMetadataFingerprint.method.addInstructions(
+        //     0,
+        //     """
+        //         return-void
+        //     """.trimIndent(),
+        // )
+
+        // ------------------------------------------------------------------
+        // Patch 5: "Commercial Break in Progress" overlay
+        //
+        // Registers the IMA ad-overlay ViewGroup once at SSAI MediaSource
+        // construction time, then shows/hides a full-screen overlay on the
+        // existing (previously no-op) onAdBreakStarted()/onAdBreakEnded()
+        // callbacks. Nothing in the playback pipeline itself is touched, so
+        // this is safe for VOD and live alike.
+        // ------------------------------------------------------------------
+        val displayContainerMethod = SsaiDisplayContainerFingerprint.method
+        val getAdViewGroupInstructionIndex = displayContainerMethod.implementation!!.instructions.indexOfFirst {
+            it.opcode == Opcode.INVOKE_INTERFACE &&
+                ((it as ReferenceInstruction).reference as? MethodReference)?.name == "getAdViewGroup"
+        }
+        val moveResultInstruction = displayContainerMethod.implementation!!.instructions[getAdViewGroupInstructionIndex + 1]
+        val adViewGroupRegister = (moveResultInstruction as OneRegisterInstruction).registerA
+
+        displayContainerMethod.addInstructions(
+            getAdViewGroupInstructionIndex + 2,
+            """
+                invoke-static {v$adViewGroupRegister}, Lapp/morphe/extension/mlbtv/ads/AdBreakOverlayHelper;->registerAdViewGroup(Landroid/view/ViewGroup;)V
+            """.trimIndent(),
+        )
+
+        AdBreakStartedFingerprint.method.addInstructions(
             0,
             """
-                return-void
+                invoke-static {}, Lapp/morphe/extension/mlbtv/ads/AdBreakOverlayHelper;->showOverlay()V
+            """.trimIndent(),
+        )
+
+        AdBreakEndedFingerprint.method.addInstructions(
+            0,
+            """
+                invoke-static {}, Lapp/morphe/extension/mlbtv/ads/AdBreakOverlayHelper;->hideOverlay()V
             """.trimIndent(),
         )
     }

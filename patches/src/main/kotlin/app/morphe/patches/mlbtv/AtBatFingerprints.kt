@@ -44,6 +44,8 @@
 package app.morphe.patches.mlbtv
 
 import app.morphe.patcher.Fingerprint
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
 // ---------------------------------------------------------------------------
 // Patch 1a: VOD SSAI — createVodStreamRequest (3-arg)
@@ -144,5 +146,57 @@ internal object ExoMediaPlayerMetadataFingerprint : Fingerprint(
         method.name == "onMetadata" &&
             method.parameterTypes.size == 1 &&
             method.parameterTypes[0] == "Ll5/t;"
+    },
+)
+
+// ---------------------------------------------------------------------------
+// Patch 5: "Commercial Break in Progress" overlay
+//
+// Rather than fighting the SSAI/DAI plumbing itself (Patches 2/3, whose
+// effect on live games is unconfirmed per AtBatPatch.kt's risk analysis),
+// this suppresses harmful between-innings gambling ad *content* at the
+// presentation layer: the underlying ad break still plays exactly as the
+// app and IMA SDK intend (safe for VOD and live alike, since nothing in
+// the playback pipeline is touched), but the viewer never sees or hears it.
+//
+// Lb6/h$d;->b(Ll5/q;)Lg6/w; (the SSAI MediaSource.Factory) builds the IMA
+// StreamDisplayContainer from the app's ad-overlay ViewGroup
+// (Ll5/d;->getAdViewGroup()) — the same ViewGroup IMA itself uses for
+// companion ads/friendly obstructions. Matched structurally on the
+// createStreamDisplayContainer call rather than by class/method name,
+// since Lb6/h$d and its method names are R8-obfuscated and could shift
+// between builds; createStreamDisplayContainer is a fixed, external IMA
+// SDK API name.
+// ---------------------------------------------------------------------------
+
+internal object SsaiDisplayContainerFingerprint : Fingerprint(
+    returnType = "Lg6/w;",
+    custom = { method, _ ->
+        method.parameterTypes.size == 1 &&
+            method.parameterTypes[0] == "Ll5/q;" &&
+            method.implementation?.instructions?.any { instruction ->
+                ((instruction as? ReferenceInstruction)?.reference as? MethodReference)?.name ==
+                    "createStreamDisplayContainer"
+            } == true
+    },
+)
+
+// Lb6/h$i;->onAdBreakStarted()V / onAdBreakEnded()V — the IMA
+// VideoStreamPlayer's ad-break lifecycle callbacks. Both are no-op stubs in
+// the unmodified app. onAdBreakStarted/onAdBreakEnded are fixed names from
+// the external VideoStreamPlayer interface, so R8 cannot rename them even
+// though Lb6/h$i itself is obfuscated.
+
+internal object AdBreakStartedFingerprint : Fingerprint(
+    returnType = "V",
+    custom = { method, _ ->
+        method.name == "onAdBreakStarted" && method.parameterTypes.isEmpty()
+    },
+)
+
+internal object AdBreakEndedFingerprint : Fingerprint(
+    returnType = "V",
+    custom = { method, _ ->
+        method.name == "onAdBreakEnded" && method.parameterTypes.isEmpty()
     },
 )
