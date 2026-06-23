@@ -104,15 +104,46 @@ val skipAdsPatch = bytecodePatch(
         // traffic travels through Chromium/WebView, bypassing OkHttp entirely.
         // XTVWebView's xtvClient does not override shouldInterceptRequest.
         //
-        // Injection at instruction index 56 in XTVWebView.<init>(Context),
-        // immediately before setWebViewClient(xtvClient). Wraps xtvClient via
-        // PeacockWebViewHelper.wrapClient() which adds shouldInterceptRequest
-        // with randomized responses to avoid FreeWheel fraud detection.
+        // activity_main.xml declares VirtualDpadXTVWebView (a subclass of
+        // XTVWebView), which Android's LayoutInflater instantiates via the
+        // 2-arg (Context, AttributeSet) constructor — NOT the 1-arg one.
+        // Wrapping only the 1-arg constructor left every real-world
+        // instantiation of this view completely unwrapped, which is why
+        // MORPHE-PCK-WV never appeared in logcat and preroll ads persisted
+        // despite Layers 1-6/8 all functioning. All three constructor
+        // overloads are now patched so every instantiation path is covered.
+        //
+        // Each wraps xtvClient via PeacockWebViewHelper.wrapClient(), which
+        // adds shouldInterceptRequest with randomized responses to avoid
+        // FreeWheel fraud detection.
+
+        // 1-arg <init>(Context) — instruction index 56, register v1.
         XtvClientWrapFingerprint.method.addInstructions(
             56,
             """
                 invoke-static {v1}, Lajstrick81/morphe/extension/peacock/ads/PeacockWebViewHelper;->wrapClient(Landroid/webkit/WebViewClient;)Landroid/webkit/WebViewClient;
                 move-result-object v1
+            """.trimIndent(),
+        )
+
+        // 2-arg <init>(Context, AttributeSet) — the constructor actually
+        // invoked when inflating VirtualDpadXTVWebView from
+        // activity_main.xml. Instruction index 56, register v0.
+        XtvClientWrapTwoArgFingerprint.method.addInstructions(
+            56,
+            """
+                invoke-static {v0}, Lajstrick81/morphe/extension/peacock/ads/PeacockWebViewHelper;->wrapClient(Landroid/webkit/WebViewClient;)Landroid/webkit/WebViewClient;
+                move-result-object v0
+            """.trimIndent(),
+        )
+
+        // 3-arg <init>(Context, AttributeSet, int) — instruction index 57,
+        // register p3.
+        XtvClientWrapThreeArgFingerprint.method.addInstructions(
+            57,
+            """
+                invoke-static {p3}, Lajstrick81/morphe/extension/peacock/ads/PeacockWebViewHelper;->wrapClient(Landroid/webkit/WebViewClient;)Landroid/webkit/WebViewClient;
+                move-result-object p3
             """.trimIndent(),
         )
 

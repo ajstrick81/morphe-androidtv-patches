@@ -83,9 +83,7 @@ internal object GetOkHttpClientFingerprint : Fingerprint(
 )
 
 // ── Layer 7 ──────────────────────────────────────────────────────────────────
-// Target: XTVWebView.<init>(Context)
-// Injection point: instruction index 56 (bytecode offset 276), immediately
-// before the setWebViewClient(xtvClient) call.
+// Target: XTVWebView's three <init> overloads.
 //
 // PCAP/GREASE fingerprinting confirmed all ad segment delivery and FreeWheel
 // traffic travels through the Chromium/WebView stack, bypassing OkHttp.
@@ -95,12 +93,52 @@ internal object GetOkHttpClientFingerprint : Fingerprint(
 // PeacockWebViewHelper.wrapClient() delegates all existing xtvClient callbacks
 // and adds shouldInterceptRequest() with randomized responses to avoid
 // FreeWheel fraud detection fingerprinting.
-// Confirmed matching v7.5.102.
+//
+// XTVWebView has three constructors, and the app does NOT exclusively use
+// the 1-arg Context-only one: activity_main.xml declares
+// com.peacock.peacocktv.web.VirtualDpadXTVWebView (a subclass), which Android
+// instantiates via LayoutInflater using the 2-arg (Context, AttributeSet)
+// constructor — VirtualDpadXTVWebView's own 2-arg <init> delegates straight
+// to XTVWebView's 2-arg <init>. Wrapping only the 1-arg constructor (as the
+// original single-fingerprint version of this patch did) meant the wrap
+// never ran at all in practice, since the 2-arg constructor sets xtvClient
+// unwrapped. All three overloads now get their own fingerprint + injection
+// so every instantiation path is covered. Confirmed matching v7.5.102.
 internal object XtvClientWrapFingerprint : Fingerprint(
     custom = { method, classDef ->
         method.name == "<init>" &&
             method.parameters.size == 1 &&
             method.parameters[0].type == "Landroid/content/Context;" &&
+            classDef.type == "Lcom/peacock/peacocktv/web/XTVWebView;"
+    },
+)
+
+// Target: XTVWebView.<init>(Context, AttributeSet) — the constructor Android
+// actually invokes when inflating VirtualDpadXTVWebView from
+// activity_main.xml. Injection point: instruction index 56, immediately
+// before invoke-virtual {p0, v0}, WebView->setWebViewClient(...). Confirmed
+// matching v7.5.102 via direct smali inspection of the patched APK.
+internal object XtvClientWrapTwoArgFingerprint : Fingerprint(
+    custom = { method, classDef ->
+        method.name == "<init>" &&
+            method.parameters.size == 2 &&
+            method.parameters[0].type == "Landroid/content/Context;" &&
+            method.parameters[1].type == "Landroid/util/AttributeSet;" &&
+            classDef.type == "Lcom/peacock/peacocktv/web/XTVWebView;"
+    },
+)
+
+// Target: XTVWebView.<init>(Context, AttributeSet, int) — the 3-arg style-
+// attribute constructor overload. Injection point: instruction index 57,
+// immediately before invoke-virtual {p0, p3}, WebView->setWebViewClient(...).
+// Confirmed matching v7.5.102 via direct smali inspection of the patched APK.
+internal object XtvClientWrapThreeArgFingerprint : Fingerprint(
+    custom = { method, classDef ->
+        method.name == "<init>" &&
+            method.parameters.size == 3 &&
+            method.parameters[0].type == "Landroid/content/Context;" &&
+            method.parameters[1].type == "Landroid/util/AttributeSet;" &&
+            method.parameters[2].type == "I" &&
             classDef.type == "Lcom/peacock/peacocktv/web/XTVWebView;"
     },
 )
