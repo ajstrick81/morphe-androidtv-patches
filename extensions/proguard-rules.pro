@@ -60,3 +60,10 @@
     public static void showOverlay();
     public static void hideOverlay();
 }
+
+# MLB At Bat — Patch 6: HLS manifest ad-segment stripper. Called directly
+# from injected smali via invoke-static {} in Lr5/a;.f(Lq5/i;)J, right after
+# the network response InputStream is obtained.
+-keep class ajstrick81.morphe.extension.mlbtv.ads.MlbManifestRewriter {
+    public static java.io.InputStream wrap(java.lang.Object, java.io.InputStream);
+}

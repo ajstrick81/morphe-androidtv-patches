@@ -44,7 +44,10 @@
 package app.morphe.patches.mlbtv
 
 import app.morphe.patcher.Fingerprint
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
+import com.android.tools.smali.dexlib2.iface.reference.StringReference
 
 // ---------------------------------------------------------------------------
 // Patch 1a: VOD SSAI — createVodStreamRequest (3-arg)
@@ -203,5 +206,45 @@ internal object AdBreakEndedFingerprint : Fingerprint(
         method.name == "onAdBreakEnded" &&
             method.parameterTypes.isEmpty() &&
             method.implementation != null
+    },
+)
+
+// ---------------------------------------------------------------------------
+// Patch 6: HLS Manifest Ad-Segment Stripping — Lr5/a;.f(Lq5/i;)J
+//
+// VERIFIED via androguard dex analysis of this build: Lr5/a; is Media3's
+// OkHttpDataSource — its <clinit> calls Ll5/r;.a("media3.datasource.okhttp"),
+// a literal androidx.media3 telemetry tag string that ships unobfuscated
+// with the library and is stable across app rebuilds, unlike the renamed
+// class/method names around it.
+//
+// f(Lq5/i;)J is OkHttpDataSource.open(DataSpec): it issues the network
+// request and stores the resulting InputStream into the data source's
+// `k` field. This is the actual fetch path for both the HLS manifest and
+// every media segment (live and VOD) — confirmed empirically that the
+// IMA SDK method-blocks in Patches 2/3/4 do NOT stop dclk_video_ads
+// segments from being fetched here, because they're stitched into the
+// manifest server-side rather than requested via a separate client-side
+// "ad request" call.
+//
+// Matched by: method name "f", single parameter (the DataSpec), and the
+// class-level "media3.datasource.okhttp" <clinit> string, rather than any
+// obfuscated name — keeping this fingerprint stable across rebuilds even
+// though Lr5/a;'s own member names are renamed per-build by R8.
+// ---------------------------------------------------------------------------
+
+internal object OkHttpDataSourceOpenFingerprint : Fingerprint(
+    returnType = "J",
+    custom = { method, classDef ->
+        method.name == "f" &&
+            method.parameterTypes.size == 1 &&
+            classDef.methods.any { candidate ->
+                candidate.name == "<clinit>" &&
+                    candidate.implementation?.instructions?.any { instruction ->
+                        instruction.opcode == Opcode.CONST_STRING &&
+                            ((instruction as ReferenceInstruction).reference as? StringReference)
+                                ?.string == "media3.datasource.okhttp"
+                    } == true
+            }
     },
 )
