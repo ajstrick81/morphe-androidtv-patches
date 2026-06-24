@@ -14,8 +14,10 @@ import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 val skipAdsPatch = bytecodePatch(
     name = "Skip ads",
     description = "Disables ad delivery via Sky SDK surgical targets (FreeWheel DI module " +
-        "skip, MediaTailor SSAI layers, ad-break-started no-op), OkHttp interceptor, and " +
-        "WebView shouldInterceptRequest wrapper. Validated v7.5.102 and v7.6.100.",
+        "skip, MediaTailor SSAI layers, ad-break-started no-op), dual OkHttp interceptor " +
+        "wiring (app's main client and the Sky SDK addon network client), New Relic agent " +
+        "init no-op, and WebView shouldInterceptRequest wrapper. Validated v7.5.102 and " +
+        "v7.6.100.",
 ) {
     compatibleWith(Constants.COMPATIBILITY)
 
@@ -196,5 +198,53 @@ val skipAdsPatch = bytecodePatch(
             removeInstruction(16) // iget-object v0, freewheelModule
             removeInstruction(16) // import$default(...) — now shifted to 16
         }
+
+        // ── Layer 9 ─────────────────────────────────────────────────────────
+        // NativeNetworkApi.<init> derives its own child OkHttpClient via
+        // newBuilder()/build() — a client Layer 6 never touches. Locate the
+        // OkHttpClient$Builder.build() call dynamically (same approach as
+        // wrapXtvClientSetter) and inject a call to
+        // PeacockAdPatchHelper.addAdBlockInterceptor(builder) immediately
+        // before it, reassigning the same register the builder already
+        // lives in. No extra temp register is needed since the helper takes
+        // and returns the Builder directly — same pattern as Layer 6's
+        // buildOkHttpClient() body replacement.
+        NativeNetworkApiConstructorFingerprint.method.apply {
+            val instructions = implementation!!.instructions
+            val buildIndex = instructions.indexOfFirst { instruction ->
+                instruction.opcode == Opcode.INVOKE_VIRTUAL &&
+                    ((instruction as ReferenceInstruction).reference as? MethodReference)?.let { ref ->
+                        ref.name == "build" && ref.definingClass == "Lokhttp3/OkHttpClient\$Builder;"
+                    } == true
+            }
+            val builderRegister = (instructions[buildIndex] as FiveRegisterInstruction).registerC
+            val totalRegisters = implementation!!.registerCount
+            val paramRegisters = parameters.size + 1 // +1 for implicit `this` (p0)
+            val firstParamRegister = totalRegisters - paramRegisters
+            val registerName = if (builderRegister >= firstParamRegister) {
+                "p${builderRegister - firstParamRegister}"
+            } else {
+                "v$builderRegister"
+            }
+
+            addInstructions(
+                buildIndex,
+                """
+                    invoke-static {$registerName}, Lajstrick81/morphe/extension/peacock/ads/PeacockAdPatchHelper;->addAdBlockInterceptor(Lokhttp3/OkHttpClient${'$'}Builder;)Lokhttp3/OkHttpClient${'$'}Builder;
+                    move-result-object $registerName
+                """.trimIndent(),
+            )
+        }
+
+        // ── Layer 10 ────────────────────────────────────────────────────────
+        // No-op NewRelicManager.e(Context) so the agent never starts —
+        // interceptors can't catch its harvester traffic since it doesn't
+        // go through OkHttp. Void return, offset 0 — always verifier-safe.
+        NewRelicInitFingerprint.method.addInstructions(
+            0,
+            """
+                return-void
+            """.trimIndent(),
+        )
     }
 }

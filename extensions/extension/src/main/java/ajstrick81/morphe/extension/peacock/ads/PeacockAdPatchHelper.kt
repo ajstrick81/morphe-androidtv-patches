@@ -36,4 +36,26 @@ object PeacockAdPatchHelper {
             .addInterceptor(OkHttpWorkaroundInterceptor())
             .build()
     }
+
+    /**
+     * Adds AdBlockInterceptor to the Sky Core Player SDK's addon-network
+     * OkHttpClient.Builder (com.sky.core.player.sdk.addon.networkLayer.
+     * NativeNetworkApi) before it's built.
+     *
+     * This client is independent from NetworkingKt.getOkHttpClient() above —
+     * it's derived via OkHttpClient.newBuilder() inside NativeNetworkApi's
+     * own constructor and carries all Sky SDK addon traffic (FreeWheel ad
+     * decisioning, Conviva/Comscore/Nielsen measurement pixels delivered
+     * dynamically via the ad-config response, MediaTailor telemetry).
+     * AdBlockInterceptor was previously only wired into the app's main
+     * client, leaving this entire addon traffic path unfiltered — confirmed
+     * via AdGuard Home query logs showing sas.peacocktv.com, fwmrm.net, and
+     * third-party measurement domains still resolving and being requested
+     * with the patched APK installed, even though those hostnames were
+     * already present in AdBlockInterceptor's domain lists.
+     */
+    @JvmStatic
+    fun addAdBlockInterceptor(builder: OkHttpClient.Builder): OkHttpClient.Builder {
+        return builder.addInterceptor(AdBlockInterceptor())
+    }
 }
