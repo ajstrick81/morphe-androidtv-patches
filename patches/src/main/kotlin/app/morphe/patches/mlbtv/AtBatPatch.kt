@@ -12,9 +12,13 @@
  *                             live ad segments — see status note)
  *   🧪 DAI StreamManager    — Lb6/h;.m0() blocked (same caveat as above)
  *   🧪 TXXX dispatch        — Lu70/i;.onMetadata() blocked (same caveat)
- *   🧪 Commercial-break overlay — hooks onAdBreakStarted()/onAdBreakEnded()
- *                             to show/hide a full-screen overlay (Patch 5).
- *                             Never observed firing in two field tests so far.
+ *   🧪 Commercial-break overlay (Patch 5) — shows a full-screen overlay
+ *                             during ad breaks. Primary trigger is now the
+ *                             manifest rewriter (Patch 6), which signals an ad
+ *                             break whenever it sees ad markers in a media
+ *                             playlist; the IMA onAdBreakStarted()/
+ *                             onAdBreakEnded() hooks are kept as a backup
+ *                             (never observed firing in field tests).
  *   🧪 HLS manifest ad-segment stripping (Patch 6) — rewrites the .m3u8
  *                             playlist itself to drop dclk_video_ads
  *                             segments before ExoPlayer parses them.
@@ -169,6 +173,13 @@ val atbatPatch = bytecodePatch(
                     ((instruction as ReferenceInstruction).reference as? MethodReference)?.name ==
                         "getAdViewGroup"
             }
+            // Fail loud at patch time: a -1 here would silently make
+            // moveResultIndex 0 and register a garbage view group, leaving the
+            // overlay with nothing valid to attach to (it would never show).
+            check(getAdViewGroupIndex != -1) {
+                "SsaiDisplayContainerFingerprint matched but no getAdViewGroup() call was found — " +
+                    "the overlay's ad view group cannot be registered"
+            }
             val moveResultIndex = getAdViewGroupIndex + 1
             val adViewGroupRegister =
                 (instructions[moveResultIndex] as OneRegisterInstruction).registerA
@@ -190,9 +201,13 @@ val atbatPatch = bytecodePatch(
         }
 
         // 5b/5c — wire the no-op ad-break lifecycle callbacks to show/hide
-        // the overlay. Both bodies are a single return-void (1 register,
-        // `this`), so prepending at index 0 is unconditionally safe — no
-        // registers are live yet for the verifier to conflict over.
+        // the overlay. These are now a BACKUP trigger: the primary trigger is
+        // MlbManifestRewriter.signalAdBreak() (Patch 6), which fires off the
+        // actual manifest content and does not depend on these callbacks ever
+        // running (they never were observed firing in field tests). Both
+        // bodies are a single return-void (1 register, `this`), so prepending
+        // at index 0 is unconditionally safe — no registers are live yet for
+        // the verifier to conflict over.
         AdBreakStartedFingerprint.method.addInstructions(
             0,
             """
@@ -240,6 +255,13 @@ val atbatPatch = bytecodePatch(
                 instruction.opcode == Opcode.IPUT_OBJECT &&
                     ((instruction as ReferenceInstruction).reference as? FieldReference)?.type ==
                         "Ljava/io/InputStream;"
+            }
+            // Fail loud at patch time: a -1 here would index instructions[-1]
+            // and throw an opaque IndexOutOfBounds; surface the real cause
+            // (the manifest rewriter could not be spliced in) instead.
+            check(iputStreamIndex != -1) {
+                "OkHttpDataSourceOpenFingerprint matched but no InputStream iput-object was found — " +
+                    "the manifest rewriter cannot be spliced in"
             }
             val streamRegister = "v${(instructions[iputStreamIndex] as TwoRegisterInstruction).registerA}"
 

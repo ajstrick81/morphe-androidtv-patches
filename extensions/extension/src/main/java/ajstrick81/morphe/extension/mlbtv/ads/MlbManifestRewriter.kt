@@ -30,11 +30,25 @@ object MlbManifestRewriter {
 
     private const val TAG = "MORPHE-MLB-MANIFEST"
 
-    private val AD_MARKERS = listOf(
+    /**
+     * Ad-segment URI substrings. Segments whose URI contains one of these are
+     * physically removed from the playlist by [stripAdSegments]. Confirmed
+     * present in MLB's live manifests via logcat (dclk_video_ads).
+     */
+    private val SEGMENT_AD_MARKERS = listOf(
         "dclk_video_ads",
         "doubleclick.net",
         "googlesyndication.com",
     )
+
+    /**
+     * Vendor-neutral HLS / SCTE-35 ad-break signaling tag matching a DATERANGE
+     * row flagged as an ad. Used only to DETECT an active break (to drive the
+     * overlay), not to strip — removing a DATERANGE without the segments it
+     * brackets could desync the player timeline.
+     */
+    private val DATERANGE_AD_REGEX =
+        Regex("#EXT-X-DATERANGE:[^\\n]*CLASS=\"ad", RegexOption.IGNORE_CASE)
 
     @JvmStatic
     fun wrap(dataSpec: Any, stream: InputStream): InputStream {
@@ -44,13 +58,34 @@ object MlbManifestRewriter {
 
         val bytes = stream.readBytes()
         val text = bytes.toString(Charsets.UTF_8)
-        if (AD_MARKERS.none { text.contains(it) }) {
+        if (!containsAdBreakMarkers(text)) {
             return ByteArrayInputStream(bytes)
         }
 
+        // Ground-truth ad-break signal. A live media playlist actually carrying
+        // ad markers is the most reliable indication a commercial break is on
+        // air — far more dependable than IMA's onAdBreakStarted() callback,
+        // which was never observed firing. Drive the "Commercial Break in
+        // Progress" overlay straight off it so it appears mid-inning even when
+        // the IMA callback path is dead. See AdBreakOverlayHelper.
+        AdBreakOverlayHelper.signalAdBreak()
+
         val rewritten = stripAdSegments(text)
-        Log.d(TAG, "stripped ad segments from manifest: $path")
+        Log.d(TAG, "ad break detected; stripped ad segments from manifest: $path")
         return ByteArrayInputStream(rewritten.toByteArray(Charsets.UTF_8))
+    }
+
+    /**
+     * True if this playlist looks like it carries an active ad break. Covers
+     * both MLB's concrete ad-segment URIs and the standard HLS/SCTE-35 markers
+     * a break is delimited with, so the overlay still triggers if the segment
+     * domains ever change. #EXT-X-CUE-OUT also matches #EXT-X-CUE-OUT-CONT; the
+     * bare #EXT-X-CUE-IN (break END) is intentionally not treated as active.
+     */
+    private fun containsAdBreakMarkers(text: String): Boolean {
+        if (SEGMENT_AD_MARKERS.any { text.contains(it) }) return true
+        if (text.contains("#EXT-X-CUE-OUT")) return true
+        return DATERANGE_AD_REGEX.containsMatchIn(text)
     }
 
     private fun extractUri(dataSpec: Any): Uri? = try {
@@ -82,7 +117,7 @@ object MlbManifestRewriter {
                 trimmed.isEmpty() || trimmed.startsWith("#") -> {
                     pendingTags.add(line)
                 }
-                AD_MARKERS.any { trimmed.contains(it) } -> {
+                SEGMENT_AD_MARKERS.any { trimmed.contains(it) } -> {
                     // Ad segment URI — discard it and every tag queued for it.
                     pendingTags = ArrayList()
                 }
