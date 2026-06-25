@@ -79,10 +79,15 @@ public class AdBlockInterceptor implements Interceptor {
         "2mdn.net",
     };
 
-    // Analytics and ad decision endpoints reachable via OkHttp
+    // Analytics and ad decision endpoints reachable via OkHttp.
+    //
+    // Peacock's own ad-decision hosts (sas/vac.peacocktv.com) are intentionally
+    // NOT listed here as flat strings — they ship from regional shards like
+    // sas.f.peacocktv.com / sas.a.peacocktv.com that a "sas.peacocktv.com"
+    // substring never matches (and which would then fall through to the
+    // peacocktv.com safe path). They're handled by isPeacockAdDecisionHost()
+    // below, which matches every shard by leftmost label.
     private static final String[] ANALYTICS_DOMAINS = {
-        "vac.peacocktv.com",
-        "sas.peacocktv.com",
         "fwmrm.net",
         "video-ads-module.ad-tech.nbcuni.com",
         "mediatailor.",
@@ -100,11 +105,37 @@ public class AdBlockInterceptor implements Interceptor {
         "rlcdn.com",
         "nbcuas.com",
         "mparticle.com",
+        // Added after AGH log analysis — confirmed contacted but previously
+        // unblocked at the OkHttp layer:
+        "flashtalking.com",
+        "researchnow.com",
+        "firebaselogging.googleapis.com", // full host only — must not catch play*.googleapis.com
     };
+
+    /**
+     * Matches Peacock's own ad-decision services across all regional shards:
+     * sas.peacocktv.com, sas.&lt;region&gt;.peacocktv.com (SAS = Streaming Ad
+     * Service), vac.peacocktv.com, vac.&lt;region&gt;.peacocktv.com (Video Ad
+     * Config). Matching the leftmost host label rather than a fixed substring
+     * catches every shard while leaving content subdomains
+     * (play.clients/atom/imageservice.peacocktv.com) untouched.
+     *
+     * Blocking the ad DECISION call is the highest-value cut: with no ad
+     * schedule returned, the downstream cascade of (often algorithmically named)
+     * ad-creative and measurement domains is never generated in the first place.
+     */
+    static boolean isPeacockAdDecisionHost(final String host) {
+        if (!host.endsWith("peacocktv.com")) return false;
+        return host.startsWith("sas.") || host.startsWith("vac.");
+    }
 
     @Override
     public Response intercept(Chain chain) throws IOException {
         final String host = chain.request().url().host();
+
+        if (isPeacockAdDecisionHost(host)) {
+            return randomAnalyticsResponse(chain);
+        }
 
         for (final String suffix : AD_CDN_SUFFIXES) {
             if (host.endsWith(suffix)) {

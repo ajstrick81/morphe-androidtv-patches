@@ -1,5 +1,6 @@
 package ajstrick81.morphe.extension.peacock.ads;
 
+import android.net.Uri;
 import android.util.Log;
 import android.webkit.ClientCertRequest;
 import android.webkit.WebResourceRequest;
@@ -51,9 +52,11 @@ public class PeacockWebViewHelper {
     };
 
     private static final String[] AD_HOSTS = {
-        // ── Ad config — kills ad decision pipeline before FreeWheel is contacted
-        "vac.peacocktv.com",
-        "sas.peacocktv.com",
+        // ── Ad config — Peacock's own ad-decision hosts (sas/vac.peacocktv.com
+        // and their regional shards sas.f / sas.a / vac.<region>) are handled by
+        // isPeacockAdDecisionHost() rather than listed here, since a flat
+        // substring misses the shards and the peacocktv.com safe-list would then
+        // allow them through.
 
         // ── FreeWheel CSAI
         "fwmrm.net",
@@ -76,6 +79,11 @@ public class PeacockWebViewHelper {
         "rlcdn.com",
         "nbcuas.com",
         "mparticle.com",
+        // Added after AGH log analysis — confirmed contacted but previously
+        // unblocked at the WebView layer:
+        "flashtalking.com",
+        "researchnow.com",
+        "firebaselogging.googleapis.com", // full host only — must not catch play*.googleapis.com
 
         // ── Ad creative delivery — serves the actual ad asset, not a beacon
         "2mdn.net",
@@ -130,6 +138,18 @@ public class PeacockWebViewHelper {
         );
     }
 
+    /**
+     * Matches Peacock's own ad-decision services across all regional shards:
+     * sas.peacocktv.com, sas.&lt;region&gt;.peacocktv.com (Streaming Ad Service),
+     * vac.peacocktv.com, vac.&lt;region&gt;.peacocktv.com (Video Ad Config).
+     * Matching the leftmost host label catches every shard while leaving content
+     * subdomains (play.clients/atom/imageservice.peacocktv.com) untouched.
+     */
+    private static boolean isPeacockAdDecisionHost(String host) {
+        if (host == null || !host.endsWith("peacocktv.com")) return false;
+        return host.startsWith("sas.") || host.startsWith("vac.");
+    }
+
     private static boolean isAnalyticsHost(String url) {
         return url.contains("scorecardresearch.com")
             || url.contains("imrworldwide.com")
@@ -138,10 +158,18 @@ public class PeacockWebViewHelper {
             || url.contains("doubleverify.com")
             || url.contains("adsafeprotected.com")
             || url.contains("placed.com")
-            || url.contains("mparticle.com");
+            || url.contains("mparticle.com")
+            || url.contains("flashtalking.com")
+            || url.contains("researchnow.com")
+            || url.contains("firebaselogging.googleapis.com");
     }
 
     private static boolean shouldBlock(String url) {
+        // Peacock ad-decision shards (sas/vac.<region>.peacocktv.com) — checked
+        // before everything, since the SAFE_HOSTS "peacocktv.com" entry below
+        // would otherwise allow them through.
+        if (isPeacockAdDecisionHost(Uri.parse(url).getHost())) return true;
+
         // Ad hosts are checked FIRST. SAFE_HOSTS below uses broad substring
         // matching ("nbcuni.com", "peacocktv.com") that would otherwise
         // shadow ad hosts living under those same parent domains.
