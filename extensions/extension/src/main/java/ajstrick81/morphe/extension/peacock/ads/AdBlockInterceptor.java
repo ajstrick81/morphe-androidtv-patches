@@ -81,16 +81,17 @@ public class AdBlockInterceptor implements Interceptor {
 
     // Analytics and ad decision endpoints reachable via OkHttp.
     //
-    // Peacock's own ad-decision hosts (sas/vac.peacocktv.com) are intentionally
-    // NOT listed here as flat strings — they ship from regional shards like
-    // sas.f.peacocktv.com / sas.a.peacocktv.com that a "sas.peacocktv.com"
-    // substring never matches (and which would then fall through to the
-    // peacocktv.com safe path). They're handled by isPeacockAdDecisionHost()
-    // below, which matches every shard by leftmost label.
+    // sas.peacocktv.com (Streaming Ad Service) / vac.peacocktv.com (Video Ad
+    // Config) are matched here as flat substrings — the proven form shipped
+    // through the 1.4.x line. A structural leftmost-label matcher was tried in
+    // v1.5.3 to also catch regional shards (sas.f / sas.a) but was reverted
+    // after it regressed core screen loading on v7.5.100 (issue #29).
     private static final String[] ANALYTICS_DOMAINS = {
         "fwmrm.net",
         "video-ads-module.ad-tech.nbcuni.com",
         "mediatailor.",
+        "sas.peacocktv.com",
+        "vac.peacocktv.com",
         "scorecardresearch.com",
         "conviva.com",
         "imrworldwide.com",
@@ -112,30 +113,9 @@ public class AdBlockInterceptor implements Interceptor {
         "firebaselogging.googleapis.com", // full host only — must not catch play*.googleapis.com
     };
 
-    /**
-     * Matches Peacock's own ad-decision services across all regional shards:
-     * sas.peacocktv.com, sas.&lt;region&gt;.peacocktv.com (SAS = Streaming Ad
-     * Service), vac.peacocktv.com, vac.&lt;region&gt;.peacocktv.com (Video Ad
-     * Config). Matching the leftmost host label rather than a fixed substring
-     * catches every shard while leaving content subdomains
-     * (play.clients/atom/imageservice.peacocktv.com) untouched.
-     *
-     * Blocking the ad DECISION call is the highest-value cut: with no ad
-     * schedule returned, the downstream cascade of (often algorithmically named)
-     * ad-creative and measurement domains is never generated in the first place.
-     */
-    static boolean isPeacockAdDecisionHost(final String host) {
-        if (!host.endsWith("peacocktv.com")) return false;
-        return host.startsWith("sas.") || host.startsWith("vac.");
-    }
-
     @Override
     public Response intercept(Chain chain) throws IOException {
         final String host = chain.request().url().host();
-
-        if (isPeacockAdDecisionHost(host)) {
-            return randomAnalyticsResponse(chain);
-        }
 
         for (final String suffix : AD_CDN_SUFFIXES) {
             if (host.endsWith(suffix)) {

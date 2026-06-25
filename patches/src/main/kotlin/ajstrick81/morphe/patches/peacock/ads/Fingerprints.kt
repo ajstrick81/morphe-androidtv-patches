@@ -203,26 +203,6 @@ internal object NativeNetworkApiConstructorFingerprint : Fingerprint(
     },
 )
 
-// ── Layer 11 ─────────────────────────────────────────────────────────────────
-// Target: the CVSDK init lambda (an R8 synthetic, currently class `p0`) that
-// builds the Sky Player SDK's ROOT OkHttpClient and passes it into both
-// Configuration and InitializedCoreSdk. That root is a fresh `new OkHttpClient()`
-// carrying only the SDK's own OkHttpWorkaroundInterceptor — it is neither the
-// app's NetworkingKt client (Layer 6) nor the addon NativeNetworkApi client
-// (Layer 9). Every media/manifest fetch (Comcast Helio's PlayerComponentProvider
-// → media3 OkHttpDataSource) and the SDK's DI-provided clients are derived from
-// this root via OkHttpClient.newBuilder(), which COPIES interceptors — so
-// injecting AdBlockInterceptor here propagates across the entire SDK network
-// graph from a single point.
-//
-// Anchor: the log string "initializing CVSDK", confirmed unique to this method
-// across the whole APK. A string anchor is essential because the holder class is
-// renamed to a single-letter synthetic (`p0`) that drifts between builds.
-// Confirmed unique + matching v7.6.100 via direct smali inspection.
-internal object SdkRootOkHttpClientFingerprint : Fingerprint(
-    strings = listOf("initializing CVSDK"),
-)
-
 // ── Layer 10 ─────────────────────────────────────────────────────────────────
 // Target: NewRelicManager.e(Context) — the app's New Relic init wrapper,
 // which launches a coroutine (initialiseNewRelic) that calls

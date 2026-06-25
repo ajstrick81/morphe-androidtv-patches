@@ -15,9 +15,9 @@ val skipAdsPatch = bytecodePatch(
     name = "Skip ads",
     description = "Disables ad delivery via Sky SDK surgical targets (FreeWheel DI module " +
         "skip, MediaTailor SSAI layers, ad-break-started no-op), AdBlockInterceptor wiring " +
-        "across all three OkHttp surfaces (app NetworkingKt client, Sky SDK addon network " +
-        "client, and the SDK root/media client), New Relic agent init no-op, and WebView " +
-        "shouldInterceptRequest wrapper. Validated v7.5.102 and v7.6.100.",
+        "across the app NetworkingKt client and the Sky SDK addon network client, New Relic " +
+        "agent init no-op, and WebView shouldInterceptRequest wrapper. " +
+        "Validated v7.5.102 and v7.6.100.",
 ) {
     compatibleWith(Constants.COMPATIBILITY)
 
@@ -70,12 +70,12 @@ val skipAdsPatch = bytecodePatch(
         // Finds the single okhttp3.OkHttpClient$Builder.build() call in the
         // matched method and injects PeacockAdPatchHelper.addAdBlockInterceptor()
         // immediately before it, reusing the builder's own register. Used for
-        // every OkHttpClient that is *constructed* (rather than body-replaced
-        // like Layer 6's getOkHttpClient): the Sky SDK addon client (Layer 9)
-        // and the SDK root client (Layer 11). Locating the build() and its
-        // register dynamically — rather than via a fixed offset — keeps this
-        // stable across register-allocation and field-layout drift between
-        // versions, the same resilience rationale as wrapXtvClientSetter above.
+        // the Sky SDK addon client (Layer 9), which is *constructed* via
+        // newBuilder()/build() rather than body-replaced like Layer 6's
+        // getOkHttpClient(). Locating the build() and its register dynamically —
+        // rather than via a fixed offset — keeps this stable across
+        // register-allocation and field-layout drift between versions, the same
+        // resilience rationale as wrapXtvClientSetter above.
         fun injectAdBlockBeforeOkHttpBuild(fingerprint: Fingerprint) {
             fingerprint.method.apply {
                 val instructions = implementation!!.instructions
@@ -243,17 +243,6 @@ val skipAdsPatch = bytecodePatch(
         // decisioning, Conviva/Comscore/Nielsen measurement, MediaTailor
         // telemetry) that Layer 6 never touches. Add AdBlockInterceptor to it.
         injectAdBlockBeforeOkHttpBuild(NativeNetworkApiConstructorFingerprint)
-
-        // ── Layer 11 ────────────────────────────────────────────────────────
-        // The CVSDK init lambda builds the Sky SDK's ROOT OkHttpClient (fresh
-        // `new OkHttpClient()` + the SDK's own OkHttpWorkaroundInterceptor) and
-        // feeds it to Configuration/InitializedCoreSdk. The media DataSource
-        // client (Comcast Helio → media3 OkHttpDataSource) and the SDK's
-        // DI-provided clients are all derived from this root via newBuilder(),
-        // which copies interceptors — so adding AdBlockInterceptor here closes
-        // the media/manifest fetch path (the last OkHttp surface neither Layer 6
-        // nor Layer 9 reached) from a single injection point.
-        injectAdBlockBeforeOkHttpBuild(SdkRootOkHttpClientFingerprint)
 
         // ── Layer 10 ────────────────────────────────────────────────────────
         // No-op NewRelicManager.e(Context) so the agent never starts —
