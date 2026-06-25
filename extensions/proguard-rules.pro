@@ -31,8 +31,14 @@
 # smali via invoke-static {}. R8 must not rename or remove this method.
 # OkHttpWorkaroundInterceptor is also instantiated here — kept via its own
 # existing rule elsewhere; confirm it has one if the build strips it.
+#
+# Layer 9: addAdBlockInterceptor(OkHttpClient.Builder) is likewise called
+# only from injected smali (in NativeNetworkApi.<init>), so it must be kept
+# explicitly too — without this R8 sees it as unreferenced and would strip
+# or rename it, breaking the Sky SDK addon-client interception at runtime.
 -keep class ajstrick81.morphe.extension.peacock.ads.PeacockAdPatchHelper {
     public static okhttp3.OkHttpClient buildOkHttpClient();
+    public static okhttp3.OkHttpClient$Builder addAdBlockInterceptor(okhttp3.OkHttpClient$Builder);
 }
 # Layer 7 — WebView shouldInterceptRequest wrapper
 -keep class ajstrick81.morphe.extension.peacock.ads.PeacockWebViewHelper {
