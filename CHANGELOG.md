@@ -1,3 +1,10 @@
+## [1.5.7-dev.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.5.6...v1.5.7-dev.1) (2026-06-26)
+
+
+### Bug Fixes
+
+* **peacock:** rewrite wrapClient() to use named class, not anonymous ([adbd78d](https://github.com/ajstrick81/morphe-androidtv-patches/commit/adbd78d3e54a08f4c6de5eda45eef4a18493b436))
+
 ## [1.5.6](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.5.5...v1.5.6) (2026-06-26)
 
 
