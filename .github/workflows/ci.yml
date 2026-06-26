@@ -36,3 +36,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew clean :patches:buildAndroid generatePatchesList
+
+      # Upload the built patch bundle so dev/PR builds can be sideloaded into
+      # Morphe Manager and verified on-device BEFORE merging to main. CI only
+      # proves the patch compiles/applies — it cannot prove the app launches,
+      # so on-device verification of this artifact is the real release gate.
+      - name: Upload patch bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: patches
+          path: |
+            patches/build/libs/patches-*.mpp
+            patches/build/libs/patches-*.json
+          if-no-files-found: warn
+          retention-days: 14
