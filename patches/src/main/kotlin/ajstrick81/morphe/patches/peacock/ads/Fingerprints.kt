@@ -179,43 +179,8 @@ internal object FreewheelModuleSkipFingerprint : Fingerprint(
     },
 )
 
-// ── Layer 9 ──────────────────────────────────────────────────────────────────
-// Target: NativeNetworkApi.<init>(DeviceContext, OkHttpClient)
-//
-// The Sky Core Player SDK's addon network stack (FreeWheel ad decisioning,
-// Conviva/Comscore/Nielsen measurement — delivered dynamically via the
-// ad-config response rather than hardcoded, so no literal domain strings for
-// them exist anywhere in the dex) is entirely independent from the app's
-// main NetworkingKt.getOkHttpClient() client that Layer 6 patches. This
-// constructor derives its own child OkHttpClient via newBuilder()/build()
-// and was the unfiltered gap: AdGuard Home DNS logs showed sas.peacocktv.com
-// and fwmrm.net still being requested with the patched APK installed, even
-// though both hostnames were already in AdBlockInterceptor's lists — the
-// interceptor just wasn't wired into this client.
-// Confirmed matching v7.6.100 via direct smali inspection.
-internal object NativeNetworkApiConstructorFingerprint : Fingerprint(
-    custom = { method, classDef ->
-        method.name == "<init>" &&
-            method.parameters.size == 2 &&
-            method.parameters[0].type == "Lcom/sky/core/player/addon/common/DeviceContext;" &&
-            method.parameters[1].type == "Lokhttp3/OkHttpClient;" &&
-            classDef.type == "Lcom/sky/core/player/sdk/addon/networkLayer/NativeNetworkApi;"
-    },
-)
-
-// ── Layer 10 ─────────────────────────────────────────────────────────────────
-// Target: NewRelicManager.e(Context) — the app's New Relic init wrapper,
-// which launches a coroutine (initialiseNewRelic) that calls
-// NewRelic.withApplicationToken(...).start(context). New Relic's mobile
-// agent harvester uses its own HTTP path, not OkHttp, so no interceptor can
-// ever catch mobile-collector.newrelic.com / nr-data.net traffic — the only
-// way to stop it from the patch side is to prevent the agent from starting.
-// Anchor: only method in NewRelicManager taking a single Context parameter.
-// Confirmed matching v7.6.100 via direct smali inspection.
-internal object NewRelicInitFingerprint : Fingerprint(
-    returnType = "V",
-    parameters = listOf("Landroid/content/Context;"),
-    custom = { method, classDef ->
-        classDef.type == "Lcom/peacock/peacocktv/analytics/NewRelicManager;"
-    },
-)
+// NOTE: NativeNetworkApiConstructorFingerprint (Layer 9) and
+// NewRelicInitFingerprint (Layer 10) were removed in v1.5.5 — see the rollback
+// note in SkipAdsPatch.kt. They are intentionally not re-added until their
+// injections can be device-verified, since they broke app launch on the
+// fully-validated v7.6.100 target despite matching cleanly.

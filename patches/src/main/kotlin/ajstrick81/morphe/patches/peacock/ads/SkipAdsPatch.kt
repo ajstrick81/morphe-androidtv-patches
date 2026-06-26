@@ -15,9 +15,8 @@ val skipAdsPatch = bytecodePatch(
     name = "Skip ads",
     description = "Disables ad delivery via Sky SDK surgical targets (FreeWheel DI module " +
         "skip, MediaTailor SSAI layers, ad-break-started no-op), AdBlockInterceptor wiring " +
-        "across the app NetworkingKt client and the Sky SDK addon network client, New Relic " +
-        "agent init no-op, and WebView shouldInterceptRequest wrapper. " +
-        "Validated v7.5.102 and v7.6.100.",
+        "on the app NetworkingKt OkHttp client, and a WebView shouldInterceptRequest wrapper. " +
+        "Pair with DNS filtering for full ad suppression. Validated v7.5.102 and v7.6.100.",
 ) {
     compatibleWith(Constants.COMPATIBILITY)
 
@@ -65,44 +64,6 @@ val skipAdsPatch = bytecodePatch(
                     move-result-object $registerName
                 """.trimIndent(),
             )
-        }
-
-        // Finds the single okhttp3.OkHttpClient$Builder.build() call in the
-        // matched method and injects PeacockAdPatchHelper.addAdBlockInterceptor()
-        // immediately before it, reusing the builder's own register. Used for
-        // the Sky SDK addon client (Layer 9), which is *constructed* via
-        // newBuilder()/build() rather than body-replaced like Layer 6's
-        // getOkHttpClient(). Locating the build() and its register dynamically —
-        // rather than via a fixed offset — keeps this stable across
-        // register-allocation and field-layout drift between versions, the same
-        // resilience rationale as wrapXtvClientSetter above.
-        fun injectAdBlockBeforeOkHttpBuild(fingerprint: Fingerprint) {
-            fingerprint.method.apply {
-                val instructions = implementation!!.instructions
-                val buildIndex = instructions.indexOfFirst { instruction ->
-                    instruction.opcode == Opcode.INVOKE_VIRTUAL &&
-                        ((instruction as ReferenceInstruction).reference as? MethodReference)?.let { ref ->
-                            ref.name == "build" && ref.definingClass == "Lokhttp3/OkHttpClient\$Builder;"
-                        } == true
-                }
-                val builderRegister = (instructions[buildIndex] as FiveRegisterInstruction).registerC
-                val totalRegisters = implementation!!.registerCount
-                val paramRegisters = parameters.size + 1 // +1 for implicit `this` (p0)
-                val firstParamRegister = totalRegisters - paramRegisters
-                val registerName = if (builderRegister >= firstParamRegister) {
-                    "p${builderRegister - firstParamRegister}"
-                } else {
-                    "v$builderRegister"
-                }
-
-                addInstructions(
-                    buildIndex,
-                    """
-                        invoke-static {$registerName}, Lajstrick81/morphe/extension/peacock/ads/PeacockAdPatchHelper;->addAdBlockInterceptor(Lokhttp3/OkHttpClient${'$'}Builder;)Lokhttp3/OkHttpClient${'$'}Builder;
-                        move-result-object $registerName
-                    """.trimIndent(),
-                )
-            }
         }
 
         // ── Layer 1 ─────────────────────────────────────────────────────────
@@ -237,22 +198,16 @@ val skipAdsPatch = bytecodePatch(
             removeInstruction(16) // import$default(...) — now shifted to 16
         }
 
-        // ── Layer 9 ─────────────────────────────────────────────────────────
-        // NativeNetworkApi.<init> derives its own child OkHttpClient via
-        // newBuilder()/build() — the Sky SDK addon network path (FreeWheel ad
-        // decisioning, Conviva/Comscore/Nielsen measurement, MediaTailor
-        // telemetry) that Layer 6 never touches. Add AdBlockInterceptor to it.
-        injectAdBlockBeforeOkHttpBuild(NativeNetworkApiConstructorFingerprint)
-
-        // ── Layer 10 ────────────────────────────────────────────────────────
-        // No-op NewRelicManager.e(Context) so the agent never starts —
-        // interceptors can't catch its harvester traffic since it doesn't
-        // go through OkHttp. Void return, offset 0 — always verifier-safe.
-        NewRelicInitFingerprint.method.addInstructions(
-            0,
-            """
-                return-void
-            """.trimIndent(),
-        )
+        // NOTE: Layers 9–11 (Sky SDK addon-client interceptor, New Relic init
+        // no-op, and SDK root-client interceptor) were removed in v1.5.5. That
+        // "DNS-independent suppression" push broke app launch — v1.5.3 on
+        // v7.5.100 (issue #29) and then v1.5.4 still failed with Peacock's
+        // "Something went wrong" screen on v7.6.100, the fully-validated target.
+        // CI only proves the patch applies, not that the app launches, so those
+        // layers shipped without on-device verification. The patch is rolled
+        // back to the last known-good Layers 1–8 surface (app launches and
+        // plays; ads partially suppressed, fully suppressed when paired with
+        // DNS filtering). Any future re-attempt of addon/SDK-client interception
+        // must be device-verified one layer at a time before release.
     }
 }
