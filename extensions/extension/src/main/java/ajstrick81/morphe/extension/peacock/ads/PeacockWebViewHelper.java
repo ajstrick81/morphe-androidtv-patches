@@ -177,7 +177,7 @@ public class PeacockWebViewHelper {
 
     public static WebViewClient wrapClient(final WebViewClient original) {
         Log.d(TAG, "PeacockWebViewHelper.wrapClient() — Layer 7 active (randomized responses)");
-        return new WebViewClient() {
+        WebViewClient wrapped = new WebViewClient() {
 
             @Override
             public WebResourceResponse shouldInterceptRequest(
@@ -246,5 +246,16 @@ public class PeacockWebViewHelper {
                 return original.onRenderProcessGone(view, detail);
             }
         };
+
+        // ART rejected a bare `return new WebViewClient() {...}` here with
+        // VerifyError: "[0xC] returning 'Precise Reference: <anon>', but
+        // expected ... 'Reference: android.webkit.WebViewClient'" — confirmed
+        // via on-device logcat on v7.6.100, 100% reproducible, fatal on every
+        // launch (this is what actually broke v1.5.2 through v1.5.5; Layers
+        // 9-11 were never the cause). The double cast through Object forces
+        // javac to emit a real checkcast instruction instead of eliding it,
+        // which satisfies the verifier when this extension's separately-dexed
+        // class is merged into the host APK via extendWith().
+        return (WebViewClient) (Object) wrapped;
     }
 }
