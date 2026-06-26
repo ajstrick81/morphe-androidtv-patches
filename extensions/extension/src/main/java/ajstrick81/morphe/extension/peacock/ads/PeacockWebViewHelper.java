@@ -21,9 +21,9 @@ import java.util.Random;
  * detection system, which flags devices that never complete ad views.
  *
  * Response variation:
- *   - 60% empty 200 OK (normal load, no content)
- *   - 25% 204 No Content (server acknowledged, nothing to send)
- *   - 15% random delay 50-200ms then 200 (simulates slow CDN response)
+ *   - 60-75% empty 200 OK (normal load, no content)
+ *   - 25-40% 204 No Content (server acknowledged, nothing to send)
+ * No artificial delay is added (see randomResponse() below for why).
  *
  * Analytics hosts (scorecardresearch, imrworldwide, omtrdc) are still blocked
  * but with higher 204 probability to look like server-side suppression rather
@@ -104,12 +104,12 @@ public class PeacockWebViewHelper {
     private static WebResourceResponse randomResponse(boolean isAnalytics) {
         int roll = RANDOM.nextInt(100);
 
-        // Occasionally add a small delay to mimic slow/busy CDN
-        if (roll < 15) {
-            try {
-                Thread.sleep(50 + RANDOM.nextInt(150)); // 50–200ms
-            } catch (InterruptedException ignored) {}
-        }
+        // No artificial delay here. shouldInterceptRequest runs on Chromium's
+        // own IO thread pool, and blocking it on a memory-constrained device
+        // contributed to a sustained GC-pressure climb to OutOfMemoryError
+        // within ~2.5 minutes of launch — see AdBlockInterceptor.java's
+        // randomAdResponse() for the matching fix and full rationale on the
+        // OkHttp side, which is where this was actually root-caused.
 
         // Vary status code
         int statusCode;
