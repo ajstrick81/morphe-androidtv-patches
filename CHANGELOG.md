@@ -1,3 +1,10 @@
+## [1.5.7-dev.3](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.5.7-dev.2...v1.5.7-dev.3) (2026-06-26)
+
+
+### Bug Fixes
+
+* **peacock:** re-add Layer 9 (NativeNetworkApi interceptor) only ([b14707e](https://github.com/ajstrick81/morphe-androidtv-patches/commit/b14707e23290fa26597f3b2ddda9b3c39442efc2))
+
 ## [1.5.7-dev.2](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.5.7-dev.1...v1.5.7-dev.2) (2026-06-26)
 
 
