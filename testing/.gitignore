@@ -1,0 +1,21 @@
+# Local-only artifacts — never commit APKs, tools, keys, or device config.
+apks/*
+!apks/.gitkeep
+
+out/*
+!out/.gitkeep
+
+tools/*
+!tools/.gitkeep
+
+keystore/*
+!keystore/.gitkeep
+
+config/device.env
+
+# APK bundle formats (in case they land outside apks/)
+*.apk
+*.apkm
+*.apks
+*.xapk
+*.mpp
