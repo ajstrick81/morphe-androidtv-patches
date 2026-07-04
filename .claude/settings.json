@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/guard_fetch_exec.py\"",
+            "statusMessage": "Checking command for fetch-exec patterns"
+          }
+        ]
+      }
+    ]
+  }
+}
