@@ -116,6 +116,9 @@ gradle-app.setting
 # Potentially copyrighted test APK
 *.apk
 
+# Decompiled app sources (copyrighted; huge; breaks GitHub compare/diff)
+decompiled/
+
 # Ignore vscode config
 .vscode/
 
