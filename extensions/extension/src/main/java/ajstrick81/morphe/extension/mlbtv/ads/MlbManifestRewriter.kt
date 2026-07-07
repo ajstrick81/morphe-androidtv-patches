@@ -31,6 +31,17 @@ object MlbManifestRewriter {
     private const val TAG = "MORPHE-MLB-MANIFEST"
 
     /**
+     * Info-gathering switch. When true, [wrap] logs a one-line census of the
+     * ad-signaling markers found in each media playlist (see [logMarkerCensus]).
+     * This is how we replace guesswork about MLB's manifest with fact: a single
+     * `adb logcat -s $TAG` during a live break tells us exactly which of
+     * CUE-OUT / DISCONTINUITY / DATERANGE / dclk MLB's DAI actually emits — the
+     * open question the SCTE-35 / producer-side research left unanswered. Flip
+     * to false to silence it; it changes no playback behavior either way.
+     */
+    private const val LOG_MARKER_CENSUS = true
+
+    /**
      * Ad-segment URI substrings. Segments whose URI contains one of these are
      * physically removed from the playlist by [stripAdSegments]. Confirmed
      * present in MLB's live manifests via logcat (dclk_video_ads).
@@ -50,6 +61,8 @@ object MlbManifestRewriter {
     private val DATERANGE_AD_REGEX =
         Regex("#EXT-X-DATERANGE:[^\\n]*CLASS=\"ad", RegexOption.IGNORE_CASE)
 
+    private const val TAG_DISCONTINUITY = "#EXT-X-DISCONTINUITY"
+
     @JvmStatic
     fun wrap(dataSpec: Any, stream: InputStream): InputStream {
         val uri = extractUri(dataSpec) ?: return stream
@@ -58,6 +71,9 @@ object MlbManifestRewriter {
 
         val bytes = stream.readBytes()
         val text = bytes.toString(Charsets.UTF_8)
+
+        if (LOG_MARKER_CENSUS) logMarkerCensus(path, text)
+
         if (!containsAdBreakMarkers(text)) {
             return ByteArrayInputStream(bytes)
         }
@@ -71,7 +87,6 @@ object MlbManifestRewriter {
         AdBreakOverlayHelper.signalAdBreak()
 
         val rewritten = stripAdSegments(text)
-        Log.d(TAG, "ad break detected; stripped ad segments from manifest: $path")
         return ByteArrayInputStream(rewritten.toByteArray(Charsets.UTF_8))
     }
 
@@ -81,6 +96,11 @@ object MlbManifestRewriter {
      * a break is delimited with, so the overlay still triggers if the segment
      * domains ever change. #EXT-X-CUE-OUT also matches #EXT-X-CUE-OUT-CONT; the
      * bare #EXT-X-CUE-IN (break END) is intentionally not treated as active.
+     *
+     * Note: a bare #EXT-X-DISCONTINUITY is deliberately NOT a trigger here — it
+     * marks any timeline break (codec/PID/timestamp change), not specifically an
+     * ad, so it would false-fire the overlay. Discontinuity is used only for the
+     * census and for cleaning up the strip (see [stripAdSegments]).
      */
     private fun containsAdBreakMarkers(text: String): Boolean {
         if (SEGMENT_AD_MARKERS.any { text.contains(it) }) return true
@@ -99,17 +119,67 @@ object MlbManifestRewriter {
     }
 
     /**
+     * Emits a one-line census of ad-signaling markers for a media playlist, so
+     * a field-test logcat reveals exactly what MLB's DAI puts in the manifest.
+     * Skips the master playlist and pure-content media playlists (nothing
+     * informative to report) to keep the log readable.
+     */
+    private fun logMarkerCensus(path: String, text: String) {
+        var segments = 0
+        var adSegments = 0
+        var discontinuity = 0
+        var discontinuitySeq = 0
+        var cueOut = 0
+        var cueIn = 0
+
+        for (raw in text.split("\n")) {
+            val line = raw.trim()
+            when {
+                line.startsWith("#EXTINF") -> segments++
+                line.startsWith("#EXT-X-DISCONTINUITY-SEQUENCE") -> discontinuitySeq++
+                line == TAG_DISCONTINUITY -> discontinuity++
+                line.startsWith("#EXT-X-CUE-OUT") -> cueOut++
+                line.startsWith("#EXT-X-CUE-IN") -> cueIn++
+                line.isNotEmpty() && !line.startsWith("#") &&
+                    SEGMENT_AD_MARKERS.any { line.contains(it) } -> adSegments++
+            }
+        }
+        val dateRangeAd = DATERANGE_AD_REGEX.findAll(text).count()
+
+        // Only log playlists that carry at least one signal worth studying.
+        if (adSegments == 0 && discontinuity == 0 && cueOut == 0 && cueIn == 0 && dateRangeAd == 0) {
+            return
+        }
+        Log.d(
+            TAG,
+            "manifest census: segments=$segments adSegments=$adSegments " +
+                "discontinuity=$discontinuity discontinuitySeq=$discontinuitySeq " +
+                "cueOut=$cueOut cueIn=$cueIn dateRangeAd=$dateRangeAd :: $path",
+        )
+    }
+
+    /**
      * Drops any #EXTINF segment line (and its preceding tags, up to the
      * previous segment or the start of the playlist) whose URI matches a
      * known ad marker. Anything that isn't an ad segment — including
-     * #EXT-X-DISCONTINUITY/#EXT-X-KEY/etc tags attached to real segments —
-     * is left untouched, since removing unrelated tags could desync the
-     * player's segment timeline.
+     * #EXT-X-KEY/etc tags attached to real segments — is left untouched, since
+     * removing unrelated tags could desync the player's segment timeline.
+     *
+     * DISCONTINUITY handling: an ad break is normally bracketed by a
+     * #EXT-X-DISCONTINUITY on each side (content→ad, ad→content). Removing the
+     * ad segments already drops the opening bracket (it rides in the ad
+     * segment's pending tags); the closing bracket is kept, so one discontinuity
+     * remains where the break was. That is deliberately conservative — a spare
+     * discontinuity costs at most a decoder reset, whereas a missing one that
+     * was actually needed causes a hard timeline desync. As a safety net,
+     * [collapseAdjacentDiscontinuities] removes any *consecutive* duplicates
+     * that back-to-back break removal could leave behind.
      */
     private fun stripAdSegments(playlist: String): String {
         val lines = playlist.split("\n")
         val output = ArrayList<String>(lines.size)
         var pendingTags = ArrayList<String>()
+        var removedSegments = 0
 
         for (line in lines) {
             val trimmed = line.trim()
@@ -120,6 +190,7 @@ object MlbManifestRewriter {
                 SEGMENT_AD_MARKERS.any { trimmed.contains(it) } -> {
                     // Ad segment URI — discard it and every tag queued for it.
                     pendingTags = ArrayList()
+                    removedSegments++
                 }
                 else -> {
                     output.addAll(pendingTags)
@@ -129,6 +200,31 @@ object MlbManifestRewriter {
             }
         }
         output.addAll(pendingTags)
-        return output.joinToString("\n")
+
+        val collapsed = collapseAdjacentDiscontinuities(output)
+        Log.d(TAG, "stripped $removedSegments ad segment(s) from manifest")
+        return collapsed.joinToString("\n")
+    }
+
+    /**
+     * Removes a #EXT-X-DISCONTINUITY line whenever the previous non-blank line
+     * is also a #EXT-X-DISCONTINUITY, so ad removal can never leave two
+     * discontinuities in a row (which the player would read as two timeline
+     * breaks and could over-reset the decoder on).
+     */
+    private fun collapseAdjacentDiscontinuities(lines: List<String>): List<String> {
+        val result = ArrayList<String>(lines.size)
+        var lastNonBlankWasDiscontinuity = false
+        for (line in lines) {
+            val trimmed = line.trim()
+            if (trimmed == TAG_DISCONTINUITY && lastNonBlankWasDiscontinuity) {
+                continue
+            }
+            result.add(line)
+            if (trimmed.isNotEmpty()) {
+                lastNonBlankWasDiscontinuity = trimmed == TAG_DISCONTINUITY
+            }
+        }
+        return result
     }
 }
