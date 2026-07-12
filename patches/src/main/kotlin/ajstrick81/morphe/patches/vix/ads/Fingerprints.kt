@@ -27,29 +27,28 @@ import com.android.tools.smali.dexlib2.AccessFlags
 
 // ─────────────────────────────────────────────────────────────────────────────
 // InnovidHelper — ad overlay mount entry point
-// classes10.dex / com/univision/descarga/videoplayer/utilities/innovid/
+// com/univision/descarga/videoplayer/utilities/innovid/InnovidHelper
 //
 // Method `h(boolean, WebView, VideoModel, Flow)` is the call that mounts the
-// Innovid SSAI ad WebView overlay. Confirmed via the "innovidAd" parameter
-// string in the body and its sole call site in videoplayer/z.smali, which
-// dispatches it from the player's ad-event switch. Returning void at index 0
-// stops the overlay before any WebView is attached or network request fires.
+// Innovid SSAI ad WebView overlay. Its sole call site in the player's ad-event
+// switch dispatches it; returning void at index 0 stops the overlay before any
+// WebView is attached or network request fires.
 //
-// The method name (`h`) is R8-obfuscated and intentionally NOT matched on —
-// InnovidHelper exposes four void methods that share [PUBLIC, FINAL]
-// (the synthetic accessors a/b, the teardown c(DisposeReason), and h), so the
-// previous name-less, parameter-less fingerprint could bind the wrong one
-// (e.g. teardown). The full parameter signature uniquely identifies the mount
-// method and survives method renaming across minor builds.
+// Anchored on the "innovidAd" string constant, which appears only inside this
+// mount method within InnovidHelper — so definingClass + that string uniquely
+// identify it. The method name (`h`) is R8-obfuscated and NOT matched on.
+//
+// Version note (4.46.0_tv → 4.47.2_tv): the earlier fingerprint pinned the
+// full parameter list, but R8 renamed the obfuscated VideoModel param type
+// (…/models/video/v → …/models/video/t) between builds, which broke the exact
+// match. The string anchor is immune to that obfuscation drift and matches
+// both builds, so it replaces the parameter list. returnType + [PUBLIC, FINAL]
+// are kept as cheap extra constraints (the other public-final-void methods —
+// the a/b accessors and c(DisposeReason) teardown — don't carry this string).
 // ─────────────────────────────────────────────────────────────────────────────
 object InnovidStartAdFingerprint : Fingerprint(
     definingClass = "Lcom/univision/descarga/videoplayer/utilities/innovid/InnovidHelper;",
-    parameters = listOf(
-        "Z",
-        "Landroid/webkit/WebView;",
-        "Lcom/univision/descarga/presentation/models/video/v;",
-        "Lkotlinx/coroutines/flow/i;"
-    ),
+    strings = listOf("innovidAd"),
     returnType = "V",
     accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.FINAL)
 )
