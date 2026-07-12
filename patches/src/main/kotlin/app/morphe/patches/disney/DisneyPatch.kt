@@ -39,6 +39,12 @@ val disneyPatch = bytecodePatch(
         // Emptying it prevents live interstitial gating from admitting any
         // ad range and stops serialisation from writing range data.
         //
+        // Two parallel insertion containers must be emptied:
+        //   - com.dss.sdk.internal.media.Insertion       (legacy BAM-SDK)
+        //   - com.disney.dmp.internal.pbo.Insertion      (new Disney Media
+        //     Platform pipeline, v26.9.2+ — the SGAI/SSAI VOD ads the legacy
+        //     patch missed rode through here). See Fingerprints.kt.
+        //
         // Both methods are simple iget-object / return-object pairs, so
         // prepending a fresh ArrayList return at offset 0 is safe — the
         // original iget is never reached and the field is never read.
@@ -46,6 +52,8 @@ val disneyPatch = bytecodePatch(
         arrayOf(
             InsertionGetPointsFingerprint,
             InsertionGetRangesFingerprint,
+            DmpInsertionGetPointsFingerprint,
+            DmpInsertionGetRangesFingerprint,
         ).forEach { fingerprint ->
             fingerprint.method.addInstructions(
                 0,
