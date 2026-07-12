@@ -164,7 +164,8 @@
       "dependencies": [],
       "compatiblePackages": {
         "com.univision.prendetv": [
-          "4.46.0_tv"
+          "4.46.0_tv",
+          "4.47.2_tv"
         ]
       },
       "compatibility": [
@@ -176,6 +177,10 @@
           "targets": [
             {
               "version": "4.46.0_tv",
+              "experimental": false
+            },
+            {
+              "version": "4.47.2_tv",
               "experimental": false
             }
           ]
@@ -358,7 +363,8 @@
       "dependencies": [],
       "compatiblePackages": {
         "com.univision.prendetv": [
-          "4.46.0_tv"
+          "4.46.0_tv",
+          "4.47.2_tv"
         ]
       },
       "compatibility": [
@@ -370,6 +376,10 @@
           "targets": [
             {
               "version": "4.46.0_tv",
+              "experimental": false
+            },
+            {
+              "version": "4.47.2_tv",
               "experimental": false
             }
           ]

@@ -8,6 +8,6 @@ object Constants {
         name = "ViX Android TV",
         packageName = "com.univision.prendetv",
         appIconColor = 0x00A0E9,
-        targets = listOf(AppTarget("4.46.0_tv"))
+        targets = listOf(AppTarget("4.46.0_tv"), AppTarget("4.47.2_tv"))
     )
 }

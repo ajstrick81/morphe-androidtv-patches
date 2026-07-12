@@ -109,7 +109,7 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 1. Go to [apkmirror.com](https://www.apkmirror.com) and search for:
    ```
-   ViX v4.46.0_tv (Android TV)
+   ViX v4.47.2_tv (Android TV)
    ```
 2. Download the `.apkm` file
 3. Select it in Morphe Manager
