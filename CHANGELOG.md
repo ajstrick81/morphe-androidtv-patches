@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.11.0...v1.12.0) (2026-07-12)
+
+
+### Features
+
+* **disney:** cover new DMP SGAI/SSAI VOD ad insertion pipeline ([57d0b76](https://github.com/ajstrick81/morphe-androidtv-patches/commit/57d0b76f07c498087843a39247a758cc44cf532a))
+
 # [1.11.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.10.0...v1.11.0) (2026-07-12)
 
 
