@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.10.0...v1.11.0) (2026-07-12)
+
+
+### Features
+
+* **vix:** support 4.47.2_tv; re-anchor Innovid fingerprint on string ([#54](https://github.com/ajstrick81/morphe-androidtv-patches/issues/54)) ([37e3ec6](https://github.com/ajstrick81/morphe-androidtv-patches/commit/37e3ec6659a39befbd54cee9bf01bdb687f07c6c))
+
 # [1.10.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.9.0...v1.10.0) (2026-07-04)
 
 
