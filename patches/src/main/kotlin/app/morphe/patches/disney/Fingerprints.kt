@@ -43,6 +43,34 @@ internal object InsertionGetRangesFingerprint : Fingerprint(
 )
 
 // ---------------------------------------------------------------------------
+// NEW pipeline (v26.9.2+): Disney Media Platform ("dmp") PlayBack-Orchestration
+// ("pbo") insertion container. The player migrated off the legacy DSS-SDK
+// Insertion (above) to com.disney.dmp.internal.pbo.Insertion — a @Keep Moshi
+// data class with the same getPoints()/getRanges() shape (mode = SGAI/SSAI).
+// The ad-break builder iterates getPoints(), casts each to InsertionPoint and
+// branches on `instanceof Sgai/SsaiVodInsertionPoint`; emptying getPoints()/
+// getRanges() here yields zero ad cues → no SGAI/SSAI VOD ads (pre- and mid-roll),
+// with no DNS dependency. Verified on Onn 4K TV (v26.9.2+rc1). This is why the
+// legacy-only patch still applied yet SGAI ads leaked through.
+// ---------------------------------------------------------------------------
+
+internal object DmpInsertionGetPointsFingerprint : Fingerprint(
+    returnType = "Ljava/util/List",
+    custom = { method, _ ->
+        method.name == "getPoints" &&
+            method.definingClass == "Lcom/disney/dmp/internal/pbo/Insertion;"
+    },
+)
+
+internal object DmpInsertionGetRangesFingerprint : Fingerprint(
+    returnType = "Ljava/util/List",
+    custom = { method, _ ->
+        method.name == "getRanges" &&
+            method.definingClass == "Lcom/disney/dmp/internal/pbo/Insertion;"
+    },
+)
+
+// ---------------------------------------------------------------------------
 // Pause ad fingerprint — MediaXPauseSession.started()
 //
 // Network analysis (PCAPdroid) confirmed the pause ad image is fetched from
