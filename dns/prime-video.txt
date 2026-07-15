@@ -1,9 +1,32 @@
 ! Prime Video — DNS Ad-Suppression Filter List
-! Version: 4.6  (2026-06-30)
+! Version: 4.8  (2026-07-15)
 ! AdGuard Home syntax. Safe-harbor allows first, then blocks.
 !
 ! Two Ad Pipelines: (1) Java/media3 ad-groups -> bytecode PATCH; (2) native SGAI ->
 ! separate ad manifests on a dedicated ad host -> THIS list. Run both together.
+!
+! ⚠️ 2026-07-14 CORRECTION: pipeline (1) is INERT on the ATV app. On-device proof
+! (static call-graph + native JNI-string scan + live logcat across 5 titles/3 prerolls)
+! showed the media3 `setAdPlaybackStates` hook NEVER fires — PV ATV routes ads through
+! the native MPB, not media3. So THIS DNS list is effectively the ONLY lever for the
+! native ATV client. (The media3 patch still matters for other apps; harmless here.)
+!
+! 2026-07-14 LIVE HOST MAP (PCAPdroid VPN capture, no root; SNI + DNS, ads-vs-noads diff):
+!   ters-sgai1.us-east-2.aiv-delivery.net  = CURRENT SGAI stitcher (was draper1/s0s7)
+!   api.us-east-1.aiv-delivery.net         = ad delivery API
+!   regolith.prime-video.amazon.dev        = PAUSE-screen ad endpoint — CONFIRMED reached
+!     (user saw a pause-ad overlay; host present in capture). Already blocked at line 56.
+!   ab8mt4dd97et.na.api.amazonvideo.com    = GetPlaybackResources (dual-use, DO NOT block)
+!   *.ta.(pop-)vod-dash.main.amazon.pv-cdn.net = video + SSAI-stitched ad segments (dual-use)
+!
+! ⚠️ DUAL-USE CAUTION (line 35, aiv-delivery.net): tonight's diff showed ters-sgai1 is
+!   contacted for EVERY title, ads or not — so it is the SGAI session host, not an
+!   ad-only host. The line-50 note claims a prior on-device test found "blocking cuts
+!   ads, content intact" (i.e. PV falls back to a clean manifest). These are in tension.
+!   Blocking MAY fall-back-clean (good) OR stall playback (bad + a loud anti-adblock tell).
+!   UNRESOLVED — needs a fresh on-device A/B before trusting line 35. Prerolls are baked
+!   server-side (mediatailor-ssai-model), so DNS is expected to be partial for prerolls;
+!   the phone app remains the preroll-free path. regolith (pause ads) is the clean win.
 !
 ! KEY DISTINCTION (confirmed by a with-ad HAR: content on pv-cdn.net + akamaized,
 ! ads on avoddashs3ww-a.akamaihd.net, zero host overlap):
@@ -36,7 +59,6 @@
 ! SGAI ad-media host (Akamai HD) — ads only, distinct from akamaized content
 ||*avoddashs3ww-a.akamaihd.net^$dnsrewrite=0.0.0.0
 ||*aivottevtad-a.akamaihd.net^$dnsrewrite=0.0.0.0
-||*vod-dash-pv-ta-amazon.akamaized.net^$dnsrewrite=0.0.0.0
 /^a\d+avod.*\.akamaihd\.net$/$dnsrewrite=0.0.0.0
 /^a\d+.*evtad.*\.akamaihd\.net$/$dnsrewrite=0.0.0.0
 /^a\d+.*vottevtad.*\.akamaihd\.net$/$dnsrewrite=0.0.0.0
@@ -51,8 +73,8 @@
 ! intact. Revert to @@||s0s7.api.amazonvideo.com^$important if playback stalls.
 ||s0s7.api.amazonvideo.com^$dnsrewrite=0.0.0.0
 ! Weblab ad triggers ($important beats the weblab allow above)
-||zoar.triggers-v1.prod.mobile.weblab.a2z.com^$important$dnsrewrite=0.0.0.0
-||hercule.triggers-v1.prod.mobile.weblab.a2z.com^$important$dnsrewrite=0.0.0.0
+||zoar.triggers-v1.prod.mobile.weblab.a2z.com^$important,dnsrewrite=0.0.0.0
+||hercule.triggers-v1.prod.mobile.weblab.a2z.com^$important,dnsrewrite=0.0.0.0
 ||regolith.prime-video.amazon.dev^$dnsrewrite=0.0.0.0
 
 ! ── TELEMETRY / TRACKERS (privacy; no ad-delivery impact) ─────────────────────
