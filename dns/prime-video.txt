@@ -78,9 +78,14 @@
 ! s0s7: fires every ad cycle; on-device test showed blocking cuts ads, content
 ! intact. Revert to @@||s0s7.api.amazonvideo.com^$important if playback stalls.
 ||s0s7.api.amazonvideo.com^$dnsrewrite=0.0.0.0
-! Weblab ad triggers ($important beats the weblab allow above)
-||zoar.triggers-v1.prod.mobile.weblab.a2z.com^$important,dnsrewrite=0.0.0.0
-||hercule.triggers-v1.prod.mobile.weblab.a2z.com^$important,dnsrewrite=0.0.0.0
+! Weblab ad triggers (zoar / hercule) — DELIBERATELY NOT BLOCKED, pending proof.
+! These were written as `$important$dnsrewrite=...` (a `$` where a comma belongs).
+! AdGuard Home drops malformed rules silently, so they may never have been live.
+! v1.12.1 "fixed" the syntax, which would have switched two $important blocks on
+! for the first time — an untested behaviour change shipped as a cleanup.
+! Left off until an AGH query log proves (a) whether they were ever enforced and
+! (b) that enforcing them does not disturb playback. The weblab allow above covers
+! them meanwhile. Re-enable as: ||zoar…^$important,dnsrewrite=0.0.0.0
 ||regolith.prime-video.amazon.dev^$dnsrewrite=0.0.0.0
 
 ! ── TELEMETRY / TRACKERS (privacy; no ad-delivery impact) ─────────────────────
