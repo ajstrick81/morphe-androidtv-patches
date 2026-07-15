@@ -1,5 +1,5 @@
 ! Prime Video — DNS Ad-Suppression Filter List
-! Version: 4.7  (2026-07-14)
+! Version: 4.8  (2026-07-15)
 ! AdGuard Home syntax. Safe-harbor allows first, then blocks.
 !
 ! Two Ad Pipelines: (1) Java/media3 ad-groups -> bytecode PATCH; (2) native SGAI ->
@@ -59,7 +59,6 @@
 ! SGAI ad-media host (Akamai HD) — ads only, distinct from akamaized content
 ||*avoddashs3ww-a.akamaihd.net^$dnsrewrite=0.0.0.0
 ||*aivottevtad-a.akamaihd.net^$dnsrewrite=0.0.0.0
-||*vod-dash-pv-ta-amazon.akamaized.net^$dnsrewrite=0.0.0.0
 /^a\d+avod.*\.akamaihd\.net$/$dnsrewrite=0.0.0.0
 /^a\d+.*evtad.*\.akamaihd\.net$/$dnsrewrite=0.0.0.0
 /^a\d+.*vottevtad.*\.akamaihd\.net$/$dnsrewrite=0.0.0.0
@@ -74,8 +73,8 @@
 ! intact. Revert to @@||s0s7.api.amazonvideo.com^$important if playback stalls.
 ||s0s7.api.amazonvideo.com^$dnsrewrite=0.0.0.0
 ! Weblab ad triggers ($important beats the weblab allow above)
-||zoar.triggers-v1.prod.mobile.weblab.a2z.com^$important$dnsrewrite=0.0.0.0
-||hercule.triggers-v1.prod.mobile.weblab.a2z.com^$important$dnsrewrite=0.0.0.0
+||zoar.triggers-v1.prod.mobile.weblab.a2z.com^$important,dnsrewrite=0.0.0.0
+||hercule.triggers-v1.prod.mobile.weblab.a2z.com^$important,dnsrewrite=0.0.0.0
 ||regolith.prime-video.amazon.dev^$dnsrewrite=0.0.0.0
 
 ! ── TELEMETRY / TRACKERS (privacy; no ad-delivery impact) ─────────────────────

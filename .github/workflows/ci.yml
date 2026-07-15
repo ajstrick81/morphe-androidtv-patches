@@ -9,6 +9,21 @@ on:
       - main
 
 jobs:
+  lint-dns:
+    name: Lint DNS filter lists
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Lint dns/*.txt
+        run: node tools/lint-dns-rules.mjs
+
   build:
     name: Build
     runs-on: ubuntu-latest
