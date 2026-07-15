@@ -1,3 +1,10 @@
+## [1.12.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.12.0...v1.12.1) (2026-07-15)
+
+
+### Bug Fixes
+
+* **dns:** correct malformed modifier separators and add a rule linter ([ad3c4fd](https://github.com/ajstrick81/morphe-androidtv-patches/commit/ad3c4fd9635ff3ab1e6618b6624ec35691b35ff7))
+
 # [1.12.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.11.0...v1.12.0) (2026-07-12)
 
 
