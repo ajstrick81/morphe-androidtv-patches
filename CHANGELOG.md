@@ -1,3 +1,11 @@
+## [1.12.2](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.12.1...v1.12.2) (2026-07-16)
+
+
+### Bug Fixes
+
+* **dns:** leave the zoar/hercule weblab blocks off pending proof ([21bb23c](https://github.com/ajstrick81/morphe-androidtv-patches/commit/21bb23c149968b2e6ba233a33fcabf2b178704fd)), closes [#58](https://github.com/ajstrick81/morphe-androidtv-patches/issues/58)
+* **dns:** stop blocking aiv-delivery.net — it breaks playback ([#58](https://github.com/ajstrick81/morphe-androidtv-patches/issues/58)) ([6a8217c](https://github.com/ajstrick81/morphe-androidtv-patches/commit/6a8217c1ba874393abfc71c80a80dd70a371d7bf))
+
 ## [1.12.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.12.0...v1.12.1) (2026-07-15)
 
 
