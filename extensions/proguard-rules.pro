@@ -53,6 +53,46 @@
     *;
 }
 
+# Prime Video (phone) — D-pad player controls.
+# install() is called only from injected smali (PlayerActivity.onResume), so R8
+# sees it as unreferenced and would strip or rename it. The DpadWindowCallback
+# subclass is instantiated at runtime and implements the framework Window.Callback
+# interface — keep it (and its constructor) intact as a named class so R8 cannot
+# inline, rename, or re-collapse it into an unverifiable shape after the raw dex
+# merge (same rationale as PeacockWebViewHelper$WrappedClient above).
+-keep class ajstrick81.morphe.extension.primevideophone.controls.DpadPlayerControls {
+    public static void install(android.app.Activity);
+}
+-keep class ajstrick81.morphe.extension.primevideophone.controls.DpadPlayerControls$DpadWindowCallback {
+    <init>(android.view.Window$Callback, android.app.Activity);
+    *;
+}
+
+# Prime Video (phone) — reduce-UI-zoom density override.
+# DensityHelper.wrap() is called only from injected smali
+# (AppCompatActivity.attachBaseContext), so R8 would otherwise strip/rename it.
+-keep class ajstrick81.morphe.extension.primevideophone.display.DensityHelper {
+    public static android.content.Context wrap(android.content.Context);
+}
+
+# Prime Video (phone) — Morphe settings.
+# initialize() is called only from injected smali (the hijacked GoogleApiActivity's
+# onCreate), so R8 sees it as unreferenced. Settings' accessors are called from the
+# other extension classes, but keep them explicitly so the keys/defaults survive.
+-keep class ajstrick81.morphe.extension.primevideophone.settings.SettingsActivityHook {
+    public static void initialize(android.app.Activity);
+}
+-keep class ajstrick81.morphe.extension.primevideophone.settings.Settings {
+    public static *;
+}
+# MorphePreferenceFragment is re-instantiated BY NAME by the framework after a
+# configuration change, so it needs its no-arg constructor kept — R8 cannot see
+# that reflective construction.
+-keep class ajstrick81.morphe.extension.primevideophone.settings.MorphePreferenceFragment {
+    <init>();
+    *;
+}
+
 # MLB At Bat — ad-break overlay helper. Called directly from injected smali
 # via invoke-static {} in Lb6/h$d;.b(), Lb6/h$i;.onAdBreakStarted()/onAdBreakEnded().
 -keep class ajstrick81.morphe.extension.mlbtv.ads.AdBreakOverlayHelper {
