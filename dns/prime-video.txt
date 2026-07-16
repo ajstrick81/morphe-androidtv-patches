@@ -1,5 +1,5 @@
 ! Prime Video — DNS Ad-Suppression Filter List
-! Version: 4.8  (2026-07-15)
+! Version: 4.9  (2026-07-15)
 ! AdGuard Home syntax. Safe-harbor allows first, then blocks.
 !
 ! Two Ad Pipelines: (1) Java/media3 ad-groups -> bytecode PATCH; (2) native SGAI ->
@@ -19,14 +19,16 @@
 !   ab8mt4dd97et.na.api.amazonvideo.com    = GetPlaybackResources (dual-use, DO NOT block)
 !   *.ta.(pop-)vod-dash.main.amazon.pv-cdn.net = video + SSAI-stitched ad segments (dual-use)
 !
-! ⚠️ DUAL-USE CAUTION (line 35, aiv-delivery.net): tonight's diff showed ters-sgai1 is
-!   contacted for EVERY title, ads or not — so it is the SGAI session host, not an
-!   ad-only host. The line-50 note claims a prior on-device test found "blocking cuts
-!   ads, content intact" (i.e. PV falls back to a clean manifest). These are in tension.
-!   Blocking MAY fall-back-clean (good) OR stall playback (bad + a loud anti-adblock tell).
-!   UNRESOLVED — needs a fresh on-device A/B before trusting line 35. Prerolls are baked
-!   server-side (mediatailor-ssai-model), so DNS is expected to be partial for prerolls;
-!   the phone app remains the preroll-free path. regolith (pause ads) is the clean win.
+! ⚠️ RESOLVED 2026-07-15 (issue #58) — aiv-delivery.net: DO NOT BLOCK.
+!   The 2026-07-14 note flagged this as UNRESOLVED: ters-sgai1 is contacted for EVERY
+!   title, ads or not, so it is the SGAI *session* host, not an ad-only host. Blocking
+!   it "MAY fall-back-clean OR stall playback" — a user report settled it: playback
+!   stalls, movies do not start at all. It is now safe-harboured below.
+!   The older "blocking cuts ads, content intact" note was wrong (or was true only for
+!   one title/region on one build). Do not re-block it on the strength of that note.
+!   Prerolls are baked server-side (mediatailor-ssai-model), so DNS is expected to be
+!   partial for prerolls; the phone app remains the preroll-free path. regolith
+!   (pause ads) is the clean win.
 !
 ! KEY DISTINCTION (confirmed by a with-ad HAR: content on pv-cdn.net + akamaized,
 ! ads on avoddashs3ww-a.akamaihd.net, zero host overlap):
@@ -39,6 +41,10 @@
 @@||qgmg.api.amazonvideo.com^$important
 @@||p7kg.api.amazonvideo.com^$important
 @@||abxc3apcastp.na-f.api.amazonvideo.com^$important
+! SGAI SESSION host — contacted for EVERY title, ads or not. Blocking it stops
+! playback entirely (issue #58). Stitcher prefixes rotate (draper1 -> s0s7 ->
+! ters-sgai1), so allow the whole domain: a narrow allow re-breaks on rotation.
+@@||aiv-delivery.net^$important
 ! Content CDNs — caught serving the movie; never block.
 @@||main.amazon.pv-cdn.net^$important
 @@/^[a-z0-9]*vod-dash-pv-ta-amazon\.akamaized\.net$/$important
@@ -54,8 +60,8 @@
 ! ── AD HOSTS (block; dnsrewrite=0.0.0.0 = fast connection-refused) ────────────
 ! Amazon ad platform (exchange / decisioning / aax)
 ||amazon-adsystem.com^$dnsrewrite=0.0.0.0
-! SGAI ad decisioning + stitchers (api / ters-sgai1 / ters-draper1 .aiv-delivery)
-||aiv-delivery.net^$dnsrewrite=0.0.0.0
+! (aiv-delivery.net is NOT blocked — it is the SGAI *session* host. See the
+!  safe harbor above and the REGRESSION note in the header.)
 ! SGAI ad-media host (Akamai HD) — ads only, distinct from akamaized content
 ||*avoddashs3ww-a.akamaihd.net^$dnsrewrite=0.0.0.0
 ||*aivottevtad-a.akamaihd.net^$dnsrewrite=0.0.0.0
@@ -72,9 +78,14 @@
 ! s0s7: fires every ad cycle; on-device test showed blocking cuts ads, content
 ! intact. Revert to @@||s0s7.api.amazonvideo.com^$important if playback stalls.
 ||s0s7.api.amazonvideo.com^$dnsrewrite=0.0.0.0
-! Weblab ad triggers ($important beats the weblab allow above)
-||zoar.triggers-v1.prod.mobile.weblab.a2z.com^$important,dnsrewrite=0.0.0.0
-||hercule.triggers-v1.prod.mobile.weblab.a2z.com^$important,dnsrewrite=0.0.0.0
+! Weblab ad triggers (zoar / hercule) — DELIBERATELY NOT BLOCKED, pending proof.
+! These were written as `$important$dnsrewrite=...` (a `$` where a comma belongs).
+! AdGuard Home drops malformed rules silently, so they may never have been live.
+! v1.12.1 "fixed" the syntax, which would have switched two $important blocks on
+! for the first time — an untested behaviour change shipped as a cleanup.
+! Left off until an AGH query log proves (a) whether they were ever enforced and
+! (b) that enforcing them does not disturb playback. The weblab allow above covers
+! them meanwhile. Re-enable as: ||zoar…^$important,dnsrewrite=0.0.0.0
 ||regolith.prime-video.amazon.dev^$dnsrewrite=0.0.0.0
 
 ! ── TELEMETRY / TRACKERS (privacy; no ad-delivery impact) ─────────────────────
