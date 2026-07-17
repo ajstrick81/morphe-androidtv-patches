@@ -17,11 +17,11 @@ I'm just like you — I enjoy watching TV and movies without being bored and ann
 | App | Package | Status | Tested Version | Date |
 |-----|---------|--------|---------------|------|
 | 🟢 Disney+ | `com.disney.disneyplus` | Working | `26.9.2+rc1-2026.06.12` | 6/17/26 |
-| 🟢 Prime Video | `com.amazon.amazonvideo.livingroom` | Working - [Use with DNS filters](dns/README.md) | `6.23.23+v15.5.0.70-armv7a` | 6/26/26 |
+| 🟡 Prime Video | `com.amazon.amazonvideo.livingroom` | Partial/Testing — [DNS filters](dns/README.md) required; native prerolls may still appear | `6.23.23+v15.5.0.70-armv7a` | 6/26/26 |
 | 🟢 HBO Max | `com.wbd.hbomax` | Working | `v7.5.0.73` | 6/22/26 |
-| 🟢 Peacock | `com.peacocktv.peacockandroid` | Working - [DNS filters Optional:](https://github.com/ajstrick81/Peacock-Ads) | `v7.6.100` | 7/4/26 |
+| 🟢 Peacock | `com.peacocktv.peacockandroid` | Working — no DNS required | `v7.6.100` | 7/4/26 |
 | 🟢 Tubi | `com.tubitv` | Working | `v10.20.5000` | 5/20/26 |
-| 🟢 ViX | `com.univision.prendetv` | Working | `v4.46.0_tv` | 6/26/26 |
+| 🟢 ViX | `com.univision.prendetv` | Working | `v4.47.2_tv` | 7/11/26 |
 | 🟢 Pluto TV | `tv.pluto.android` | Working — VOD ad breaks removed (video, markers, beacons); LIVE TV ads are broadcast time and remain | `5.66.0-leanback` | 7/3/26 |
 | 🔴 Paramount+ | `com.cbs.ott` | In Development | `v16.8 → v16.12` | — |
 | 🔴 Fox One | **Under Development** | — |
@@ -73,10 +73,13 @@ All patches follow the same general workflow using **Morphe Manager**:
 3. Select it in Morphe Manager
 4. Apply the patch
 
-> 🛡️ **Recommended: run the DNS filter alongside the patch.** Prime Video picks
-> its ad-delivery path server-side; the bytecode patch covers the "Java road"
-> while a DNS blocklist covers the "native road" the patch can't see. See
-> [**dns/README.md**](dns/README.md) for the list and the dual-layer rationale.
+> 🟡 **Partial — DNS filter required, and some ads may still appear.** Prime
+> Video picks its ad-delivery path server-side: the bytecode patch covers the
+> "Java road" while a DNS blocklist covers the "native road" the patch can't
+> see. Native prerolls are baked into the session manifest below the patchable
+> layer, so a few ads can still slip through even with both layers active. Run
+> the DNS filter alongside the patch — see [**dns/README.md**](dns/README.md)
+> for the list and the dual-layer rationale.
 
 ---
 
@@ -104,7 +107,7 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 ### 🌐 ViX
 
-1. Open the **[ViX (Fire TV / Android TV) listing on APKMirror](https://www.apkmirror.com/apk/univision-communications-inc/vix-tv-deportes-y-noticias-fire-tv-android-tv/)** and select version **`4.46.0_tv`**
+1. Open the **[ViX (Fire TV / Android TV) listing on APKMirror](https://www.apkmirror.com/apk/univision-communications-inc/vix-tv-deportes-y-noticias-fire-tv-android-tv/)** and select version **`4.47.2_tv`** (or the fallback `4.46.0_tv`)
 2. Download the `.apkm` file
 3. Select it in Morphe Manager
 4. Apply the patch
@@ -135,6 +138,18 @@ All patches follow the same general workflow using **Morphe Manager**:
 2. Download the `.apkm` file
 3. Select it in Morphe Manager
 4. Apply the patch
+
+> ⚠️ **Fire TV & preinstalled/system-app devices: enable the `Clone Peacock`
+> patch before applying.** On many Fire TV sticks and some Android TV boxes,
+> Peacock ships as a **system app that can't be uninstalled**. Installing the
+> patched build over it fails with a signature or `CONFLICTING_PROVIDER` error.
+> The **Clone Peacock** patch (opt-in, off by default) installs the patched app
+> side-by-side under its own package, so it appears as a second Peacock icon and
+> keeps its own login. Leave it **off** only if you were able to fully uninstall
+> the stock Peacock first (a normal in-place install is cleaner). The
+> **Disable auto-updates** patch is on by default and stops the Play Store from
+> silently replacing the patched build.
+
 ---
 
 ### 🦊 Fox One
