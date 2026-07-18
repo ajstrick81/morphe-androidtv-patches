@@ -4,6 +4,7 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patches.shared.compat.AppCompatibilities
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 
 @Suppress("unused")
 val hboAdsPatch = bytecodePatch(
@@ -31,23 +32,37 @@ val hboAdsPatch = bytecodePatch(
 
         // ─────────────────────────────────────────────────────────────────────
         // Patch 2: BoltDynamicAdFetcher$fetchNonLinearAds$1.invokeSuspend()
-        // Insert const/4 v8, 0x0 immediately after move-result-object v8
-        // following the fetchNonLinearAds call. Discards the real ad list
-        // before it reaches the coroutine collector — null != COROUTINE_SUSPENDED
-        // so if-ne branch is taken, Result.success(null) returned, no ads
-        // scheduled, no crash.
+        // Null the ad-list result immediately after move-result-object following
+        // the fetchNonLinearAds call. null != COROUTINE_SUSPENDED so the if-ne
+        // branch is taken, Result.success(null) is returned, no ads scheduled,
+        // no crash.
+        //
+        // The destination register of that move-result-object is NOT stable
+        // across builds: it was v8 on 7.5.0.73, but landed in p0/v7 on 7.7.0.78
+        // (and hard-coding v8 there would have nulled the COROUTINE_SUSPENDED
+        // sentinel instead — corrupting the suspend check). So read the actual
+        // destination register from the instruction and null THAT register,
+        // rather than hard-coding one. const/4 covers v0–v15; fall back to
+        // const/16 for the (unlikely) wider register.
         // ─────────────────────────────────────────────────────────────────────
         BoltDynamicAdFetcherInvokeSuspendFingerprint.method.apply {
-            val instructions = implementation!!.instructions
+            val instructions = implementation!!.instructions.toList()
             val moveResultIndex = instructions.indexOfFirst { instruction ->
                 val idx = instructions.indexOf(instruction)
                 instruction.opcode == Opcode.MOVE_RESULT_OBJECT &&
                     idx > 0 &&
                     instructions[idx - 1].opcode == Opcode.INVOKE_VIRTUAL_RANGE
             }
+            val resultRegister =
+                (instructions[moveResultIndex] as OneRegisterInstruction).registerA
+            val nullInstruction = if (resultRegister <= 0xF) {
+                "const/4 v$resultRegister, 0x0"
+            } else {
+                "const/16 v$resultRegister, 0x0"
+            }
             addInstructions(
                 moveResultIndex + 1,
-                "const/4 v8, 0x0",
+                nullInstruction,
             )
         }
 
