@@ -1,3 +1,10 @@
+## [1.12.3](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.12.2...v1.12.3) (2026-07-18)
+
+
+### Bug Fixes
+
+* **hbomax:** support 7.7.0.78 and derive Patch 2 register dynamically ([d35a8b0](https://github.com/ajstrick81/morphe-androidtv-patches/commit/d35a8b043e1a2dacd69b17de7640ebc9a339b694))
+
 ## [1.12.2](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.12.1...v1.12.2) (2026-07-16)
 
 
