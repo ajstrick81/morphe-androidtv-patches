@@ -176,6 +176,68 @@ int main() {
         check(dash.find("</MPD>") != std::string::npos, "DASH(multi) still well-terminated");
     }
 
+    // ── DASH: nested child elements — marker buried deep in an ad period ─────
+    // DASH <Period>s are siblings, never nested in each other; "nested" here
+    // means each period wraps a deep AdaptationSet > Representation > BaseURL/
+    // SegmentTemplate tree. Verifies the /iad_ marker is found several levels
+    // down (whole-period text search, not just a top-level attr) and that
+    // structurally rich content periods survive intact — including their own
+    // deep children. Also guards a false positive: "AdaptationSet" contains
+    // "ad" but not the "ad-"/"_ad_" id markers, so content must NOT be dropped.
+    {
+        std::string dash =
+            "<?xml version=\"1.0\"?>\n<MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\">\n"
+            "<Period id=\"content-a\">\n"
+            "  <AdaptationSet mimeType=\"video/mp4\">\n"
+            "    <Representation id=\"v0\" bandwidth=\"3000000\">\n"
+            "      <BaseURL>https://cdn/content/a/</BaseURL>\n"
+            "      <SegmentTemplate media=\"cseg-a-$Number$.m4s\"/>\n"
+            "    </Representation>\n"
+            "  </AdaptationSet>\n"
+            "</Period>\n"
+            "<Period id=\"break-1\">\n"
+            "  <AdaptationSet mimeType=\"video/mp4\">\n"
+            "    <Representation id=\"v0\" bandwidth=\"3000000\">\n"
+            "      <BaseURL>https://cdn/iad_777/creative/</BaseURL>\n"   // marker 3 levels deep
+            "      <SegmentTemplate media=\"advert-$Number$.m4s\"/>\n"
+            "    </Representation>\n"
+            "  </AdaptationSet>\n"
+            "</Period>\n"
+            "<Period id=\"content-b\">\n"
+            "  <AdaptationSet mimeType=\"video/mp4\">\n"
+            "    <Representation id=\"v0\" bandwidth=\"3000000\">\n"
+            "      <BaseURL>https://cdn/content/b/</BaseURL>\n"
+            "      <SegmentTemplate media=\"cseg-b-$Number$.m4s\"/>\n"
+            "    </Representation>\n"
+            "  </AdaptationSet>\n"
+            "</Period>\n"
+            "</MPD>\n";
+        auto r = run(dash);
+        check(r.is_manifest, "DASH(nested) detected");
+        check(r.modified, "DASH(nested) modified");
+        check(r.ad_periods == 1, "DASH(nested) removed exactly 1 ad period");
+        check(dash.find("/iad_") == std::string::npos, "DASH(nested) marker buried deep still removed");
+        // the removed ad period's own deep children are gone too
+        check(dash.find("advert-") == std::string::npos, "DASH(nested) ad period's nested children removed");
+        // both content periods and their deep children survive
+        check(dash.find("content/a/") != std::string::npos, "DASH(nested) kept content-a BaseURL");
+        check(dash.find("content/b/") != std::string::npos, "DASH(nested) kept content-b BaseURL");
+        check(dash.find("cseg-a-") != std::string::npos && dash.find("cseg-b-") != std::string::npos,
+              "DASH(nested) kept content periods' nested SegmentTemplates");
+        // "AdaptationSet" ("ad" substring) must not trip the id ad-marker
+        check(dash.find("content-a") != std::string::npos && dash.find("content-b") != std::string::npos,
+              "DASH(nested) no false positive from AdaptationSet");
+        // XML stays balanced: 2 periods in, 2 periods out
+        auto count = [](const std::string& s, const std::string& tok) {
+            int n = 0; size_t p = 0;
+            while ((p = s.find(tok, p)) != std::string::npos) { n++; p += tok.size(); }
+            return n;
+        };
+        check(count(dash, "<Period ") == 2 && count(dash, "</Period>") == 2,
+              "DASH(nested) balanced <Period> open/close after strip");
+        check(dash.find("</MPD>") != std::string::npos, "DASH(nested) still well-terminated");
+    }
+
     // ── Non-manifest buffer → ignored ────────────────────────────────────────
     {
         std::string blob = "\x00\x01\x02 this is a video segment, not a manifest";
