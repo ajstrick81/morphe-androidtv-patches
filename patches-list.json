@@ -1,5 +1,5 @@
 {
-  "version": "1.12.3",
+  "version": "1.13.0",
   "appNames": {
     "com.fox.foxone": "Fox One Android TV",
     "com.peacocktv.peacockandroid": "Peacock TV Android TV",
@@ -535,7 +535,7 @@
       "dependencies": [],
       "compatiblePackages": {
         "com.tubitv": [
-          "10.20.5000"
+          "10.28.5000"
         ]
       },
       "compatibility": [
@@ -546,7 +546,7 @@
           "appIconColor": 15276060,
           "targets": [
             {
-              "version": "10.20.5000",
+              "version": "10.28.5000",
               "experimental": false
             }
           ]

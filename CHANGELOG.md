@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.12.3...v1.13.0) (2026-07-20)
+
+
+### Features
+
+* **tubi:** bump target to 10.28.5000 ([0050cc8](https://github.com/ajstrick81/morphe-androidtv-patches/commit/0050cc8f4ff2b27da668abb315ff0fe2e897cd75))
+
 ## [1.12.3](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.12.2...v1.12.3) (2026-07-18)
 
 
