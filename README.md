@@ -20,7 +20,7 @@ I'm just like you — I enjoy watching TV and movies without being bored and ann
 | 🟡 Prime Video | `com.amazon.amazonvideo.livingroom` | Partial/Testing — [DNS filters](dns/README.md) required; native prerolls may still appear | `6.23.23+v15.5.0.70-armv7a` | 6/26/26 |
 | 🟢 HBO Max | `com.wbd.hbomax` | Working | `v7.7.0.78` | 7/18/26 |
 | 🟢 Peacock | `com.peacocktv.peacockandroid` | Working — no DNS required | `v7.6.100` | 7/16/26 |
-| 🟢 Tubi | `com.tubitv` | Working | `v10.20.5000` | 5/20/26 |
+| 🟢 Tubi | `com.tubitv` | Working | `v10.28.5000` | 7/20/26 |
 | 🟢 ViX | `com.univision.prendetv` | Working | `v4.47.2_tv` | 7/11/26 |
 | 🟢 Pluto TV | `tv.pluto.android` | Working — VOD ad breaks removed (video, markers, beacons); LIVE TV ads are broadcast time and remain | `5.66.0-leanback` | 7/3/26 |
 | 🟡 Paramount+ | `com.cbs.ott` | ✅ Use `v16.8.0` — newer versions (`v16.12`) still in development | `v16.8.0` | 7/19/26 |
@@ -100,7 +100,7 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 ### 📺 Tubi
 
-1. Open the **[Tubi (Android TV) listing on APKMirror](https://www.apkmirror.com/apk/tubi-tv/tubi-free-movies-live-tv-android-tv/)** and select version **`10.20.5000`**
+1. Open the **[Tubi (Android TV) listing on APKMirror](https://www.apkmirror.com/apk/tubi-tv/tubi-free-movies-live-tv-android-tv/)** and select version **`10.28.5000`**
 2. ⚠️ Use this **Android TV** listing — not the "Tubi (Fire TV)" or the phone listing
 3. Download the `.apkm` file
 4. Select it in Morphe Manager
