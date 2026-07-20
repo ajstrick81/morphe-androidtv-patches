@@ -123,9 +123,9 @@ val skipAdsPatch = bytecodePatch(
 
         // Hook 9 — qf/c.suspendGetAdBreaks(String, String, String, Map, Continuation)
         //
-        // Rainmaker ad-break fetch coroutine. Returns Lwm/d; (sealed result),
-        // with the caller (Lpf/a;->c) branching on instance-of Lwm/d$e
-        // (success) vs Lwm/d$b (error) and converging afterward either way.
+        // Rainmaker ad-break fetch coroutine. Returns LMm/d; (sealed result),
+        // with the caller (Lrf/a;) branching on instance-of LMm/d$e
+        // (success) vs LMm/d$b (error) and converging afterward either way.
         //
         // Previous attempt returned COROUTINE_SUSPENDED directly to fake a
         // no-op, which broke the suspend-function contract: nothing ever
@@ -134,7 +134,7 @@ val skipAdsPatch = bytecodePatch(
         // at TubiNewPlayerImpl.kt:102), hanging the entire content pipeline.
         //
         // Fix: skip the network call and the continuation machinery entirely,
-        // returning a real, immediate Lwm/d$d (generic error) result. The
+        // returning a real, immediate LMm/d$d (generic error) result. The
         // caller takes its existing error branch — the same one a genuine
         // network failure already triggers gracefully — and the coroutine
         // completes normally, with no DNS-layer workaround required.
@@ -144,8 +144,8 @@ val skipAdsPatch = bytecodePatch(
                 new-instance v0, Ljava/io/IOException;
                 const-string v1, "ads_blocked"
                 invoke-direct {v0, v1}, Ljava/io/IOException;-><init>(Ljava/lang/String;)V
-                new-instance v2, Lwm/d${"$"}d;
-                invoke-direct {v2, v0}, Lwm/d${"$"}d;-><init>(Ljava/lang/Throwable;)V
+                new-instance v2, LMm/d${"$"}d;
+                invoke-direct {v2, v0}, LMm/d${"$"}d;-><init>(Ljava/lang/Throwable;)V
                 return-object v2
             """
         )
