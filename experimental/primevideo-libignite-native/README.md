@@ -121,7 +121,8 @@ experimental/primevideo-libignite-native/
 │   ├── offsets.h          ← the ONLY file you edit after Ghidra: signatures + fallback offsets
 │   ├── sigscan.h/.cpp     ← runtime byte-pattern scanner over libignite's .text
 │   ├── manifest_filter.h/.cpp  ← the ad-strip logic (HLS + DASH), pure/testable
-│   ├── test_manifest_filter.cpp ← host unit test for the filter (no NDK needed)
+│   ├── inflate_filter.h   ← post-inflate strip + z_stream rewind, shared by hook & test
+│   ├── test_manifest_filter.cpp ← host unit test (filter + real-zlib inflate path); needs -lz
 │   └── hooks.cpp          ← JNI_OnLoad bootstrap: resolve base, scan, install SSL_read/inflate hooks
 ├── extension/
 │   └── NativeHookLoader.java  ← load()  — belongs in the existing extension module once promoted

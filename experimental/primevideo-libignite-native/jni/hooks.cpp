@@ -18,6 +18,7 @@
 #include "offsets.h"
 #include "sigscan.h"
 #include "manifest_filter.h"
+#include "inflate_filter.h"
 
 // Dobby API (from the vendored header). Declared here so this file documents
 // its exact dependency surface even before the header is in the include path.
@@ -53,38 +54,21 @@ static int hook_SSL_read(void* ssl, void* buf, int num) {
 
 // ── inflate hook (optional) ──────────────────────────────────────────────────
 // int inflate(z_streamp strm, int flush);  — output lands in strm->next_out.
-// We only need enough of z_stream's layout to reach next_out/avail_out; mirror
-// the ABI-stable head of the struct rather than pulling zlib.h.
-struct z_stream_head {
-    const unsigned char* next_in;
-    unsigned int         avail_in;
-    unsigned long        total_in;
-    unsigned char*       next_out;
-    unsigned int         avail_out;
-    unsigned long        total_out;
-    // ... remaining fields unused
-};
+// The strip + z_stream rewind bookkeeping lives in inflate_filter.h's
+// apply_after_inflate(), shared with the host unit test.
 using inflate_t = int (*)(void*, int);
 static inflate_t real_inflate = nullptr;
 
 static int hook_inflate(void* strm, int flush) {
-    z_stream_head* z = static_cast<z_stream_head*>(strm);
+    pvfilter::ZStreamHead* z = static_cast<pvfilter::ZStreamHead*>(strm);
     unsigned char* out_before = z ? z->next_out : nullptr;
 
     int ret = real_inflate(strm, flush);
 
-    if (z && out_before && z->next_out > out_before) {
-        size_t produced = static_cast<size_t>(z->next_out - out_before);
-        pvfilter::FilterResult r = pvfilter::filter(reinterpret_cast<char*>(out_before), produced);
-        if (r.modified) {
-            // Rewind next_out / fix total_out to reflect the shortened output.
-            size_t removed = produced - r.new_len;
-            z->next_out  -= removed;
-            z->avail_out += static_cast<unsigned int>(removed);
-            z->total_out -= removed;
-            LOGI("inflate: stripped %d seg / %d period; -%zu bytes",
-                 r.ad_segments, r.ad_periods, removed);
-        }
+    pvfilter::FilterResult r = pvfilter::apply_after_inflate(z, out_before);
+    if (r.modified) {
+        LOGI("inflate: stripped %d seg / %d period; produced-body now %zu bytes",
+             r.ad_segments, r.ad_periods, r.new_len);
     }
     return ret;
 }

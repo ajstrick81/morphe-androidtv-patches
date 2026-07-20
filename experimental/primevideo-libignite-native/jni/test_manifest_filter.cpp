@@ -1,15 +1,41 @@
 // test_manifest_filter.cpp — host-buildable unit test for the ad-strip logic.
 // No Android/NDK needed; validates pvfilter::filter() on the PC before device.
 //
-//   g++ -std=c++17 -D_GNU_SOURCE test_manifest_filter.cpp manifest_filter.cpp -o t && ./t
+//   g++ -std=c++17 -D_GNU_SOURCE test_manifest_filter.cpp manifest_filter.cpp -lz -o t && ./t
 //
-// _GNU_SOURCE is for memmem(). Exits non-zero on any failed assertion.
+// _GNU_SOURCE is for memmem(); -lz is for the gzip round-trip in the inflate-
+// path test (host convenience only — the shipped .so hooks the app's zlib and
+// links none of its own). Exits non-zero on any failed assertion.
 #include "manifest_filter.h"
+#include "inflate_filter.h"
+
+#include <zlib.h>
 
 #include <cassert>
 #include <cstdio>
 #include <cstring>
 #include <string>
+
+// gzip-compress a string (Content-Encoding: gzip is how manifests arrive
+// compressed on the wire). windowBits 15|16 selects the gzip wrapper.
+static std::string gzip_compress(const std::string& in) {
+    z_stream zs; memset(&zs, 0, sizeof(zs));
+    if (deflateInit2(&zs, Z_BEST_COMPRESSION, Z_DEFLATED, 15 | 16, 8,
+                     Z_DEFAULT_STRATEGY) != Z_OK) return {};
+    zs.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(in.data()));
+    zs.avail_in = static_cast<uInt>(in.size());
+    std::string out;
+    char buf[16384];
+    int rc;
+    do {
+        zs.next_out = reinterpret_cast<Bytef*>(buf);
+        zs.avail_out = sizeof(buf);
+        rc = deflate(&zs, Z_FINISH);
+        out.append(buf, sizeof(buf) - zs.avail_out);
+    } while (rc != Z_STREAM_END);
+    deflateEnd(&zs);
+    return out;
+}
 
 static pvfilter::FilterResult run(std::string& s) {
     // filter edits in place and only shrinks; give it a writable buffer.
@@ -236,6 +262,73 @@ int main() {
         check(count(dash, "<Period ") == 2 && count(dash, "</Period>") == 2,
               "DASH(nested) balanced <Period> open/close after strip");
         check(dash.find("</MPD>") != std::string::npos, "DASH(nested) still well-terminated");
+    }
+
+    // ── inflate path — gzip'd manifest, via real zlib + the shipped helper ───
+    // Reproduces exactly what hook_inflate does: the app hands zlib a compressed
+    // manifest; inflate() decompresses it into an output buffer; the hook then
+    // calls apply_after_inflate() to strip ads from the just-produced region and
+    // rewind the z_stream. We drive real inflate() and the SAME helper the hook
+    // ships, then assert (a) content is stripped and (b) the stream's output
+    // bookkeeping (next_out / avail_out / total_out) stays self-consistent.
+    {
+        const std::string manifest =
+            "#EXTM3U\n"
+            "#EXT-X-VERSION:6\n"
+            "#EXTINF:6.0,\n"
+            "https://cdn/content/c1.ts\n"
+            "#EXT-X-DISCONTINUITY\n"
+            "#EXTINF:6.0,\n"
+            "https://cdn/iad_88/ad1.ts\n"
+            "#EXT-X-DISCONTINUITY\n"
+            "#EXTINF:6.0,\n"
+            "https://cdn/content/c2.ts\n"
+            "#EXT-X-ENDLIST\n";
+
+        // What the direct (SSL_read) path would produce — the equivalence oracle.
+        std::string direct = manifest;
+        run(direct);
+
+        std::string gz = gzip_compress(manifest);
+        check(!gz.empty() && gz.size() < manifest.size(), "inflate: manifest gzip-compressed");
+
+        // Decompress through real zlib into an output buffer, exactly like the app.
+        z_stream zs; memset(&zs, 0, sizeof(zs));
+        check(inflateInit2(&zs, 15 | 32) == Z_OK, "inflate: inflateInit2 ok");  // 15|32 = auto gzip/zlib
+        const uInt OUTCAP = 8192;
+        unsigned char outbuf[OUTCAP];
+        zs.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(gz.data()));
+        zs.avail_in = static_cast<uInt>(gz.size());
+        zs.next_out = outbuf;
+        zs.avail_out = OUTCAP;
+
+        unsigned char* out_before = zs.next_out;          // captured pre-inflate, as the hook does
+        int ret = inflate(&zs, Z_FINISH);
+        check(ret == Z_STREAM_END, "inflate: decompressed to stream end");
+
+        // Drive the SHIPPED helper (reinterpret the real z_stream as ZStreamHead,
+        // exactly as hook_inflate casts the app's z_streamp).
+        auto* head = reinterpret_cast<pvfilter::ZStreamHead*>(&zs);
+        pvfilter::FilterResult r = pvfilter::apply_after_inflate(head, out_before);
+
+        check(r.is_manifest, "inflate: recognized decompressed manifest");
+        check(r.modified, "inflate: stripped ad from decompressed body");
+        check(r.ad_segments == 1, "inflate: removed exactly 1 ad segment");
+
+        std::string produced(reinterpret_cast<char*>(outbuf), r.new_len);
+        check(produced.find("/iad_") == std::string::npos, "inflate: no /iad_ in output");
+        check(produced.find("content/c1.ts") != std::string::npos &&
+              produced.find("content/c2.ts") != std::string::npos, "inflate: kept content segments");
+
+        // Equivalence: inflate path == direct SSL_read path, byte for byte.
+        check(produced == direct, "inflate: output identical to direct-path filter");
+
+        // z_stream bookkeeping self-consistency after the rewind:
+        check(zs.total_out == r.new_len, "inflate: total_out == stripped length");
+        check(head->next_out == out_before + r.new_len, "inflate: next_out rewound to end of stripped body");
+        check(zs.avail_out == OUTCAP - r.new_len, "inflate: avail_out reflects freed space");
+
+        inflateEnd(&zs);
     }
 
     // ── Non-manifest buffer → ignored ────────────────────────────────────────
