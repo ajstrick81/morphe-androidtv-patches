@@ -5,7 +5,6 @@ import com.android.volley.NoConnectionError;
 import com.android.volley.Request;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
-import java.util.Map;
 
 /**
  * Prime Video ATV — ad suppression extension.
@@ -79,24 +78,28 @@ public class SkipAdsPatch {
      *   androidx.media3.exoplayer.source.ads.ServerSideAdInsertionMediaSource
      *       .setAdPlaybackStates(ImmutableMap, Timeline)
      */
+    // Type-specific seam for media3's AdPlaybackState — the only part of the
+    // strip that differs from the exo2 variant. The shared loop is in
+    // AdGroupStripper (pure, unit-tested).
+    private static final AdGroupStripper.AdState MEDIA3_OPS = new AdGroupStripper.AdState() {
+        public int adGroupCount(Object s) {
+            return ((androidx.media3.common.AdPlaybackState) s).adGroupCount;
+        }
+        public int removedAdGroupCount(Object s) {
+            return ((androidx.media3.common.AdPlaybackState) s).removedAdGroupCount;
+        }
+        public Object withAllRemoved(Object s) {
+            androidx.media3.common.AdPlaybackState st = (androidx.media3.common.AdPlaybackState) s;
+            return st.withRemovedAdGroupCount(st.adGroupCount);
+        }
+    };
+
     public static ImmutableMap skipAllMedia3AdGroups(ImmutableMap adPlaybackStates) {
         try {
-            ImmutableMap.Builder builder = ImmutableMap.builder();
-            int strippedGroups = 0;
-            for (Object o : adPlaybackStates.entrySet()) {
-                Map.Entry entry = (Map.Entry) o;
-                Object key = entry.getKey();
-                androidx.media3.common.AdPlaybackState state =
-                        (androidx.media3.common.AdPlaybackState) entry.getValue();
-                if (state.adGroupCount > state.removedAdGroupCount) {
-                    strippedGroups += state.adGroupCount - state.removedAdGroupCount;
-                    state = state.withRemovedAdGroupCount(state.adGroupCount);
-                }
-                builder.put(key, state);
-            }
+            AdGroupStripper.Result r = AdGroupStripper.stripAll(adPlaybackStates, MEDIA3_OPS);
             Log.i(TAG, "skipAllMedia3AdGroups: entries=" + adPlaybackStates.size()
-                    + " strippedGroups=" + strippedGroups);
-            return builder.build();
+                    + " strippedGroups=" + r.strippedGroups);
+            return ImmutableMap.builder().putAll(r.map).build();
         } catch (Exception e) {
             Log.e(TAG, "skipAllMedia3AdGroups failed", e);
             return adPlaybackStates;
@@ -111,24 +114,27 @@ public class SkipAdsPatch {
      *   com.google.android.exoplayer2.source.ads.ServerSideAdInsertionMediaSource
      *       .setAdPlaybackStates(ImmutableMap)
      */
+    // Type-specific seam for exoplayer2's AdPlaybackState (GMS Ads SDK variant).
+    private static final AdGroupStripper.AdState EXO2_OPS = new AdGroupStripper.AdState() {
+        public int adGroupCount(Object s) {
+            return ((com.google.android.exoplayer2.source.ads.AdPlaybackState) s).adGroupCount;
+        }
+        public int removedAdGroupCount(Object s) {
+            return ((com.google.android.exoplayer2.source.ads.AdPlaybackState) s).removedAdGroupCount;
+        }
+        public Object withAllRemoved(Object s) {
+            com.google.android.exoplayer2.source.ads.AdPlaybackState st =
+                    (com.google.android.exoplayer2.source.ads.AdPlaybackState) s;
+            return st.withRemovedAdGroupCount(st.adGroupCount);
+        }
+    };
+
     public static ImmutableMap skipAllExo2AdGroups(ImmutableMap adPlaybackStates) {
         try {
-            ImmutableMap.Builder builder = ImmutableMap.builder();
-            int strippedGroups = 0;
-            for (Object o : adPlaybackStates.entrySet()) {
-                Map.Entry entry = (Map.Entry) o;
-                Object key = entry.getKey();
-                com.google.android.exoplayer2.source.ads.AdPlaybackState state =
-                        (com.google.android.exoplayer2.source.ads.AdPlaybackState) entry.getValue();
-                if (state.adGroupCount > state.removedAdGroupCount) {
-                    strippedGroups += state.adGroupCount - state.removedAdGroupCount;
-                    state = state.withRemovedAdGroupCount(state.adGroupCount);
-                }
-                builder.put(key, state);
-            }
+            AdGroupStripper.Result r = AdGroupStripper.stripAll(adPlaybackStates, EXO2_OPS);
             Log.i(TAG, "skipAllExo2AdGroups: entries=" + adPlaybackStates.size()
-                    + " strippedGroups=" + strippedGroups);
-            return builder.build();
+                    + " strippedGroups=" + r.strippedGroups);
+            return ImmutableMap.builder().putAll(r.map).build();
         } catch (Exception e) {
             Log.e(TAG, "skipAllExo2AdGroups failed", e);
             return adPlaybackStates;
