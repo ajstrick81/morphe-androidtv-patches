@@ -94,6 +94,22 @@ ships. Inline hooking differs per ABI; the hook lib (Dobby) handles both, but
 your Ghidra signatures are **per-ABI** — an armv7a signature will not match an
 arm64 binary.
 
+## How it plugs into Morphe
+
+Three cooperating patches, mapped to mechanisms the repo already uses:
+
+| Piece | Morphe mechanism | Precedent in repo |
+|-------|------------------|-------------------|
+| Ship `libpvhook.so` into `lib/armeabi-v7a/` | `resourcePatch` writing a binary via `get(path).writeBytes(...)` | ViX `CertificatePinningPatch` (writes `res/xml/...`) |
+| Load it at startup with try/catch + logcat | `bytecodePatch` injecting a call to a small extension method | Prime Video `SkipAdsPatch` (`invoke-static` into the extension) |
+| The load helper `NativeHookLoader.load()` | a class in the **existing** `extensions/extension` module — no new extension is built | reuses `primeVideoExtensionPatch`'s merged DEX |
+
+The one net-new capability is bundling a native `.so` — the DEX patches never
+did it. There is **no separate Java "extension" to build** the way other
+projects have one: all the logic is native C++, so the `.so` *is* the
+extension. The Java side is a five-line loader that reuses the extension module
+you already ship.
+
 ## Layout
 
 ```
@@ -105,10 +121,14 @@ experimental/primevideo-libignite-native/
 │   ├── offsets.h          ← the ONLY file you edit after Ghidra: signatures + fallback offsets
 │   ├── sigscan.h/.cpp     ← runtime byte-pattern scanner over libignite's .text
 │   ├── manifest_filter.h/.cpp  ← the ad-strip logic (HLS + DASH), pure/testable
+│   ├── test_manifest_filter.cpp ← host unit test for the filter (no NDK needed)
 │   └── hooks.cpp          ← JNI_OnLoad bootstrap: resolve base, scan, install SSL_read/inflate hooks
+├── extension/
+│   └── NativeHookLoader.java  ← load()  — belongs in the existing extension module once promoted
 └── patch/
-    ├── Fingerprints.kt    ← Application.onCreate fingerprint
-    └── LoadNativeHookPatch.kt  ← injects System.loadLibrary("pvhook") early in app startup
+    ├── Fingerprints.kt        ← Application.onCreate fingerprint
+    ├── BundleNativeHookPatch.kt  ← resourcePatch: writes libpvhook.so into lib/<abi>/
+    └── LoadNativeHookPatch.kt     ← bytecodePatch: injects NativeHookLoader.load() into onCreate
 ```
 
 ## Deployment path (what happens when you're home)
@@ -120,10 +140,11 @@ experimental/primevideo-libignite-native/
    (see `CMakeLists.txt` header). It's the inline-hook engine for both ABIs.
 3. **Build** — `ndk-build` / CMake to produce `libpvhook.so` for
    `armeabi-v7a`.
-4. **Bundle + load** — the `patch/` files add `libpvhook.so` to the APK and
-   call `System.loadLibrary("pvhook")` in `Application.onCreate`, so the hooks
-   install before the first playback session. (Move them into the real patch
-   tree per the checklist below to include them in a `morphe` build.)
+4. **Bundle + load** — `bundleNativeHookPatch` (resource) writes
+   `libpvhook.so` into the APK's `lib/armeabi-v7a/`, and `loadNativeHookPatch`
+   (bytecode) injects `NativeHookLoader.load()` into `Application.onCreate`, so
+   the hooks install before the first playback session. (Move them into the
+   real patch tree per the checklist below to include them in a `morphe` build.)
 5. **Verify on device** — logcat tag `PVNativeHook`:
    - `resolved SSL_read @ 0x… (via signature)` / `inflate @ 0x…`
    - `manifest_filter: stripped N ad segments (/iad_)` on playback start
@@ -134,16 +155,21 @@ experimental/primevideo-libignite-native/
 When it works on-device, move it into the build the same way speed-control
 documents its reactivation:
 
-1. `patch/Fingerprints.kt`, `patch/LoadNativeHookPatch.kt` →
-   `patches/src/main/kotlin/ajstrick81/morphe/patches/primevideo/native/`
-2. `libpvhook.so` (per ABI) → wherever the patcher sources bundled native libs
-   for the resource-patch step (mirror how other native assets are added; if
-   none exist yet, this is the first and needs a small ResourcePatch to copy
-   into `lib/armeabi-v7a/`).
-3. Add an R8 `-keep` for whatever class holds the `loadLibrary` call so the
-   injected startup hook isn't stripped.
-4. Register `loadNativeHookPatch` in the patch list and gate it behind the
-   same `Constants.COMPATIBILITY` as the ads patch.
+1. `patch/*.kt` →
+   `patches/src/main/kotlin/ajstrick81/morphe/patches/primevideo/nativehook/`
+   (package `native` is illegal in Java and awkward in Kotlin — use `nativehook`).
+2. `extension/NativeHookLoader.java` →
+   `extensions/extension/src/main/java/ajstrick81/morphe/extension/primevideo/nativehook/`
+   — the existing extension module, so it rides the same `extension.mpe`
+   `primeVideoExtensionPatch` already merges. No new extension module.
+3. `libpvhook.so` (per ABI, from the NDK build of `jni/`) →
+   `patches/src/main/resources/native/armeabi-v7a/libpvhook.so` — this is the
+   bundled binary `bundleNativeHookPatch` reads from the patch classpath.
+4. Add an R8 `-keep` for `NativeHookLoader.load()` to
+   `extensions/proguard-rules.pro` so the merged method survives shrinking.
+5. Register `bundleNativeHookPatch` + `loadNativeHookPatch` in the patch list
+   and gate both behind the same `Constants.COMPATIBILITY` as the ads patch.
+   (`loadNativeHookPatch` already `dependsOn` the bundle + extension patches.)
 
 ## Honest status / risks
 
@@ -160,6 +186,15 @@ documents its reactivation:
 - **Reassembly.** A manifest can span multiple `SSL_read` calls. The scaffold
   handles the common single-read case and documents where buffering would go
   for the chunked case — do not assume one read == one manifest in the wild.
+- **Native-lib packaging/alignment.** The most likely first-run failure isn't
+  the hooks — it's `loadLibrary` itself. If Prime Video ships
+  `extractNativeLibs="false"`, the OS mmaps `.so`s straight from the APK and
+  requires them page-aligned & uncompressed; an injected-then-repackaged `.so`
+  that the patcher doesn't align fails with `UnsatisfiedLinkError`.
+  `bundleNativeHookPatch` forces `extractNativeLibs="true"` to sidestep this
+  (libs get unpacked at install), which is the reliable bring-up choice. Watch
+  logcat `PVNativeHook` for `could not load libpvhook.so` — that's this, not a
+  hook bug.
 - **Phase B still open.** True markerless inline SSAI (if this build ever
   switches to it) needs the request-side hook. Not built.
 

@@ -1,24 +1,35 @@
-package ajstrick81.morphe.patches.primevideo.native
+package ajstrick81.morphe.patches.primevideo.nativehook
 
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
+import ajstrick81.morphe.patches.primevideo.misc.extension.primeVideoExtensionPatch
 import ajstrick81.morphe.patches.primevideo.shared.Constants
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Loads libpvhook.so into the Prime Video process at startup so the native
-// SSL_read / inflate hooks install before the first playback session.
+// DEX-side half of the in-process native interception: load libpvhook.so at
+// startup so the native SSL_read/inflate hooks install before the first
+// playback session.
 //
-// This is the DEX-side half of the in-process native interception. The other
-// half is the native library itself (experimental/primevideo-libignite-native/
-// jni → libpvhook.so), which must be bundled into the APK's lib/armeabi-v7a/
-// by a resource step. See that folder's README "Promotion checklist".
+// Three patches cooperate:
+//   bundleNativeHookPatch (resource) — writes libpvhook.so into lib/<abi>/
+//   primeVideoExtensionPatch (bytecode) — merges the extension DEX that
+//       contains NativeHookLoader (reuses the SAME extension module as the ads
+//       patch; no new extension is built)
+//   loadNativeHookPatch (this) — injects the NativeHookLoader.load() call into
+//       Application.onCreate
+//
+// We call the extension's NativeHookLoader.load() rather than inlining
+// System.loadLibrary so the load is wrapped in try/catch + logcat ("fail loud"),
+// matching the SkipAdsPatch extension convention.
 //
 // SCAFFOLD — not registered in the build. To activate:
 //   1. Confirm ApplicationOnCreateFingerprint's definingClass (see Fingerprints.kt).
-//   2. Ensure libpvhook.so is packaged into lib/<abi>/ (resource patch — TODO,
-//      no native-asset bundling step exists in this repo yet).
-//   3. Add an R8 -keep so this injected loadLibrary site isn't stripped.
-//   4. Register loadNativeHookPatch and gate on Constants.COMPATIBILITY.
+//   2. Move NativeHookLoader.java into the extension module:
+//        extensions/extension/src/main/java/ajstrick81/morphe/extension/primevideo/nativehook/
+//   3. Add an R8 -keep for NativeHookLoader (load) to extensions/proguard-rules.pro
+//      so the merged method survives shrinking.
+//   4. Register bundleNativeHookPatch + loadNativeHookPatch and gate both on
+//      Constants.COMPATIBILITY.
 // ─────────────────────────────────────────────────────────────────────────────
 @Suppress("unused")
 val loadNativeHookPatch = bytecodePatch(
@@ -28,16 +39,17 @@ val loadNativeHookPatch = bytecodePatch(
 ) {
     compatibleWith(Constants.COMPATIBILITY)
 
+    // The .so must be in lib/<abi>/ before we inject the load call, and the
+    // extension DEX (NativeHookLoader) must be merged before we reference it.
+    dependsOn(bundleNativeHookPatch, primeVideoExtensionPatch)
+
     execute {
         // Inject at index 0 of Application.onCreate so JNI_OnLoad runs before
-        // any native media pipeline is constructed. System.loadLibrary throws
-        // UnsatisfiedLinkError if the .so is missing — which is exactly what we
-        // want during bring-up (fail loud in logcat), not a silent no-op.
+        // any native media pipeline is constructed.
         ApplicationOnCreateFingerprint.method.addInstructions(
             0,
             """
-                const-string v0, "pvhook"
-                invoke-static {v0}, Ljava/lang/System;->loadLibrary(Ljava/lang/String;)V
+                invoke-static {}, Lajstrick81/morphe/extension/primevideo/nativehook/NativeHookLoader;->load()V
             """
         )
     }

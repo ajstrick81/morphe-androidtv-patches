@@ -1,4 +1,4 @@
-package ajstrick81.morphe.patches.primevideo.native
+package ajstrick81.morphe.patches.primevideo.nativehook
 
 import app.morphe.patcher.Fingerprint
 import com.android.tools.smali.dexlib2.AccessFlags
