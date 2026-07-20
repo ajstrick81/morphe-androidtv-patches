@@ -1,4 +1,5 @@
 #include "sigscan.h"
+#include "sigmatch.h"
 
 #include <android/log.h>
 #include <cstdio>
@@ -46,38 +47,22 @@ Module find_module(const char* soname_substr) {
     return m;
 }
 
-static bool match_at(const unsigned char* p,
-                     const unsigned char* sig,
-                     const char* mask) {
-    for (size_t i = 0; mask[i]; ++i) {
-        if (mask[i] == 'x' && p[i] != sig[i]) return false;
-    }
-    return true;
-}
-
 uintptr_t scan(const Module& m,
                const unsigned char* sig,
                const char* mask,
                bool require_unique) {
     if (!m.valid()) return 0;
-    const size_t mlen = strlen(mask);
-    if (mlen == 0 || mlen > m.text_size) return 0;
 
-    const unsigned char* base = reinterpret_cast<const unsigned char*>(m.text);
-    const size_t last = m.text_size - mlen;
-
-    uintptr_t hit = 0;
     int count = 0;
-    for (size_t i = 0; i <= last; ++i) {
-        if (match_at(base + i, sig, mask)) {
-            if (hit == 0) hit = m.text + i;
-            if (++count > 1 && require_unique) {
-                LOGW("scan: signature is NOT unique (>=2 matches) — lengthen it");
-                return 0;
-            }
+    long off = sigscan::scan_range(reinterpret_cast<const unsigned char*>(m.text),
+                                   m.text_size, sig, mask, require_unique, &count);
+    if (off < 0) {
+        if (require_unique && count > 1) {
+            LOGW("scan: signature is NOT unique (>=2 matches) — lengthen it");
         }
+        return 0;
     }
-    return hit;
+    return m.text + static_cast<uintptr_t>(off);
 }
 
 uintptr_t resolve(const Module& m,

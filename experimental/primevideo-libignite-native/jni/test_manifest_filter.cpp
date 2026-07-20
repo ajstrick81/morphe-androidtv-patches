@@ -9,6 +9,7 @@
 #include "manifest_filter.h"
 #include "inflate_filter.h"
 #include "ssl_reassembly.h"
+#include "sigmatch.h"
 
 #include <zlib.h>
 
@@ -442,6 +443,103 @@ int main() {
         auto r = run(blob);
         check(!r.is_manifest, "binary not treated as manifest");
         check(blob == before, "binary untouched");
+    }
+
+    // ── sigscan signature matcher ────────────────────────────────────────────
+    // The masked pattern match + unique-match enforcement used to locate
+    // SSL_read/inflate in libignite's .text. Modeled here over synthetic byte
+    // buffers (the real scan runs over mapped memory; the matching logic is
+    // identical). Signatures use 'x' = must-match, '?' = wildcard for bytes that
+    // vary between builds (relocated immediates/addresses).
+    {
+        // A synthetic .text window with a distinctive "prologue" in the middle.
+        // 0xAB..0xCD is the function we want; the 0x00 padding elsewhere won't
+        // collide.
+        const unsigned char text[] = {
+            0x00, 0x00, 0x00,
+            0xAB, 0xCD, 0x12, 0x34, 0xEF,   // the prologue @ offset 3
+            0x00, 0x00, 0x00, 0x00, 0x00,
+        };
+        const size_t N = sizeof(text);
+
+        // Exact, unique match.
+        {
+            const unsigned char sig[] = { 0xAB, 0xCD, 0x12, 0x34, 0xEF };
+            int cnt = 0;
+            long off = sigscan::scan_range(text, N, sig, "xxxxx", true, &cnt);
+            check(off == 3 && cnt == 1, "sig: exact unique match at correct offset");
+        }
+
+        // Wildcards skip the volatile middle bytes (e.g. a relocated operand).
+        {
+            const unsigned char sig[] = { 0xAB, 0xCD, 0x00, 0x00, 0xEF }; // 0x00s ignored by mask
+            int cnt = 0;
+            long off = sigscan::scan_range(text, N, sig, "xx??x", true, &cnt);
+            check(off == 3 && cnt == 1, "sig: wildcard '?' bytes are not compared");
+        }
+
+        // One 'x' byte differs → no match.
+        {
+            const unsigned char sig[] = { 0xAB, 0xCE, 0x12, 0x34, 0xEF }; // 0xCE != 0xCD
+            int cnt = 0;
+            long off = sigscan::scan_range(text, N, sig, "xxxxx", true, &cnt);
+            check(off == -1 && cnt == 0, "sig: mismatch in a must-match byte fails");
+        }
+
+        // Not present at all.
+        {
+            const unsigned char sig[] = { 0xDE, 0xAD, 0xBE, 0xEF };
+            int cnt = 0;
+            long off = sigscan::scan_range(text, N, sig, "xxxx", true, &cnt);
+            check(off == -1, "sig: absent signature returns -1");
+        }
+
+        // Match at the very start and at the very end of the range (bounds).
+        {
+            const unsigned char buf[] = { 0x90, 0x91, 0x00, 0x00, 0x90, 0x91 };
+            const unsigned char sig[] = { 0x90, 0x91 };
+            int cnt = 0;
+            long off = sigscan::scan_range(buf, sizeof(buf), sig, "xx", false, &cnt);
+            check(off == 0 && cnt == 2, "sig: finds first of multiple; counts both (non-unique ok)");
+            // last valid offset (i + mlen == size) is reachable
+            const unsigned char sig2[] = { 0x90, 0x91 };
+            long off2 = sigscan::scan_range(buf + 4, 2, sig2, "xx", true, &cnt);
+            check(off2 == 0 && cnt == 1, "sig: matches window at the exact end of range");
+        }
+
+        // Uniqueness enforcement: two matches + require_unique → ambiguous (-1).
+        {
+            const unsigned char buf[] = { 0x7F, 0x7F, 0x00, 0x7F, 0x7F };
+            const unsigned char sig[] = { 0x7F, 0x7F };
+            int cnt = 0;
+            long off = sigscan::scan_range(buf, sizeof(buf), sig, "xx", true, &cnt);
+            check(off == -1 && cnt == 2, "sig: non-unique signature rejected when require_unique");
+            // …but accepted (first hit) when uniqueness isn't required.
+            long off2 = sigscan::scan_range(buf, sizeof(buf), sig, "xx", false, &cnt);
+            check(off2 == 0, "sig: same signature returns first hit when unique not required");
+        }
+
+        // Degenerate/guard cases: mask longer than buffer, empty mask.
+        {
+            const unsigned char buf[] = { 0x01, 0x02 };
+            const unsigned char sig[] = { 0x01, 0x02, 0x03, 0x04 };
+            int cnt = 0;
+            check(sigscan::scan_range(buf, sizeof(buf), sig, "xxxx", true, &cnt) == -1 && cnt == 0,
+                  "sig: mask longer than buffer returns -1, no overrun");
+            check(sigscan::scan_range(buf, sizeof(buf), sig, "", true, &cnt) == -1,
+                  "sig: empty mask returns -1");
+        }
+
+        // match_at directly: wildcard tolerates any value in the '?' slot.
+        {
+            const unsigned char a[] = { 0xAA, 0x00, 0xCC };
+            const unsigned char b[] = { 0xAA, 0xFF, 0xCC };
+            const unsigned char sig[] = { 0xAA, 0x99, 0xCC }; // middle is wildcard
+            check(sigscan::match_at(a, sig, "x?x") && sigscan::match_at(b, sig, "x?x"),
+                  "sig: match_at wildcard accepts differing bytes");
+            check(!sigscan::match_at(a, sig, "xxx"),
+                  "sig: match_at all-must-match rejects the differing byte");
+        }
     }
 
     printf("\n%s (%d failure(s))\n", failures ? "TESTS FAILED" : "ALL TESTS PASSED", failures);

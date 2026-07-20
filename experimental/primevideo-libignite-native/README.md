@@ -120,6 +120,7 @@ experimental/primevideo-libignite-native/
 │   ├── CMakeLists.txt     ← NDK build (armeabi-v7a + arm64-v8a); expects Dobby vendored in
 │   ├── offsets.h          ← the ONLY file you edit after Ghidra: signatures + fallback offsets
 │   ├── sigscan.h/.cpp     ← runtime byte-pattern scanner over libignite's .text
+│   ├── sigmatch.h         ← pure masked-signature matcher, shared by sigscan & test
 │   ├── manifest_filter.h/.cpp  ← the ad-strip logic (HLS + DASH), pure/testable
 │   ├── inflate_filter.h   ← post-inflate strip + z_stream rewind, shared by hook & test
 │   ├── ssl_reassembly.h   ← reassemble a manifest across SSL_read chunks, filter once, re-serve
