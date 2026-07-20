@@ -83,6 +83,42 @@ int main() {
         check(dash.find("</MPD>") != std::string::npos, "DASH still well-terminated");
     }
 
+    // ── DASH: multi-period — pre-roll + mid-rolls, both detection paths ──────
+    // Interleaves 3 content periods with 4 ad periods (one flagged by an
+    // id="ad-…" with no /iad_ URL, two of them consecutive) to cover: multiple
+    // removals in one pass, both ad signals, consecutive-ad handling, content
+    // false-positive avoidance, and preserved ordering.
+    {
+        std::string dash =
+            "<?xml version=\"1.0\"?>\n<MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\">\n"
+            "<Period id=\"p0-content\"><BaseURL>https://cdn/content0/</BaseURL></Period>\n"
+            "<Period id=\"p1-preroll\"><BaseURL>https://cdn/iad_100/</BaseURL></Period>\n"   // /iad_ path
+            "<Period id=\"p2-content\"><BaseURL>https://cdn/content2/</BaseURL></Period>\n"
+            "<Period id=\"ad-promo3\"><BaseURL>https://cdn/promo3/</BaseURL></Period>\n"      // id path, no /iad_
+            "<Period id=\"p4-midroll\"><BaseURL>https://cdn/iad_400/</BaseURL></Period>\n"    // consecutive ad 1
+            "<Period id=\"p5-midroll\"><BaseURL>https://cdn/iad_500/</BaseURL></Period>\n"    // consecutive ad 2
+            "<Period id=\"p6-content\"><BaseURL>https://cdn/content6/</BaseURL></Period>\n"
+            "</MPD>\n";
+        auto r = run(dash);
+        check(r.is_manifest, "DASH(multi) detected");
+        check(r.modified, "DASH(multi) modified");
+        check(r.ad_periods == 4, "DASH(multi) removed exactly 4 ad periods");
+        check(dash.find("/iad_") == std::string::npos, "DASH(multi) no /iad_ remains");
+        // id-path ad (no /iad_) actually removed, not just URL-path ads
+        check(dash.find("promo3") == std::string::npos, "DASH(multi) removed id-flagged ad period");
+        // consecutive ads both gone
+        check(dash.find("iad_400") == std::string::npos && dash.find("iad_500") == std::string::npos,
+              "DASH(multi) removed both consecutive ads");
+        // all three content periods survive
+        check(dash.find("content0") != std::string::npos, "DASH(multi) kept content0");
+        check(dash.find("content2") != std::string::npos, "DASH(multi) kept content2");
+        check(dash.find("content6") != std::string::npos, "DASH(multi) kept content6");
+        // original relative order of content preserved
+        size_t c0 = dash.find("content0"), c2 = dash.find("content2"), c6 = dash.find("content6");
+        check(c0 < c2 && c2 < c6, "DASH(multi) preserved content period order");
+        check(dash.find("</MPD>") != std::string::npos, "DASH(multi) still well-terminated");
+    }
+
     // ── Non-manifest buffer → ignored ────────────────────────────────────────
     {
         std::string blob = "\x00\x01\x02 this is a video segment, not a manifest";
