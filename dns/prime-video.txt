@@ -1,5 +1,7 @@
 ! Prime Video — DNS Ad-Suppression Filter List
-! Version: 4.9  (2026-07-15)
+! Version: 4.10 (2026-07-19)  — doc/regional clarity: aiv-delivery.net allow is
+!   domain-wide (covers api.eu-west-1 EU + all regions); README no longer tells
+!   users to block it (issue #58 follow-up).
 ! AdGuard Home syntax. Safe-harbor allows first, then blocks.
 !
 ! Two Ad Pipelines: (1) Java/media3 ad-groups -> bytecode PATCH; (2) native SGAI ->
@@ -13,7 +15,10 @@
 !
 ! 2026-07-14 LIVE HOST MAP (PCAPdroid VPN capture, no root; SNI + DNS, ads-vs-noads diff):
 !   ters-sgai1.us-east-2.aiv-delivery.net  = CURRENT SGAI stitcher (was draper1/s0s7)
-!   api.us-east-1.aiv-delivery.net         = ad delivery API
+!   api.us-east-1.aiv-delivery.net         = ad delivery API (NA)
+!   api.eu-west-1.aiv-delivery.net         = same, EU region (issue #58 reporter). The
+!     safe-harbor allow below is domain-wide (@@||aiv-delivery.net^) so it covers EVERY
+!     region — never narrow it to one region or you break playback elsewhere.
 !   regolith.prime-video.amazon.dev        = PAUSE-screen ad endpoint — CONFIRMED reached
 !     (user saw a pause-ad overlay; host present in capture). Already blocked at line 56.
 !   ab8mt4dd97et.na.api.amazonvideo.com    = GetPlaybackResources (dual-use, DO NOT block)

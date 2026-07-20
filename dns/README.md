@@ -83,11 +83,21 @@ Pi-hole does not parse `$dnsrewrite`/`$important`. Two options:
 - **Adlist (ABP mode):** enable Pi-hole's ABP-style adlist support, then the
   plain `||host^` rules are honored; strip the `$...` modifiers.
 - **Regex/exact:** translate the key rules manually, e.g.
-  - Block: `amazon-adsystem.com`, `aiv-delivery.net`,
-    `zoar.triggers-v1.prod.mobile.weblab.a2z.com`
-  - Allowlist (critical): `atv-ps.amazon.com`, `vod-dash.main.amazon.pv-cdn.net`,
-    `vod-dash-pv-ta-amazon.akamaized.net`, `aux.pv-cdn.net` (subtitles +
-    trickplay), `aiv-cdn.net`, `images-na.ssl-images-amazon.com`, `m.media-amazon.com`
+  - Block: `amazon-adsystem.com` and the Akamai **HD** ad hosts
+    (`avoddashs3ww-a.akamaihd.net`, `aivottevtad-a.akamaihd.net`, `*evtad*.akamaihd.net`).
+  - Allowlist (critical): **`aiv-delivery.net` — all regions** (this is the SGAI
+    *session* host, contacted for every title; blocking any region, e.g.
+    `api.eu-west-1.aiv-delivery.net` for EU or `api.us-east-1.aiv-delivery.net` for
+    NA, **stops playback entirely** — issue #58). Also: `atv-ps.amazon.com`,
+    `vod-dash.main.amazon.pv-cdn.net`, `vod-dash-pv-ta-amazon.akamaized.net`,
+    `aux.pv-cdn.net` (subtitles + trickplay), `aiv-cdn.net`,
+    `images-na.ssl-images-amazon.com`, `m.media-amazon.com`
+
+> ⚠️ **Do not block `aiv-delivery.net`.** Earlier versions of this guide (and the
+> v3.6 list) listed it under *Block* — that is what breaks playback. It is now a
+> permanent allow. If ads still play after allowing it, they are SSAI-baked
+> (server-stitched); DNS cannot remove those — use the bytecode patch or the
+> phone-app route.
 
 > The `threeplr*`/`nit*` prefix rules need wildcard/regex support; in Pi-hole use
 > a regex blacklist: `^(threeplr|nit)[a-z0-9.-]*\.api\.amazonvideo\.com$`.
@@ -95,10 +105,19 @@ Pi-hole does not parse `$dnsrewrite`/`$important`. Two options:
 ## Verifying it works
 
 - **DNS side:** watch your resolver log during playback. You want
-  `aiv-delivery.net` / `amazon-adsystem.com` **blocked**, and `amazonvideo.com` /
-  `*.pv-cdn.net` content hosts **allowed**.
-- **If a title stalls / black-screens:** you are likely on a native-road SGAI
-  title and the stitcher block is too aggressive — narrow `||aiv-delivery.net^`
-  to `||api.us-east-1.aiv-delivery.net^` (see the inline note in the list).
+  `amazon-adsystem.com` and the `*evtad*.akamaihd.net` ad hosts **blocked**, and the
+  content/session hosts **allowed** — `amazonvideo.com`, `*.pv-cdn.net`, and
+  crucially **`aiv-delivery.net` (all regions)**. `aiv-delivery.net` is the SGAI
+  *session* host contacted for every title: if it shows **blocked**, playback will
+  not start (issue #58).
+- **If a title stalls / black-screens and `aiv-delivery.net` (e.g.
+  `api.eu-west-1.aiv-delivery.net`) shows blocked** even though this list allows it:
+  a rule from **another subscribed blocklist is overriding the allow**. Fix the
+  precedence — put the safe-harbor allows in **User Rules**, which outrank every
+  subscribed list:
+  - **AdGuard Home:** *Filters → Custom filtering rules*, paste
+    `@@||aiv-delivery.net^$important` (and the other `@@…$important` lines).
+  - **Pi-hole:** add `aiv-delivery.net` (and the other critical hosts above) to the
+    **Allowlist**, which always wins over adlists.
 - **Patch side:** with DNS blocking **off**, `logcat | grep -i skipads` during an
   ad title tells you whether the Java-road hooks are firing.
