@@ -65,13 +65,18 @@ object FoxImaLiveStreamRequestFingerprint : Fingerprint(
     accessFlags = listOf(AccessFlags.PUBLIC)
 )
 
-// Hook 7 — xo/C$c.shouldInterceptRequest(WebView, WebResourceRequest)
+// Hook 7 — Po/C$c.shouldInterceptRequest(WebView, WebResourceRequest)
 //
 // Intercepts WebView XHR/fetch requests and blocks ad domains. Cannot
 // intercept media element (<video> src) requests — those are blocked at
 // DNS layer via AGH rules.
+//
+// Class is the TvWebFragment.kt WebViewClient (source-confirmed). R8 renames
+// its outer prefix each release: xo (10.20) → yo (10.21) → Po (10.28). NOTE a
+// second class (Ml/w1$c, WebViewFragment.kt) also has this exact signature, so
+// a pure signature match would be ambiguous — keep the class pinned.
 object TubiWebClientInterceptFingerprint : Fingerprint(
-    definingClass = "Lxo/C\$c;",
+    definingClass = "LPo/C\$c;",
     name = "shouldInterceptRequest",
     parameters = listOf(
         "Landroid/webkit/WebView;",
@@ -81,7 +86,7 @@ object TubiWebClientInterceptFingerprint : Fingerprint(
     accessFlags = listOf(AccessFlags.PUBLIC)
 )
 
-// Hook 8 — xo/C$c.onPageFinished(WebView, String)
+// Hook 8 — Po/C$c.onPageFinished(WebView, String)
 //
 // JavaScript fetch override injection. Fires after the SPA at
 // ott-androidtv.tubitv.com has fully loaded, before the user selects
@@ -95,7 +100,7 @@ object TubiWebClientInterceptFingerprint : Fingerprint(
 // Uses window.__tubiAdBlockInstalled guard to ensure idempotency if
 // onPageFinished fires multiple times in a session.
 object TubiWebClientPageFinishedFingerprint : Fingerprint(
-    definingClass = "Lxo/C\$c;",
+    definingClass = "LPo/C\$c;",
     name = "onPageFinished",
     parameters = listOf(
         "Landroid/webkit/WebView;",
@@ -105,16 +110,18 @@ object TubiWebClientPageFinishedFingerprint : Fingerprint(
     accessFlags = listOf(AccessFlags.PUBLIC)
 )
 
-// Hook 9 — qf/c.suspendGetAdBreaks(String, String, String, Map, Continuation)
+// Hook 9 — sf/c.suspendGetAdBreaks(String, String, String, Map, Continuation)
 //
-// Rainmaker ad-break fetch coroutine. Confirmed via classes7.dex analysis:
-// returns Lwm/d; (sealed result wrapper) — Lwm/d$e for success, Lwm/d$b
-// subtypes (Lwm/d$c / Lwm/d$d) for error. The caller (Lpf/a;->c) branches
-// on instance-of Lwm/d$e vs Lwm/d$b and converges afterward either way,
-// so a synchronously-returned error result is sufficient — no suspension
-// needed.
+// Rainmaker ad-break fetch coroutine (RainmakerAdsFetcher.kt). Returns
+// LMm/d; (sealed result wrapper, NetworkResponse.kt) — LMm/d$e for success,
+// LMm/d$b subtypes (LMm/d$c / LMm/d$d) for error. The caller (Lrf/a;)
+// branches on instance-of LMm/d$e vs LMm/d$b and converges afterward either
+// way, so a synchronously-returned error result is sufficient — no
+// suspension needed.
+//
+// R8 renames per release: class qf/c → sf/c; wrapper wm/d → Mm/d (10.28).
 object QfcSuspendGetAdBreaksFingerprint : Fingerprint(
-    definingClass = "Lqf/c;",
+    definingClass = "Lsf/c;",
     name = "suspendGetAdBreaks",
     parameters = listOf(
         "Ljava/lang/String;",

@@ -8,6 +8,6 @@ object Constants {
         name = "Tubi Android TV",
         packageName = "com.tubitv",
         appIconColor = 0xE9181C,
-        targets = listOf(AppTarget("10.20.5000"))
+        targets = listOf(AppTarget("10.28.5000"))
     )
 }
