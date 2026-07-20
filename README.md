@@ -23,7 +23,7 @@ I'm just like you — I enjoy watching TV and movies without being bored and ann
 | 🟢 Tubi | `com.tubitv` | Working | `v10.20.5000` | 5/20/26 |
 | 🟢 ViX | `com.univision.prendetv` | Working | `v4.47.2_tv` | 7/11/26 |
 | 🟢 Pluto TV | `tv.pluto.android` | Working — VOD ad breaks removed (video, markers, beacons); LIVE TV ads are broadcast time and remain | `5.66.0-leanback` | 7/3/26 |
-| 🔴 Paramount+ | `com.cbs.ott` | In Development | `v16.8 → v16.12` | — |
+| 🟡 Paramount+ | `com.cbs.ott` | ✅ Use `v16.8.0` — newer versions (`v16.12`) still in development | `v16.8.0` | 7/19/26 |
 | 🔴 Fox One | **Under Development** | — |
 | 🔴 MLB TV | **Under Development** | — |
 
@@ -86,7 +86,9 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 ### 📡 Paramount+
 
-> 🔴 **Currently under development.** The transition from `v16.8` to `v16.12` introduced issues that are still being debugged. Use `v16.8` in the meantime.
+> ✅ **Recommended version: `v16.8.0`.** This is the version to patch and install right now — it works.
+>
+> 🔴 Newer versions (`v16.12` and up) are **not yet supported**: they introduced a playback-breaking issue that is still being debugged. Stay on `v16.8.0` until this notice is updated.
 
 1. Open the **[Paramount+ (Android TV) listing on APKMirror](https://www.apkmirror.com/apk/cbs-interactive-inc/paramount-2/)** and select version **`16.8.0`**
 2. ⚠️ This listing is published by **CBS Interactive, Inc.** — the correct publisher. Do **not** use the separate Viacom-published build.
