@@ -65,6 +65,63 @@ int main() {
         check(hls == before, "HLS(clean) byte-identical");
     }
 
+    // ── HLS: multiple ad runs — pre-roll(2) + mid-roll(3) interspersed ───────
+    // A pre-roll run of 2 ad segments and a mid-roll run of 3, bracketed by
+    // discontinuities around content. Covers: many segments removed across
+    // multiple runs, and collapse of the doubled discontinuity each removed run
+    // leaves behind — leaving exactly one boundary marker per former ad break.
+    {
+        std::string hls =
+            "#EXTM3U\n"
+            "#EXT-X-VERSION:6\n"
+            "#EXT-X-TARGETDURATION:6\n"
+            "#EXT-X-MEDIA-SEQUENCE:0\n"
+            "#EXT-X-DISCONTINUITY\n"
+            "#EXTINF:6.0,\n"
+            "https://cdn/iad_1/ad_a1.ts\n"
+            "#EXTINF:6.0,\n"
+            "https://cdn/iad_1/ad_a2.ts\n"
+            "#EXT-X-DISCONTINUITY\n"
+            "#EXTINF:6.0,\n"
+            "https://cdn/content/c1.ts\n"
+            "#EXTINF:6.0,\n"
+            "https://cdn/content/c2.ts\n"
+            "#EXT-X-DISCONTINUITY\n"
+            "#EXTINF:6.0,\n"
+            "https://cdn/iad_2/ad_b1.ts\n"
+            "#EXTINF:6.0,\n"
+            "https://cdn/iad_2/ad_b2.ts\n"
+            "#EXTINF:6.0,\n"
+            "https://cdn/iad_2/ad_b3.ts\n"
+            "#EXT-X-DISCONTINUITY\n"
+            "#EXTINF:6.0,\n"
+            "https://cdn/content/c3.ts\n"
+            "#EXT-X-ENDLIST\n";
+        auto r = run(hls);
+
+        // count non-overlapping occurrences of a token
+        auto count = [](const std::string& s, const std::string& tok) {
+            int n = 0; size_t p = 0;
+            while ((p = s.find(tok, p)) != std::string::npos) { n++; p += tok.size(); }
+            return n;
+        };
+
+        check(r.is_manifest, "HLS(multi) detected");
+        check(r.modified, "HLS(multi) modified");
+        check(r.ad_segments == 5, "HLS(multi) removed all 5 ad segments (2+3)");
+        check(hls.find("/iad_") == std::string::npos, "HLS(multi) no /iad_ remains");
+        check(hls.find("ad_a1") == std::string::npos && hls.find("ad_b3") == std::string::npos,
+              "HLS(multi) removed ad URIs from both runs");
+        check(count(hls, "content/c") == 3, "HLS(multi) kept all 3 content segments");
+        size_t c1 = hls.find("c1.ts"), c2 = hls.find("c2.ts"), c3 = hls.find("c3.ts");
+        check(c1 < c2 && c2 < c3, "HLS(multi) preserved content order");
+        check(hls.find("#EXT-X-DISCONTINUITY\n#EXT-X-DISCONTINUITY") == std::string::npos,
+              "HLS(multi) collapsed all doubled discontinuities");
+        // 4 original discontinuities minus one collapsed per removed run (2 runs) = 2
+        check(count(hls, "#EXT-X-DISCONTINUITY") == 2, "HLS(multi) one boundary per former ad break");
+        check(hls.find("#EXT-X-ENDLIST") != std::string::npos, "HLS(multi) kept ENDLIST");
+    }
+
     // ── DASH: drop an ad <Period> carrying /iad_ in BaseURL ──────────────────
     {
         std::string dash =
