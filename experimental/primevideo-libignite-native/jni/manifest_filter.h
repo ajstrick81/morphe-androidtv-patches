@@ -13,10 +13,12 @@ namespace pvfilter {
 // Result of a filter pass.
 struct FilterResult {
     bool   is_manifest = false;  // did the buffer look like an HLS/DASH manifest?
+    bool   is_prs      = false;  // did the buffer look like a PRS (GetVodPlaybackResources) JSON?
     bool   modified    = false;  // did we remove anything?
     size_t new_len     = 0;      // valid byte count after the (in-place) strip
     int    ad_segments = 0;      // HLS ad segments removed
     int    ad_periods  = 0;      // DASH ad periods removed
+    int    remote_items = 0;     // PRS intraTitlePlaylist type:"Remote" ad items removed
 };
 
 // Inspect `buf[0..len)`. If it's a manifest, strip ad entries IN PLACE

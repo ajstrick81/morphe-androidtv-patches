@@ -5,6 +5,16 @@
 interception *inside* the Prime Video process so the whole ad-strip runs on
 the Onn 4K Plus with no PC, no proxy, no CA on the device.
 
+> **Chosen direction (2026-07-20): reproduce the PROVEN PRS strip first.** The
+> MITM rig proved that stripping `type:"Remote"` items from the
+> `GetVodPlaybackResources` JSON removes ads on movies AND TV shows. That JSON is
+> an `inflate`-hook body, so `jni/prs_filter.{h,cpp}` ports that exact transform
+> in-process (host-unit-tested, `test_prs_filter.cpp`) and `filter()` now runs it
+> on any non-manifest body. The `/iad_` manifest strip below (`manifest_filter`)
+> stays in the tree as the complementary path for genuine SSAI mid-rolls, but the
+> PRS route is the primary target because it's the one we've verified end-to-end.
+> Both share the same SSL_read/inflate hooks; only the Ghidra offsets gate them.
+
 Nothing here compiles into a working `.so` yet — the two runtime offsets it
 depends on (`SSL_read`, `inflate` inside `libignite.so`) must be recovered
 with Ghidra on your PC. See [`OFFSETS.md`](./OFFSETS.md). Everything *around*

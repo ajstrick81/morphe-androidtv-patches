@@ -58,8 +58,8 @@ static int hook_SSL_read(void* ssl, void* buf, int num) {
     pvfilter::FilterResult r = pvfilter::filter(static_cast<char*>(buf),
                                                 static_cast<size_t>(n));
     if (r.modified) {
-        LOGI("SSL_read: stripped %d ad segment(s) / %d ad period(s); %d -> %zu bytes",
-             r.ad_segments, r.ad_periods, n, r.new_len);
+        LOGI("SSL_read: stripped %d PRS Remote item(s) / %d ad segment(s) / %d ad period(s); "
+             "%d -> %zu bytes", r.remote_items, r.ad_segments, r.ad_periods, n, r.new_len);
         return static_cast<int>(r.new_len);   // caller sees the shortened body
     }
     return n;
@@ -80,8 +80,9 @@ static int hook_inflate(void* strm, int flush) {
 
     pvfilter::FilterResult r = pvfilter::apply_after_inflate(z, out_before);
     if (r.modified) {
-        LOGI("inflate: stripped %d seg / %d period; produced-body now %zu bytes",
-             r.ad_segments, r.ad_periods, r.new_len);
+        LOGI("inflate: stripped %d PRS Remote item(s) / %d seg / %d period; "
+             "produced-body now %zu bytes",
+             r.remote_items, r.ad_segments, r.ad_periods, r.new_len);
     }
     return ret;
 }

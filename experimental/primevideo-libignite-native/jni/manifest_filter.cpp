@@ -1,4 +1,5 @@
 #include "manifest_filter.h"
+#include "prs_filter.h"
 
 #include <cstring>
 #include <string>
@@ -199,11 +200,11 @@ FilterResult filter(char* buf, size_t len) {
     switch (sniff(buf, len)) {
         case Kind::Hls:  return filter_hls(buf, len);
         case Kind::Dash: return filter_dash(buf, len);
-        default: {
-            FilterResult r;
-            r.new_len = len;
-            return r;
-        }
+        default:
+            // Not a manifest. The proven primary strip is the PRS JSON
+            // (GetVodPlaybackResources) — try it. filter_prs is a cheap no-op on
+            // anything that isn't that JSON.
+            return filter_prs(buf, len);
     }
 }
 

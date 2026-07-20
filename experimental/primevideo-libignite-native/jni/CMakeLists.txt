@@ -26,6 +26,7 @@ add_library(pvhook SHARED
     hooks.cpp
     sigscan.cpp
     manifest_filter.cpp
+    prs_filter.cpp
 )
 
 target_include_directories(pvhook PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
