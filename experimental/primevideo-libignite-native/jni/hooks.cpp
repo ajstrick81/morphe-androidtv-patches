@@ -38,10 +38,23 @@ static int hook_SSL_read(void* ssl, void* buf, int num) {
     int n = real_SSL_read(ssl, buf, num);
     if (n <= 0) return n;
 
-    // NOTE: one SSL_read == one TLS record, not necessarily one whole manifest.
-    // For manifests that fit in a single read (the common case here) this is
-    // sufficient. For chunked delivery, buffer per-SSL* until a full body is
-    // seen before filtering — left as a documented extension point.
+    // One SSL_read == one TLS record, not necessarily one whole manifest. This
+    // in-place per-read filter is correct when a manifest arrives in a single
+    // read (the common case on this build) and is a safe no-op otherwise.
+    //
+    // For manifests split across reads — where a marker straddles a record
+    // boundary — the reassembly logic lives in ssl_reassembly.h
+    // (pvfilter::SslReassembler), unit-tested for chunk-boundary invariance. It
+    // accumulates the body, filters once, and re-serves. Wiring it in
+    // transparently requires two things this passthrough filter deliberately
+    // does NOT do, because both need HTTP response framing that isn't available
+    // from a raw SSL_read alone:
+    //   1. key a reassembler per SSL* and reset it on each response boundary;
+    //   2. know when a body is complete (Content-Length / chunked-transfer) so
+    //      the reassembler can filter + re-serve without withholding bytes the
+    //      caller is blocking on.
+    // That framing is the remaining device-side integration step. inflate (see
+    // hook_inflate) is the cleaner whole-body point where it's already assembled.
     pvfilter::FilterResult r = pvfilter::filter(static_cast<char*>(buf),
                                                 static_cast<size_t>(n));
     if (r.modified) {

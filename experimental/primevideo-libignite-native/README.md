@@ -122,7 +122,8 @@ experimental/primevideo-libignite-native/
 │   ├── sigscan.h/.cpp     ← runtime byte-pattern scanner over libignite's .text
 │   ├── manifest_filter.h/.cpp  ← the ad-strip logic (HLS + DASH), pure/testable
 │   ├── inflate_filter.h   ← post-inflate strip + z_stream rewind, shared by hook & test
-│   ├── test_manifest_filter.cpp ← host unit test (filter + real-zlib inflate path); needs -lz
+│   ├── ssl_reassembly.h   ← reassemble a manifest across SSL_read chunks, filter once, re-serve
+│   ├── test_manifest_filter.cpp ← host unit test (filter + inflate path + chunked reassembly); needs -lz
 │   └── hooks.cpp          ← JNI_OnLoad bootstrap: resolve base, scan, install SSL_read/inflate hooks
 ├── extension/
 │   └── NativeHookLoader.java  ← load()  — belongs in the existing extension module once promoted
@@ -184,9 +185,14 @@ documents its reactivation:
   The filter must cheaply reject non-manifest buffers (magic-byte sniff in
   `manifest_filter.cpp`) or it'll add latency to every read. Keep the fast
   path fast.
-- **Reassembly.** A manifest can span multiple `SSL_read` calls. The scaffold
-  handles the common single-read case and documents where buffering would go
-  for the chunked case — do not assume one read == one manifest in the wild.
+- **Reassembly.** A manifest can span multiple `SSL_read` calls. The reassembly
+  logic (`ssl_reassembly.h` → `SslReassembler`) is built and unit-tested for
+  chunk-boundary invariance — every possible split, including inside `/iad_`,
+  yields the same result as filtering the whole body. `hook_SSL_read` itself
+  still filters per-read (correct for the common single-read case); wiring the
+  reassembler in transparently needs HTTP response framing (per-`SSL*` keying +
+  body-complete detection), which is device-side work. `inflate` is the cleaner
+  whole-body interception point where the body is already assembled.
 - **Native-lib packaging/alignment.** The most likely first-run failure isn't
   the hooks — it's `loadLibrary` itself. If Prime Video ships
   `extractNativeLibs="false"`, the OS mmaps `.so`s straight from the APK and

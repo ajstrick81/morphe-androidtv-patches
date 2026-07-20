@@ -8,6 +8,7 @@
 // links none of its own). Exits non-zero on any failed assertion.
 #include "manifest_filter.h"
 #include "inflate_filter.h"
+#include "ssl_reassembly.h"
 
 #include <zlib.h>
 
@@ -34,6 +35,26 @@ static std::string gzip_compress(const std::string& in) {
         out.append(buf, sizeof(buf) - zs.avail_out);
     } while (rc != Z_STREAM_END);
     deflateEnd(&zs);
+    return out;
+}
+
+// Feed `input` through an SslReassembler in fixed-size chunks, finish, then
+// serve the result back in fixed-size chunks. Models the SSL_read hook draining
+// TLS records and re-serving the filtered body. Returns the served bytes.
+static std::string reassemble_chunked(const std::string& input,
+                                      size_t feed_chunk, size_t serve_chunk) {
+    pvfilter::SslReassembler ra;
+    for (size_t i = 0; i < input.size(); i += feed_chunk) {
+        size_t n = input.size() - i;
+        if (n > feed_chunk) n = feed_chunk;
+        ra.feed(input.data() + i, n);
+    }
+    ra.finish();
+    std::string out;
+    char buf[8192];
+    size_t cap = serve_chunk < sizeof(buf) ? serve_chunk : sizeof(buf);
+    size_t n;
+    while ((n = ra.serve(buf, cap)) > 0) out.append(buf, n);
     return out;
 }
 
@@ -329,6 +350,89 @@ int main() {
         check(zs.avail_out == OUTCAP - r.new_len, "inflate: avail_out reflects freed space");
 
         inflateEnd(&zs);
+    }
+
+    // ── chunked SSL_read reassembly ──────────────────────────────────────────
+    // A manifest split across many TLS records: reassemble, filter the complete
+    // body, re-serve. The key guarantee is chunk-boundary invariance — no matter
+    // where the boundaries fall (including inside "/iad_", inside an EXTINF, or
+    // inside a URI), the served result equals the single-shot direct filter.
+    {
+        const std::string manifest =
+            "#EXTM3U\n"
+            "#EXT-X-VERSION:6\n"
+            "#EXTINF:6.0,\n"
+            "https://cdn/content/c1.ts\n"
+            "#EXT-X-DISCONTINUITY\n"
+            "#EXTINF:6.0,\n"
+            "https://cdn/iad_88/ad1.ts\n"
+            "#EXT-X-DISCONTINUITY\n"
+            "#EXTINF:6.0,\n"
+            "https://cdn/content/c2.ts\n"
+            "#EXT-X-ENDLIST\n";
+        std::string direct = manifest;
+        run(direct);
+
+        // Exhaustive feed-boundary invariance: EVERY feed-chunk size 1..len
+        // places a boundary at every offset, so this splits "/iad_", EXTINF
+        // lines, and URIs at all positions.
+        bool feed_ok = true;
+        size_t bad_fc = 0;
+        for (size_t fc = 1; fc <= manifest.size(); ++fc) {
+            if (reassemble_chunked(manifest, fc, 7) != direct) { feed_ok = false; bad_fc = fc; break; }
+        }
+        check(feed_ok, "SSL(chunk): every feed-chunk size reassembles to direct-filter output");
+        if (!feed_ok) printf("      first failing feed_chunk=%zu\n", bad_fc);
+
+        // Serve-side chunking invariance: dole the filtered body out in every
+        // size 1..32 — all must concatenate to the same output.
+        bool serve_ok = true;
+        for (size_t sc = 1; sc <= 32; ++sc) {
+            if (reassemble_chunked(manifest, 5, sc) != direct) { serve_ok = false; break; }
+        }
+        check(serve_ok, "SSL(chunk): every serve-chunk size yields identical output");
+
+        // Byte-for-byte spot check on a tiny (3-byte) feed that guarantees the
+        // "/iad_" token and the EXTINF/URI pair are split across boundaries.
+        std::string got = reassemble_chunked(manifest, 3, 4);
+        check(got == direct, "SSL(chunk): 3-byte feed (splits /iad_) matches direct filter");
+        check(got.find("/iad_") == std::string::npos, "SSL(chunk): ad removed despite split marker");
+    }
+
+    // ── chunked reassembly: DASH classified across a chunk boundary ──────────
+    // The "<MPD" that commits classification arrives in a later chunk than the
+    // "<?xml" prolog — the reassembler must stay Undecided then latch Buffering.
+    {
+        std::string dash =
+            "<?xml version=\"1.0\"?>\n<MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\">\n"
+            "<Period id=\"break\"><BaseURL>https://cdn/iad_9/</BaseURL></Period>\n"
+            "<Period id=\"main\"><BaseURL>https://cdn/content/</BaseURL></Period>\n"
+            "</MPD>\n";
+        std::string direct = dash;
+        run(direct);
+        // 8-byte first chunk = "<?xml ve" — '<' viable but no "<MPD" yet.
+        std::string got = reassemble_chunked(dash, 8, 5);
+        check(got == direct, "SSL(chunk): DASH classified across boundary, filtered");
+        check(got.find("/iad_") == std::string::npos, "SSL(chunk): DASH ad period removed");
+    }
+
+    // ── chunked reassembly: non-manifest decided Passthrough, never buffered ─
+    // A media segment (leading byte not '#'/'<') must be marked Passthrough on
+    // the very first chunk and served back byte-identical.
+    {
+        const unsigned char raw[] = { 0x47, 0x40, 0x00, 0x10, 'v','i','d','e','o','-','t','s' }; // TS sync 0x47
+        std::string seg(reinterpret_cast<const char*>(raw), sizeof(raw));
+
+        pvfilter::SslReassembler ra;
+        auto m = ra.feed(seg.data(), 4);   // just the first 4 bytes
+        check(m == pvfilter::SslReassembler::Mode::Passthrough,
+              "SSL(chunk): non-manifest detected Passthrough on first bytes");
+        ra.feed(seg.data() + 4, seg.size() - 4);
+        ra.finish();
+        std::string got;
+        char b[256]; size_t n;
+        while ((n = ra.serve(b, sizeof(b))) > 0) got.append(b, n);
+        check(got == seg, "SSL(chunk): passthrough serves original bytes unmodified");
     }
 
     // ── Non-manifest buffer → ignored ────────────────────────────────────────
