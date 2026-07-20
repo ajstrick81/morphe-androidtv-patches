@@ -445,6 +445,61 @@ int main() {
         check(blob == before, "binary untouched");
     }
 
+    // ── manifest sniff classifier ────────────────────────────────────────────
+    // sniff() gates both filter() and the reassembler's buffer/passthrough
+    // decision, so its edges matter: BOM/whitespace skipping, the 512-byte
+    // <MPD lookahead for XML-prolog DASH, case sensitivity, and length guards.
+    {
+        using pvfilter::Kind;
+        auto k = [](const std::string& s) { return pvfilter::sniff(s.data(), s.size()); };
+
+        // HLS
+        check(k("#EXTM3U\n#EXT-X-VERSION:6\n") == Kind::Hls, "sniff: plain HLS");
+        check(k("#EXTM3U") == Kind::Hls, "sniff: HLS at exact 7-byte magic");
+        check(k("\n\n   #EXTM3U\n") == Kind::Hls, "sniff: HLS after leading whitespace");
+        {
+            std::string bom;                    // UTF-8 BOM prefix is skipped
+            bom.push_back((char)0xEF); bom.push_back((char)0xBB); bom.push_back((char)0xBF);
+            check(k(bom + "#EXTM3U\n") == Kind::Hls, "sniff: HLS after UTF-8 BOM");
+            check(k(bom + "\n  #EXTM3U") == Kind::Hls, "sniff: HLS after BOM + whitespace");
+        }
+
+        // DASH
+        check(k("<MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\">") == Kind::Dash, "sniff: raw <MPD");
+        check(k("<?xml version=\"1.0\"?>\n<MPD>\n") == Kind::Dash, "sniff: DASH via XML prolog");
+        check(k("   <?xml version=\"1.0\"?><MPD/>") == Kind::Dash, "sniff: DASH prolog after whitespace");
+
+        // DASH lookahead window: <MPD within 512 bytes of the prolog is found;
+        // beyond it is not (documented heuristic bound).
+        {
+            std::string near = "<?xml version=\"1.0\"?>" + std::string(100, ' ') + "<MPD/>";
+            check(k(near) == Kind::Dash, "sniff: <MPD within 512B lookahead found");
+            std::string far = "<?xml version=\"1.0\"?>" + std::string(600, ' ') + "<MPD/>";
+            check(k(far) == Kind::NotManifest, "sniff: <MPD beyond 512B lookahead not classified");
+        }
+
+        // Not manifests
+        check(k("<?xml version=\"1.0\"?>\n<smil><body/></smil>") == Kind::NotManifest,
+              "sniff: XML that is not DASH");
+        check(k("GET /manifest.mpd HTTP/1.1\r\n") == Kind::NotManifest, "sniff: HTTP request line");
+        check(k("just some plain text response") == Kind::NotManifest, "sniff: arbitrary text");
+        {
+            const unsigned char ts[] = { 0x47, 0x40, 0x11, 0x10, 0x00, 0x42 }; // TS sync
+            check(pvfilter::sniff(reinterpret_cast<const char*>(ts), sizeof(ts)) == Kind::NotManifest,
+                  "sniff: binary TS payload");
+        }
+
+        // Case sensitivity — real manifests are upper-case; lower-case must miss.
+        check(k("#extm3u\n") == Kind::NotManifest, "sniff: lower-case #extm3u not HLS");
+        check(k("<mpd></mpd>") == Kind::NotManifest, "sniff: lower-case <mpd> not DASH");
+
+        // Length / null guards (must not overrun)
+        check(k("#EXT") == Kind::NotManifest, "sniff: partial magic below length guard");
+        check(k("") == Kind::NotManifest, "sniff: empty buffer");
+        check(k("     ") == Kind::NotManifest, "sniff: whitespace-only buffer");
+        check(pvfilter::sniff(nullptr, 128) == Kind::NotManifest, "sniff: null buffer");
+    }
+
     // ── sigscan signature matcher ────────────────────────────────────────────
     // The masked pattern match + unique-match enforcement used to locate
     // SSL_read/inflate in libignite's .text. Modeled here over synthetic byte
