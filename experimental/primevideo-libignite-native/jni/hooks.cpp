@@ -99,11 +99,12 @@ static bool install_hook(const sigscan::Module& m,
     uintptr_t addr = sigscan::resolve(m, sig, mask, fallback, label);
     if (!addr) { LOGE("install[%s]: unresolved — not hooking", label); return false; }
 
-    // ARMv7 Thumb note: if Ghidra shows this function as Thumb, the callable
-    // address has bit0 set. sigscan finds instruction bytes at the aligned
-    // address; Dobby detects Thumb from the address, so OR in the thumb bit
-    // for Thumb targets. Uncomment per your Ghidra finding:
-    // addr |= 1;
+    // ARMv7 Thumb: both recovered targets (inflate @ 0xd32f7a, SSL_read wrapper
+    // @ 0xc4fe3c) are Thumb — their prologues disassemble as Thumb and sigscan
+    // matches the even (aligned) address. Dobby needs the callable address with
+    // bit0 set to hook in Thumb mode, so OR it in. (This build is uniformly
+    // Thumb; revisit if a future target is ARM.)
+    addr |= 1;
 
     int rc = DobbyHook(reinterpret_cast<void*>(addr), replace, origin);
     if (rc != 0) { LOGE("install[%s]: DobbyHook failed rc=%d", label, rc); return false; }
