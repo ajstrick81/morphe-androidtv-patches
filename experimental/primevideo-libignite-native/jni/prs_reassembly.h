@@ -21,6 +21,13 @@
 // header is the transform-side logic, ready to wire to it, and is validated
 // here independent of any seam.
 //
+// FRAMING CAVEAT. filter_prs SHRINKS the body, so the re-served body is shorter
+// than the original response. The pull-seam hook MUST reconcile HTTP framing —
+// rewrite Content-Length to the served length, or switch the response to
+// chunked transfer-encoding — or the app's HTTP layer will wait for bytes that
+// never come. Detecting body start/end + adjusting the length is the framing
+// driver's job (not built yet; the next offline, testable piece).
+//
 // Mirrors SslReassembler (manifest path); the only differences are that it
 // BUFFERS JSON-object bodies (leading '{') instead of manifests and delegates to
 // filter_prs(). Pure and Android-free so the host test drives exactly this

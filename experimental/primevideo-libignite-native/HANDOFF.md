@@ -68,6 +68,13 @@ g++ -std=c++17 -D_GNU_SOURCE -Wall test_prs_reassembly.cpp prs_filter.cpp manife
 # expect: ALL TESTS PASSED (28 check(s), 0 failure(s))
 ```
 
+**Audit (reproduce the clean run):** the native suites pass with strict warnings
+(`-Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion`, production
+sources warning-free) and under sanitizers — append
+`-g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer` to any command
+above and run with `ASAN_OPTIONS=detect_leaks=1`: no leaks, no UB, no overflow.
+Each suite is also mutation-verified (break the code → the suite goes red).
+
 **Extension host filter + ad-group stripper — 34 + 17 assertions:**
 ```
 cd extensions/extension/src
