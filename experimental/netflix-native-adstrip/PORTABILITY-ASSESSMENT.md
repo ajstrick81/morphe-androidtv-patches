@@ -107,6 +107,22 @@ Net effect on the port: this **raises confidence that the seam is post-MSL in th
 ad data model. The gap is unchanged: we need a *post-MSL manifest from the ad tier* (a Frida MSL
 hook, or a `pymsl`-style manifest client logged in on an ad plan), or a device capture of a break.
 
+### Ad event taxonomy (Netflix Tech Blog: "Robust Ads Event Processing Pipeline")
+
+A **backend** data-engineering piece (server-side "Ads Event Publisher" → Kafka → reporting/billing;
+Microsoft/Xandr ad server). No on-device schema or beacon URLs — but it fixes the *vocabulary* we'll
+see when a manifest is finally captured: standardized ad events of the **impression / quartile
+(25/50/75) / complete** family, per break/creative. When we get an ad-tier manifest, expect fields in
+these families: break id + start/duration, creative id, and tracking/beacon URLs per quartile.
+
+**Open bench question it raises (not answered by the article):** are those beacons **client-fired**
+(device holds beacon URLs + break timing in-process — a rich strip/suppress target) or **server-fired**
+(SSAI; client gets only coarse break timing)? Evidence the client holds *some* structured break data
+regardless: the TV/web UI shows an ad countdown, "ad X of Y", and disables seek during breaks (the
+Auto-Skip web extension keyed on that very duration display). So an on-device ad model exists to
+target; determine client-vs-server beacon firing on the bench — it decides whether the win is
+"strip the schedule" or "also suppress client beacons."
+
 ## 3. Mechanical port worksheet (placeholder fills, PORTING-CHECKLIST)
 
 Ready to drop into the scaffold templates *once §1/§2 are answered*. `[VERIFY]` = read it off
@@ -151,6 +167,7 @@ operate at the wrong layer (server-side, or web-DOM) for a native-TV media-plane
 | `Dreamlinerm/Netflix-Prime-Auto-Skip` | Browser **web** extension; detects ads by DOM scraping (`span[class*="mmvz9h"]`, `data-uia="pause-ad-*"`) and skips via `video.playbackRate=8` + mute. No manifest/API. | No — wrong platform (web DOM, not native nrdp) and wrong strategy (drives the player, doesn't strip the stream). Selectors don't exist in `com.netflix.ninja`. |
 | `sshh12/…dda3a89514…` (gist) | Web-session network teardown (177 reqs): names MSL, licensed-manifest endpoint, Open Connect byte-range streaming, ad system "Monet". | **Partially** — see §2b. Corroborates the MSL wall + manifest shape from real captures and adds the "Monet" lead; still no ad-break schema. Web endpoints, not native. |
 | `medium.com/@sankalp25103/inside-netflix…` | High-level **system-design** breakdown (server-side: microservices, Open Connect, encoding pipeline). Assessed by genre + search; article 403s the fetcher. | No — one/two layers above the on-device seam. No Android/native/MSL/ad-schedule detail; strictly subsumed by the §2b gist. Context only. |
+| `netflixtechblog.com/…ads-event-processing-pipeline` | **Backend** ads telemetry pipeline (Ads Event Publisher → Kafka; Microsoft/Xandr). Primary 403s; assessed via search snippets + mirrors. | Context — see §2b "Ad event taxonomy". Fixes the impression/quartile/complete event vocabulary to expect; no on-device schema/beacon URLs. Raises the client-vs-server beacon-firing bench question. |
 
 Strategic note: both sidestep the stream rather than strip it. The "skip/accelerate the
 player" idea has a native analogue (hook nrdp playback control, not the media bytes) but
