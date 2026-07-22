@@ -123,10 +123,53 @@ Auto-Skip web extension keyed on that very duration display). So an on-device ad
 target; determine client-vs-server beacon firing on the bench — it decides whether the win is
 "strip the schedule" or "also suppress client beacons."
 
-## 3. Mechanical port worksheet (placeholder fills, PORTING-CHECKLIST)
+## 3. APK decode — `base.apk` (measured 2026-07-22)
 
-Ready to drop into the scaffold templates *once §1/§2 are answered*. `[VERIFY]` = read it off
-the decoded APK, don't trust this table.
+First real bytes examined. Split APKM; the user uploaded the **base split** only (native libs
+live in the `config.<abi>` splits, still pending). Decoded with `unzip` + `pyaxmlparser`.
+
+- **Provenance.** `base.apk` SHA-256 `14223fcf0688bf5be6b7b101cceeff51bdb284274e2ce9f8fa70208cc5e7ddca`,
+  6.17 MB. `package="com.netflix.ninja"`, `versionName="13.0.0"`, `versionCode="25009"`,
+  `compileSdkVersion=36`. Matches the target filename. ✅
+- **Application subclass — RESOLVED.** `AndroidManifest.xml`:
+  `<application android:name=".NetflixApplication" …>` →
+  `Lcom/netflix/ninja/NetflixApplication;`. This is the `onCreate` fingerprint target for
+  `LoadNativeHookPatch`. (`appComponentFactory="o.isCurrent"` — obfuscated, not needed.)
+- **`extractNativeLibs="false"` — RESOLVED, and it matters.** The manifest already sets this
+  false. The toolkit's `BundleNativeHookPatch` must flip it to `true` (its documented fix for
+  the alignment `UnsatisfiedLinkError` when injecting a `.so`).
+- **Native runtime named — `<TARGET_SONAME>` candidates RESOLVED.** No `lib/` dir in base.apk
+  (0 `.so`), but `assets/nrd/armeabi-v7a/26.1/` carries nrdp's versioned-library manifest:
+  ```
+  libandroid_netflix.so=2a79c1d36122d40ba04576d5399cb02b   # the nrdp media runtime — prime seam target
+  libc++_shared.so     =c7d7cf55ba9847fd7f50d9a95a8ba2f4
+  ```
+  plus `info: version=26.1, arch=armeabi-v7a, default=true`. The Java bootstrap loader also
+  references `libnetflix.so` ("loadLibrary - libnetflix.so", "no libraries installed for
+  version: %s"). So: **`libnetflix.so` = bootstrap stub; `libandroid_netflix.so` = the big
+  nrdp runtime** that decrypts MSL and drives playback → **the seam lives here.**
+- **ABI = `armeabi-v7a` (32-bit).** nrd runtime is v7a; ship the hook `.so` for v7a first
+  (matches the toolkit's default and the Prime Video reference).
+- **nrdp uses versioned, MD5-checked, possibly out-of-band libraries.** The `libraries`
+  manifest + version check imply `libandroid_netflix.so` can be updated independent of the
+  APK. **Consequence for §3 offsets:** addresses are per-nrd-build (26.1 here), even more
+  version-fragile than usual — the runtime `sigscan` fallback is mandatory, not optional.
+- **No Java-layer ad surface (confirms native-only).** dex string sweep: `manifest`×32,
+  `msl`/`MSL`×22, `nrdp`×96, but `Monet` 0, `adBreak`/`AdBreak` 0, `ExoPlayer` 0,
+  `quartile`/`beacon`/`ssai` 0. The 52 `advert` hits are **Bluetooth LE advertising** +
+  **Google Advertising ID** (`AdvertisingIdClient`, `DEVICE_STR_ID_ADVERTISING_ID`) — the GAID
+  used for targeting, **not** the break schedule. The MSL Java strings are DRM session mgmt
+  (`com.netflix.mediaclient.service.configuration.drm.MSLWidevineDrmManager`), not the manifest.
+  → **No bytecode/ExoPlayer chokepoint exists; the ad schedule is entirely inside
+  `libandroid_netflix.so` past MSL decrypt.** This is the §2 thesis, now confirmed against bytes.
+
+**Still pending (needs the `config.<abi>` split):** the actual `libandroid_netflix.so` bytes —
+to confirm whether it ships in the split's `lib/armeabi-v7a/` or is downloaded at runtime,
+record its SHA-256, and start Ghidra/`strings` on it for the MSL-decrypt + manifest seam.
+
+## 4. Mechanical port worksheet (placeholder fills, PORTING-CHECKLIST)
+
+Updated with measured values from §3. `[VERIFY]` items now resolved except the transform choice.
 
 | Placeholder | Value |
 |---|---|
@@ -134,29 +177,31 @@ the decoded APK, don't trust this table.
 | `<App>` / `<APP>` | `NF` / `NFNativeHook` |
 | `<HOOK>` | `nfhook` → `libnfhook.so` |
 | `<app.package.name>` | `com.netflix.ninja` |
-| `<app/Application/subclass>` | [VERIFY] read `<application android:name=…>` from decoded `AndroidManifest.xml` |
-| `<compat version>` | `13.0.0-25009` (single-arch — [VERIFY] which ABI: armeabi-v7a vs arm64-v8a) |
-| `<TARGET_SONAME>` | [VERIFY] the post-MSL media lib in `lib/<abi>/` — **not** system `libssl` |
+| `<app/Application/subclass>` | ✅ `Lcom/netflix/ninja/NetflixApplication;` |
+| `<compat version>` | ✅ `13.0.0-25009`, ABI `armeabi-v7a` (nrd runtime v26.1) |
+| `<TARGET_SONAME>` | ✅ `libandroid_netflix.so` (nrdp runtime; `libnetflix.so` is the bootstrap stub) |
+| `extractNativeLibs` | ✅ currently `false` → patch must force `true` |
 
-Which reference transform to start from (§2 of the checklist) is **undecided** until we know
-the schedule format at the seam: a JSON schedule → `prs_filter`/`prs_blank` family; an
-HLS/DASH manifest with SSAI markers → `manifest_filter`. [VERIFY] by capturing one break.
+Which reference transform to start from (checklist §2) is still **undecided** until we see the
+schedule format at the seam: JSON schedule → `prs_filter`/`prs_blank` family; HLS/DASH manifest
+with SSAI markers → `manifest_filter`. Resolve by capturing/dumping one post-MSL manifest.
 
-## 4. What I need from you to continue past paper
+## 6. What I need next to continue
 
-The empirical steps can't run in this cloud container. To move forward, upload here:
-1. **The `.apkm`** (the one the request pointed at). Lets me decode `AndroidManifest.xml`
-   (Application subclass), enumerate `lib/<abi>/` sonames + ABI, and grep smali to rule out a
-   bytecode/DNS path — steps 3 and the §0 rule-outs, all doable off-device.
-2. **A plaintext capture of one ad break** (movie *and* series — they differ), from a
-   PC MITM with a device CA. This is the METHODOLOGY §1 de-risk: it tells us whether the
-   schedule is reachable/strippable at all, before any native work.
-3. Eventually, device-side Frida access (rooted or gadget) to run `find-copy-seam.js` and
-   locate the post-MSL seam for §2/§3.
+base.apk is decoded (§3). Remaining, in priority order:
+1. **The `config.armeabi-v7a` split** (the "bigger" part). Locates the actual
+   `libandroid_netflix.so` bytes (or proves nrdp downloads them at runtime), records its
+   SHA-256, and lets me `strings`/Ghidra it for the MSL-decrypt + manifest seam.
+2. **A post-MSL manifest from an ad-tier account** — Frida hook on nrdp's MSL decrypt, or a
+   `pymsl`-style client on an ad plan. This hands us the actual ad-break schema and decides the
+   transform (`prs_*` vs `manifest_filter`). Still the single biggest unknown.
+3. Eventually device-side Frida to run `find-copy-seam.js` against `libandroid_netflix.so` and
+   pin the seam for §3 offsets.
 
-Without (1) and (2), the honest status is: **plausible on category, blocked on MSL, unproven.**
+Status: **category-confirmed and target-lib identified from bytes; blocked on the ad-break
+schema (needs a post-MSL ad-tier manifest).**
 
-## 4b. Prior art surveyed (and why it doesn't move us)
+## 7. Prior art surveyed (and why it doesn't move us)
 
 Community repos evaluated for Netflix ad-structure insight. Pattern so far: they
 operate at the wrong layer (server-side, or web-DOM) for a native-TV media-plane strip.
@@ -174,12 +219,16 @@ player" idea has a native analogue (hook nrdp playback control, not the media by
 that's a different hook target than this toolkit's and is unproven-reachable — flag it as an
 alt path, not a lead.
 
-## 5. Verdict
+## 8. Verdict
 
 - ✅ Toolkit is real and its transforms pass here.
-- ✅ Netflix is the *right category* of target (native media plane, shared TLS, no DNS/bytecode reach).
+- ✅ Netflix is the *right category* of target (native media plane, shared TLS, no DNS/bytecode reach) —
+  now **confirmed against base.apk bytes**: no ExoPlayer/OkHttp/Java ad surface exists.
+- ✅ **Target library identified from bytes:** `libandroid_netflix.so` (nrdp runtime v26.1,
+  armeabi-v7a); Application subclass and `extractNativeLibs` resolved for the Morphe patches.
 - ⚠️ Netflix is **harder than Prime Video**: MSL hides the plaintext behind Netflix's own
-  crypto layer, so the scaffold's fast TLS/inflate seam won't work; the seam is deeper and
-  the offset recovery has no OpenSSL/zlib string anchors.
-- ⛔ Cannot proceed empirically without the APK + a capture (neither reachable from this
-  environment).
+  crypto layer, so the scaffold's fast TLS/inflate seam won't work; the seam is deeper (inside
+  `libandroid_netflix.so`, post-MSL) and offset recovery has no OpenSSL/zlib string anchors.
+  nrdp's versioned/out-of-band libs make addresses extra version-fragile → runtime sigscan mandatory.
+- ⛔ **The one hard blocker now:** the ad-break schema. Needs a post-MSL ad-tier manifest
+  (Frida MSL dump or `pymsl` on an ad plan) — not derivable from the APK alone.
