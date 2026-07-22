@@ -105,11 +105,24 @@ JS `blankRanges`.**
 
 ## 6. Must-resolve BEFORE release
 
-1. **TV shows** — denser/more breaks, possibly different playlist shape. Dial in on Track A first
-   (it's the known gap); do not ship the patch until TV is covered or explicitly scoped out.
-2. **Complete-copy assumption** — we rely on the full array arriving in one large copy
-   (`libc.so+0x3ea01` / `libignite+0xae44a5`). Content-keyed (`arrayClosed` + Remote), so
-   version-robust, but validate across more titles and after an app update.
+1. **TV shows — root cause found; the transform-side fix is built.** The bench got movies 100% but
+   TV markers survived. This is NOT a transform gap: the MITM rig proved the *same*
+   `type:"Remote"` PRS strip cleans movies AND TV. It is an **interception-completeness** gap. The
+   push-seam blanker (`prs_blank`) can only act on a COMPLETE array inside ONE copy; the larger/
+   denser TV playlist arrives only as truncated chunks (and/or exceeds the 256KB size gate, §6.4),
+   so every chunk is safely skipped and the ads stay. **`jni/prs_reassembly.h` (`PrsReassembler`)
+   restores the rig's whole-body discipline** in-process — accumulate the body, strip the COMPLETE
+   body once via `filter_prs` (free to shrink; we re-serve), hand back any chunk sizes. Host-tested
+   incl. chunk-boundary invariance + a >300KB TV fixture that per-chunk blanking strips 0 of and
+   the reassembler strips all of (`test_prs_reassembly.cpp`, 28 checks, mutation-verified).
+   **Still device-side:** reassemble-and-re-serve needs a PULL seam (SSL_read/inflate/a read
+   wrapper), NOT the one-shot memcpy PUSH seam movies use. Finding the whole-body PRS pull point in
+   libignite is the open Ghidra task; the scaffold's old `inflate@0xd32f7a` guess was disproven by
+   the bench, so re-hunt it. Verify TV on-device before declaring covered.
+2. **Complete-copy assumption (push seam only)** — the `prs_blank` movies path relies on the full
+   array arriving in one large copy (`libc.so+0x3ea01` / `libignite+0xae44a5`). Content-keyed
+   (`arrayClosed` + Remote), so version-robust, but validate across more titles and after an app
+   update. (The reassembler removes this assumption for whatever seam it wires to.)
 3. **Permanent-hook perf** — a lifetime memcpy hook vs. a session-long one. Measure playback perf
    over hours; confirm the gate keeps overhead negligible.
 4. **Size gate upper bound** — currently `512..262144`. A very long movie/series could exceed
@@ -120,7 +133,11 @@ JS `blankRanges`.**
 ## 7. Recommended sequence
 
 1. Track A: bake gadget auto-load; run the multi-day cold-start soak (movies).
-2. Dial in TV shows (extend/verify the complete-array rule on series playlists).
+2. TV shows: on-device, capture a TV PRS body and confirm the ads are `type:"Remote"` items (the
+   rig's finding). Find the whole-body PRS **pull** seam in libignite (Ghidra), then wire
+   `PrsReassembler` (`prs_reassembly.h`) to it — transform + tests already done. As a cheap first
+   experiment, also try just raising `prs_blank`'s `kMaxScan` in case the complete copy merely
+   exceeds 256KB.
 3. Track B: vendor ShadowHook, port the C, wire the memcpy hook into the scaffold's loader+patch.
 4. On-device logcat verify (effect, not "Applied"); breadth test movies + TV.
 5. Branch → PR → `gh pr checks --watch` → merge → semantic-release.

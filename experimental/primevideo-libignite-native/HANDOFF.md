@@ -61,6 +61,13 @@ g++ -std=c++17 -D_GNU_SOURCE -Wall test_prs_blank.cpp prs_blank.cpp -o /tmp/pvte
 # expect: ALL TESTS PASSED (75 check(s), 0 failure(s))
 ```
 
+**PRS whole-body reassembler (the TV-show fix — reproduces the MITM rig, §6.1) — 28 checks:**
+```
+cd experimental/primevideo-libignite-native/jni
+g++ -std=c++17 -D_GNU_SOURCE -Wall test_prs_reassembly.cpp prs_filter.cpp manifest_filter.cpp prs_blank.cpp -lz -o /tmp/pvtest_reasm && /tmp/pvtest_reasm | tail -1
+# expect: ALL TESTS PASSED (28 check(s), 0 failure(s))
+```
+
 **Extension host filter + ad-group stripper — 34 + 17 assertions:**
 ```
 cd extensions/extension/src
