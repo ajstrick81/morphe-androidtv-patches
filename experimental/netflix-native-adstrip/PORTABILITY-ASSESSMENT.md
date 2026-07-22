@@ -306,6 +306,25 @@ operate at the wrong layer (server-side, or web-DOM) for a native-TV media-plane
 | `sshh12/…dda3a89514…` (gist) | Web-session network teardown (177 reqs): names MSL, licensed-manifest endpoint, Open Connect byte-range streaming, ad system "Monet". | **Partially** — see §2b. Corroborates the MSL wall + manifest shape from real captures and adds the "Monet" lead; still no ad-break schema. Web endpoints, not native. |
 | `medium.com/@sankalp25103/inside-netflix…` | High-level **system-design** breakdown (server-side: microservices, Open Connect, encoding pipeline). Assessed by genre + search; article 403s the fetcher. | No — one/two layers above the on-device seam. No Android/native/MSL/ad-schedule detail; strictly subsumed by the §2b gist. Context only. |
 | `netflixtechblog.com/…ads-event-processing-pipeline` | **Backend** ads telemetry pipeline (Ads Event Publisher → Kafka; Microsoft/Xandr). Primary 403s; assessed via search snippets + mirrors. | Context — see §2b "Ad event taxonomy". Fixes the impression/quartile/complete event vocabulary to expect; no on-device schema/beacon URLs. Raises the client-vs-server beacon-firing bench question. |
+| `Netflix_Ad_Interception_Expert_Analysis.txt` (LLM analysis of the gist) | Argues the gist captured the **marketing/attribution** layer, not in-stream ads; concludes ad-tier commercials are an SSAI "hard ceiling" — unreachable by intercepting anything in the gist. | **Mixed** — see §2c. Independently confirms Monet=marketing (good) and surfaces a promo-trailer win (BOB/JAW/CLCS Shakti flags). But its "impossible" is **web-network-scoped + pure-SSAI-assumed**; it never saw the app. Our decode shows ad-break logic in client-side **milo** JS, and the ad UI (countdown, no-seek) proves the client *does* hold break metadata — contradicting "the player doesn't know which segments are ads." |
+
+### 2c. Reconciling the "SSAI hard ceiling" claim with our binary evidence
+
+An LLM analysis of the gist concluded ad-tier commercials are unreachable ("server-side stitched…
+the player does not know which segments are ads"). Correct that you can't block a separate ad
+network call (there isn't one) — but overstated as a universal "impossible," for two reasons our
+decode exposes:
+- **Scope:** the analysis only had the gist (web traffic). It never saw `libnetflix.so`/Hermes/**milo**.
+  Its ceiling is a *web-network-interception* ceiling, not a statement about the client JS layer.
+- **The client demonstrably holds ad-break state:** the ad-tier UI renders a countdown, "ad X of Y",
+  and disables seek during breaks — impossible without in-process break timing/metadata. So milo *does*
+  know where the ads are; "the player doesn't know" is false for Netflix.
+
+Open question it doesn't resolve (and neither do we, yet): even if segments are server-stitched,
+does neutralizing milo's ad-break handling **skip/blank** the break, or merely **desync the UI while
+the ad still plays**? That is the METHODOLOGY §1 de-risk — answerable only by reading `milo.prod.js`
+and testing, not by assuming. Verdict: the analysis is a good sanity check that kills the naïve
+"block the ad call" idea, but its "hard ceiling" does not account for the client-side milo surface.
 
 Strategic note: both sidestep the stream rather than strip it. The "skip/accelerate the
 player" idea has a native analogue (hook nrdp playback control, not the media bytes) but
