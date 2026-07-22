@@ -210,6 +210,52 @@ Anti-tamper read: no hard integrity wall found *yet* in the small libs — Bugsn
 Real integrity/DRM checks (and any Netflix self-tamper detection) are expected inside
 `libnetflix.so` / Widevine; assess once the monolith is in hand.
 
+### 3b. `libnetflix.so` decode — the seam is a JS VM, not a native buffer (measured 2026-07-22)
+
+Reassembled from 17 uploaded parts. **88,465,312 bytes**, SHA-256
+`b3873f003d6223ad4b9215bbf42d45053b3133cb184a519572ffde544109da2c` (size-exact, valid ELF 32-bit
+ARM; user Get-FileHash confirmation pending). This finding **reshapes the whole port.**
+
+**What the monolith actually is.** SONAME `libandroid_netflix.so` (so on-disk `libnetflix.so` ==
+the nrd-manifest `libandroid_netflix.so` — one library, mystery resolved). NEEDED lists **no
+`libssl`/`libcrypto`** → TLS is **statically-linked OpenSSL 3.2.1** (strings: "OpenSSL 3.2.1 30 Jan
+2024", `SSL_read`/`SSL_write`). Inside it: a **Hermes** JS engine (`HERMESATOM`, `HbC`/bytecode),
+the **Gibbon** renderer (`DGIBBON_*`), and **nrdp** platform (`DNRDP_*`). MSL is implemented **in
+JavaScript** running on Hermes (strings are JS: `getMslEncoderFactory()`, `MslEncoderFormat`,
+`sendLogBlob({…type:"milo_ssl_write_error"})`).
+
+**The decisive structural fact.** The plaintext manifest is **not** a native buffer handed to a
+native parser (the model the toolkit is built for). The flow is:
+`native OpenSSL SSL_read (MSL ciphertext) → MSL decrypt in Hermes JS → manifest is a JS string/object
+in the Hermes heap → parsed by JS`. So:
+- Hooking a native `SSL_read`/`memcpy`/`inflate` seam yields **MSL ciphertext**, never the schedule.
+- The plaintext only exists **inside the Hermes VM**. A native inline hook can't cleanly reach a JS
+  heap string. **The toolkit's native-`.so`-hook mechanism largely does not port to Netflix.**
+
+**Where the ad logic actually lives — `milo` (the downloadable player JS).** The player runtime is
+**milo**, and it is **not baked into the `.so`** — it's downloaded and disk-cached:
+- Delivery URL: `https://occ.a.nflxso.net/genc/nrdp/milo/1.0.3806-57ec2bae/milo.prod.js`
+  (also `milo.debug.js`, `milo.prod.assertions.js`, `milo-update.js`). Plain JS.
+- Cached on-device via `MiloDiskCache` (`nrdp.storage.MILO_CURRENT` / `MILO_CURRENT_INDEX`);
+  integrity via `milo_update_hash` (a `milo_ignore_hash_errors` flag also exists); version-pinned
+  ("Mismatched milo version. Expected …").
+- The `.so` itself contains **no** video ad-break schema — every "advert*" string in it is
+  **MDX/UPnP casting** (`MdxConfigure`, `z.upnp.startAdvertising`, `advertisingPort/TTL`) or
+  Bluetooth LE, and `"advertisingstatechanged"` is a UPnP discovery event. The ad-supported-tier
+  ad-break parsing lives in the **milo bundle**, not here.
+
+**Consequence — the port strategy forks, and the native path looks wrong for Netflix:**
+1. **milo JS layer (promising).** `milo.prod.js` is a small, plain-JS, public device asset that
+   contains the manifest ad-break parsing + ad scheduling. **Obtaining it likely reveals the
+   ad-break schema by static analysis — solving the blocker with no live MSL capture.** A strip
+   could plausibly be a *milo-JS* modification (disk-cache replacement), gated by `milo_update_hash`
+   — a different mechanism than this toolkit's native hook.
+2. **Native/Hermes hook (hard).** Reaching the plaintext means hooking inside Hermes — far harder
+   than the toolkit's memcpy/inflate seam and not what the scaffold provides.
+
+Anti-tamper: statically-linked OpenSSL + milo hash-verification + version pinning; a Hermes/JS-bundle
+approach must contend with `milo_update_hash` (though `milo_ignore_hash_errors` is intriguing).
+
 ## 4. Mechanical port worksheet (placeholder fills, PORTING-CHECKLIST)
 
 Updated with measured values from §3. `[VERIFY]` items now resolved except the transform choice.
@@ -231,18 +277,22 @@ with SSAI markers → `manifest_filter`. Resolve by capturing/dumping one post-M
 
 ## 6. What I need next to continue
 
-base.apk is decoded (§3). Remaining, in priority order:
-1. **The `config.armeabi-v7a` split** (the "bigger" part). Locates the actual
-   `libandroid_netflix.so` bytes (or proves nrdp downloads them at runtime), records its
-   SHA-256, and lets me `strings`/Ghidra it for the MSL-decrypt + manifest seam.
-2. **A post-MSL manifest from an ad-tier account** — Frida hook on nrdp's MSL decrypt, or a
-   `pymsl`-style client on an ad plan. This hands us the actual ad-break schema and decides the
-   transform (`prs_*` vs `manifest_filter`). Still the single biggest unknown.
-3. Eventually device-side Frida to run `find-copy-seam.js` against `libandroid_netflix.so` and
-   pin the seam for §3 offsets.
+APK + all native libs decoded (§3/§3a/§3b). The decode **redirected the target**: the ad logic
+is in the downloadable **milo** JS bundle, not the `.so`. Priority order now:
+1. **The `milo` bundle** — highest value, small, plain JS. Two easy ways to get it:
+   (a) pull the on-device cache: `com.netflix.ninja`'s `MiloDiskCache` under the app data dir
+   (`/data/data/com.netflix.ninja/…`, needs root/adb-run-as), or
+   (b) fetch the URL from a normal machine/browser (this sandbox's proxy blocks `occ.a.nflxso.net`,
+   but your Windows box isn't restricted):
+   `https://occ.a.nflxso.net/genc/nrdp/milo/1.0.3806-57ec2bae/milo.prod.js`
+   Upload `milo.prod.js` (or `.debug.js`) here → I static-analyze it for the ad-break schema and the
+   strip point. **This is the artifact that unblocks the whole thing.**
+2. **A post-MSL manifest from an ad-tier account** (still the ground truth) — but milo may hand us
+   the schema first, cheaper.
+3. Device Frida only if we go the (hard) Hermes-hook route — likely deprioritized in favor of milo.
 
-Status: **category-confirmed and target-lib identified from bytes; blocked on the ad-break
-schema (needs a post-MSL ad-tier manifest).**
+Status: **category-confirmed; target redirected from `.so` → milo JS bundle; blocked on obtaining
+milo (or an ad-tier manifest).**
 
 ## 7. Prior art surveyed (and why it doesn't move us)
 
@@ -269,9 +319,13 @@ alt path, not a lead.
   now **confirmed against base.apk bytes**: no ExoPlayer/OkHttp/Java ad surface exists.
 - ✅ **Target library identified from bytes:** `libandroid_netflix.so` (nrdp runtime v26.1,
   armeabi-v7a); Application subclass and `extractNativeLibs` resolved for the Morphe patches.
-- ⚠️ Netflix is **harder than Prime Video**: MSL hides the plaintext behind Netflix's own
-  crypto layer, so the scaffold's fast TLS/inflate seam won't work; the seam is deeper (inside
-  `libandroid_netflix.so`, post-MSL) and offset recovery has no OpenSSL/zlib string anchors.
-  nrdp's versioned/out-of-band libs make addresses extra version-fragile → runtime sigscan mandatory.
-- ⛔ **The one hard blocker now:** the ad-break schema. Needs a post-MSL ad-tier manifest
-  (Frida MSL dump or `pymsl` on an ad plan) — not derivable from the APK alone.
+- ⚠️ Netflix is **harder than Prime Video, and structurally different**: MSL is decrypted **in an
+  embedded Hermes JS engine**, so the plaintext manifest is a JS-heap string, not a native buffer.
+  The scaffold's native memcpy/inflate/SSL_read seam yields only MSL ciphertext → **the toolkit's
+  native-`.so`-hook mechanism largely does not port to Netflix.**
+- 🔀 **Target redirected by the decode:** the ad-break parsing lives in the **downloadable `milo`
+  JS bundle** (`occ.a.nflxso.net/genc/nrdp/milo/1.0.3806-…/milo.prod.js`, disk-cached), not in
+  `libnetflix.so`. The realistic strip surface is **milo JS**, gated by `milo_update_hash`.
+- ⛔ **Blocker now:** obtain `milo.prod.js` (or an ad-tier manifest). milo likely reveals the
+  ad-break schema by static analysis — cheaper than a live MSL capture — and decides whether a
+  JS-layer strip is viable. The native toolkit, as-is, is probably the wrong tool for this target.
