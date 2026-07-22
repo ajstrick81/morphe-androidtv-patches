@@ -167,6 +167,25 @@ live in the `config.<abi>` splits, still pending). Decoded with `unzip` + `pyaxm
 to confirm whether it ships in the split's `lib/armeabi-v7a/` or is downloaded at runtime,
 record its SHA-256, and start Ghidra/`strings` on it for the MSL-decrypt + manifest seam.
 
+### 3a. Config split — native library inventory (measured 2026-07-22)
+
+`config.armeabi-v7a` libs received (all ELF 32-bit ARM). The split ships **`libnetflix.so`**
+(the Java loader's `loadLibrary("netflix")` target) — so that, not `libandroid_netflix.so`, is
+the in-APK monolith runtime and the **seam target**. `libandroid_netflix.so` from the nrd
+`libraries` manifest appears to be an nrd-managed/out-of-band variant not present in the split.
+
+| Library | Size | SHA-256 (short) | Identity / relevance |
+|---|---|---|---|
+| **`libnetflix.so`** | **~84 MB** | *(pending upload)* | **THE TARGET.** Monolith nrdp runtime; MSL decrypt + manifest parse + player live here, past the TLS boundary. Statically links its crypto (assume BoringSSL) — system `libssl` won't see plaintext. |
+| `libcronet.92.0.4515.131.so` | 3.2 MB | `e977261e…` | **Chromium Cronet** (Chromium 92) HTTP/TLS stack, BoringSSL inside. The `SSL_read` seam is here but yields **MSL ciphertext**, not the schedule. Confirms §2. |
+| `libc94d.so` | 405 KB | `b58d0e16…` | **Obfuscated/stripped** (hash-name; only `JNI_OnLoad` + self-contained `_Unwind_*`/`__aeabi_*` exported). Likely a protected anti-tamper/security module. Watch, not target. |
+| `libbugsnag-root-detection.so` | 3.7 KB | `20756e73…` | Bugsnag crash-SDK root check (`/system/bin/su`, SuperSU, daemonsu via `performNativeRootChecks`). **Telemetry-grade** anti-tamper — tags crash reports, not a hard patch gate. |
+| `libc++_shared.so` | 1.5 MB | `d6c9d2de…` | NDK C++ runtime. Support only. |
+
+Anti-tamper read: no hard integrity wall found *yet* in the small libs — Bugsnag is telemetry.
+Real integrity/DRM checks (and any Netflix self-tamper detection) are expected inside
+`libnetflix.so` / Widevine; assess once the monolith is in hand.
+
 ## 4. Mechanical port worksheet (placeholder fills, PORTING-CHECKLIST)
 
 Updated with measured values from §3. `[VERIFY]` items now resolved except the transform choice.
