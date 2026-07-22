@@ -150,6 +150,7 @@ operate at the wrong layer (server-side, or web-DOM) for a native-TV media-plane
 | `cruizviquez/Micro-Netflix-Ads-Ctr` | Flask + scikit-learn CTR **simulation** on synthetic data; Netflix-styled UI. No real internals. | No — models the ad *server's* decisioning, not the client media plane. |
 | `Dreamlinerm/Netflix-Prime-Auto-Skip` | Browser **web** extension; detects ads by DOM scraping (`span[class*="mmvz9h"]`, `data-uia="pause-ad-*"`) and skips via `video.playbackRate=8` + mute. No manifest/API. | No — wrong platform (web DOM, not native nrdp) and wrong strategy (drives the player, doesn't strip the stream). Selectors don't exist in `com.netflix.ninja`. |
 | `sshh12/…dda3a89514…` (gist) | Web-session network teardown (177 reqs): names MSL, licensed-manifest endpoint, Open Connect byte-range streaming, ad system "Monet". | **Partially** — see §2b. Corroborates the MSL wall + manifest shape from real captures and adds the "Monet" lead; still no ad-break schema. Web endpoints, not native. |
+| `medium.com/@sankalp25103/inside-netflix…` | High-level **system-design** breakdown (server-side: microservices, Open Connect, encoding pipeline). Assessed by genre + search; article 403s the fetcher. | No — one/two layers above the on-device seam. No Android/native/MSL/ad-schedule detail; strictly subsumed by the §2b gist. Context only. |
 
 Strategic note: both sidestep the stream rather than strip it. The "skip/accelerate the
 player" idea has a native analogue (hook nrdp playback control, not the media bytes) but
