@@ -4,6 +4,11 @@
 [`README.md`](./README.md) and the Ghidra worksheet is in
 [`OFFSETS.md`](./OFFSETS.md).
 
+> ⭐ **Next step at the device:** project memory
+> [`MEMORY-pull-seam.md`](./MEMORY-pull-seam.md) (`primevideo-tv-pull-seam-next`)
+> — the one ordered plan for closing the TV-show gap (capture a TV PRS → confirm
+> `type:"Remote"` → recover the whole-body PULL seam → wire `PrsReassembler`).
+
 - **Branch:** `claude/primevideo-interception-handoff-pxhsn0`
 - **Session tip commit:** `7314766` (11 commits, base `962d40e` = release v1.13.0)
 - **Get it on the PC:**
