@@ -76,6 +76,37 @@ at some in-process seam, and does stripping it yield clean playback? Until a cap
 that, writing any transform or `.so` is premature (METHODOLOGY §1: "If stripping breaks
 playback, stop").
 
+## 2b. Corroboration from a web-traffic teardown (sshh12 gist)
+
+Source: `gist.github.com/sshh12/dda3a89514f850c459380b18b1f7eb7b` — a reverse-engineering of
+177 captured requests from an authenticated **web** session (Akira SPA / Cadmium player).
+It is web, not `com.netflix.ninja`, so endpoint *paths* are web-specific — but MSL, the
+manifest concept, and Open Connect are shared with the TV runtime, so it's real corroboration
+(captured, not inferred) of the §2 blocker. What it confirms:
+
+- **MSL is exactly the wall we described.** From the capture: *"The entire request/response is
+  MSL-encrypted. The 32KB request body contains the MSL mastertoken + encrypted manifest
+  request."* Header `Content-Encoding: msl_v1`; body `{mastertoken, headerdata, payload}`, all
+  base64+encrypted. So at the TLS seam you get MSL ciphertext — the plaintext manifest exists
+  only post-MSL-decrypt inside the runtime. Confirms §2 as observed fact.
+- **Two planes, and the strip target is the control plane.**
+  - *Control plane* — the **licensed manifest** (web path `POST /msl/playapi/cadmium/licensedmanifest/1`,
+    returns Widevine license + Open Connect stream URLs + codec/timeline). MSL-wrapped. **This is
+    where an ad break schedule/markers would live** and what a transform must reach *after* MSL decrypt.
+  - *Media plane* — segments are plain **byte-range HTTP GETs** from `*.oca.nflxvideo.net/range/…`
+    with a signed `t=` token (~12h expiry). Not MSL-encrypted, but Widevine-encrypted media.
+    Confirms the §0 rule-outs: ads and content share Open Connect hosts → **DNS can't split them**,
+    and the schedule isn't in bytecode → **no OkHttp/ExoPlayer chokepoint.**
+- **New lead — the ad system is internally "Monet".** The gist names Netflix's ad tech *Monet*
+  but (like every source so far) carries **no ad-break schema** — the author's session hit no ad
+  break. Still, "Monet" is a concrete string/term to hunt in the APK's `.so` symbols/strings and
+  in any ad-tier manifest.
+
+Net effect on the port: this **raises confidence that the seam is post-MSL in the native runtime**
+(not at the TLS boundary) and gives the manifest's shape to expect — but it does **not** supply the
+ad data model. The gap is unchanged: we need a *post-MSL manifest from the ad tier* (a Frida MSL
+hook, or a `pymsl`-style manifest client logged in on an ad plan), or a device capture of a break.
+
 ## 3. Mechanical port worksheet (placeholder fills, PORTING-CHECKLIST)
 
 Ready to drop into the scaffold templates *once §1/§2 are answered*. `[VERIFY]` = read it off
@@ -118,6 +149,7 @@ operate at the wrong layer (server-side, or web-DOM) for a native-TV media-plane
 |---|---|---|
 | `cruizviquez/Micro-Netflix-Ads-Ctr` | Flask + scikit-learn CTR **simulation** on synthetic data; Netflix-styled UI. No real internals. | No — models the ad *server's* decisioning, not the client media plane. |
 | `Dreamlinerm/Netflix-Prime-Auto-Skip` | Browser **web** extension; detects ads by DOM scraping (`span[class*="mmvz9h"]`, `data-uia="pause-ad-*"`) and skips via `video.playbackRate=8` + mute. No manifest/API. | No — wrong platform (web DOM, not native nrdp) and wrong strategy (drives the player, doesn't strip the stream). Selectors don't exist in `com.netflix.ninja`. |
+| `sshh12/…dda3a89514…` (gist) | Web-session network teardown (177 reqs): names MSL, licensed-manifest endpoint, Open Connect byte-range streaming, ad system "Monet". | **Partially** — see §2b. Corroborates the MSL wall + manifest shape from real captures and adds the "Monet" lead; still no ad-break schema. Web endpoints, not native. |
 
 Strategic note: both sidestep the stream rather than strip it. The "skip/accelerate the
 player" idea has a native analogue (hook nrdp playback control, not the media bytes) but
