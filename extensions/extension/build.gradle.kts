@@ -6,6 +6,15 @@ android {
     namespace = "ajstrick81.morphe.extension"
 }
 
+// The primevideo/ads *Test.java files under src/test are standalone main()
+// assertion runners (verified via `java …Test`, see the native-interception
+// handoff), not JUnit tests. Since Gradle 8.13 the unit-test task fails the
+// build when it finds test sources but discovers no JUnit tests. They still
+// compile here (a build-time check); just don't require JUnit discovery.
+tasks.withType<Test>().configureEach {
+    failOnNoDiscoveredTests = false
+}
+
 dependencies {
     // okhttp3 is already bundled in Peacock's app at runtime — only needed
     // here to compile PeacockAdPatchHelper's invoke-static call target.

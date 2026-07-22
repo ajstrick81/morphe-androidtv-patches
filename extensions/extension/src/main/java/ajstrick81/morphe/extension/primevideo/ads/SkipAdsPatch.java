@@ -5,9 +5,6 @@ import com.android.volley.NoConnectionError;
 import com.android.volley.Request;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Map;
 
 /**
  * Prime Video ATV — ad suppression extension.
@@ -81,24 +78,28 @@ public class SkipAdsPatch {
      *   androidx.media3.exoplayer.source.ads.ServerSideAdInsertionMediaSource
      *       .setAdPlaybackStates(ImmutableMap, Timeline)
      */
+    // Type-specific seam for media3's AdPlaybackState — the only part of the
+    // strip that differs from the exo2 variant. The shared loop is in
+    // AdGroupStripper (pure, unit-tested).
+    private static final AdGroupStripper.AdState MEDIA3_OPS = new AdGroupStripper.AdState() {
+        public int adGroupCount(Object s) {
+            return ((androidx.media3.common.AdPlaybackState) s).adGroupCount;
+        }
+        public int removedAdGroupCount(Object s) {
+            return ((androidx.media3.common.AdPlaybackState) s).removedAdGroupCount;
+        }
+        public Object withAllRemoved(Object s) {
+            androidx.media3.common.AdPlaybackState st = (androidx.media3.common.AdPlaybackState) s;
+            return st.withRemovedAdGroupCount(st.adGroupCount);
+        }
+    };
+
     public static ImmutableMap skipAllMedia3AdGroups(ImmutableMap adPlaybackStates) {
         try {
-            ImmutableMap.Builder builder = ImmutableMap.builder();
-            int strippedGroups = 0;
-            for (Object o : adPlaybackStates.entrySet()) {
-                Map.Entry entry = (Map.Entry) o;
-                Object key = entry.getKey();
-                androidx.media3.common.AdPlaybackState state =
-                        (androidx.media3.common.AdPlaybackState) entry.getValue();
-                if (state.adGroupCount > state.removedAdGroupCount) {
-                    strippedGroups += state.adGroupCount - state.removedAdGroupCount;
-                    state = state.withRemovedAdGroupCount(state.adGroupCount);
-                }
-                builder.put(key, state);
-            }
+            AdGroupStripper.Result r = AdGroupStripper.stripAll(adPlaybackStates, MEDIA3_OPS);
             Log.i(TAG, "skipAllMedia3AdGroups: entries=" + adPlaybackStates.size()
-                    + " strippedGroups=" + strippedGroups);
-            return builder.build();
+                    + " strippedGroups=" + r.strippedGroups);
+            return ImmutableMap.builder().putAll(r.map).build();
         } catch (Exception e) {
             Log.e(TAG, "skipAllMedia3AdGroups failed", e);
             return adPlaybackStates;
@@ -113,24 +114,27 @@ public class SkipAdsPatch {
      *   com.google.android.exoplayer2.source.ads.ServerSideAdInsertionMediaSource
      *       .setAdPlaybackStates(ImmutableMap)
      */
+    // Type-specific seam for exoplayer2's AdPlaybackState (GMS Ads SDK variant).
+    private static final AdGroupStripper.AdState EXO2_OPS = new AdGroupStripper.AdState() {
+        public int adGroupCount(Object s) {
+            return ((com.google.android.exoplayer2.source.ads.AdPlaybackState) s).adGroupCount;
+        }
+        public int removedAdGroupCount(Object s) {
+            return ((com.google.android.exoplayer2.source.ads.AdPlaybackState) s).removedAdGroupCount;
+        }
+        public Object withAllRemoved(Object s) {
+            com.google.android.exoplayer2.source.ads.AdPlaybackState st =
+                    (com.google.android.exoplayer2.source.ads.AdPlaybackState) s;
+            return st.withRemovedAdGroupCount(st.adGroupCount);
+        }
+    };
+
     public static ImmutableMap skipAllExo2AdGroups(ImmutableMap adPlaybackStates) {
         try {
-            ImmutableMap.Builder builder = ImmutableMap.builder();
-            int strippedGroups = 0;
-            for (Object o : adPlaybackStates.entrySet()) {
-                Map.Entry entry = (Map.Entry) o;
-                Object key = entry.getKey();
-                com.google.android.exoplayer2.source.ads.AdPlaybackState state =
-                        (com.google.android.exoplayer2.source.ads.AdPlaybackState) entry.getValue();
-                if (state.adGroupCount > state.removedAdGroupCount) {
-                    strippedGroups += state.adGroupCount - state.removedAdGroupCount;
-                    state = state.withRemovedAdGroupCount(state.adGroupCount);
-                }
-                builder.put(key, state);
-            }
+            AdGroupStripper.Result r = AdGroupStripper.stripAll(adPlaybackStates, EXO2_OPS);
             Log.i(TAG, "skipAllExo2AdGroups: entries=" + adPlaybackStates.size()
-                    + " strippedGroups=" + strippedGroups);
-            return builder.build();
+                    + " strippedGroups=" + r.strippedGroups);
+            return ImmutableMap.builder().putAll(r.map).build();
         } catch (Exception e) {
             Log.e(TAG, "skipAllExo2AdGroups failed", e);
             return adPlaybackStates;
@@ -150,76 +154,21 @@ public class SkipAdsPatch {
      * they would a real network outage.
      */
     public static void enforceAdBlock(Request<?> request) throws NoConnectionError {
-        try {
-            String url = request.getUrl();
-            if (url == null) return;
-
-            // Ad decisioning is a PATH on the dual-use playback host
-            // atv-ps.amazon.com, which also serves Widevine licensing and
-            // session/playback APIs — never block the host itself, only this
-            // path. Confirmed via PC capture: getVideoAds is the exact call
-            // gating preroll ad markers; an external filter blocking it at
-            // the DNS level (without a path-scoped client-side fallback)
-            // produced a 5-10s player stall instead of a clean skip, since
-            // the app's own retry/backoff still waited on a response that
-            // could never arrive. Throwing NoConnectionError here is the
-            // same fail-fast contract as the host-based blocks below, so the
-            // app's ad-loading state machine resolves immediately instead
-            // of timing out.
-            if (url.contains("/cdp/getVideoAds")) {
-                Log.i(TAG, "enforceAdBlock: blocking getVideoAds (ad decisioning)");
-                throw new NoConnectionError(new IOException("ads_blocked: getVideoAds"));
-            }
-
-            String host = new URI(url).getHost();
-            if (host == null) return;
-            host = host.toLowerCase();
-
-            // Allowlist-by-default: only the hosts matched below are rejected;
-            // everything else passes through untouched. In particular the §1
-            // safe-harbor hosts are never matched here — the api.amazonvideo.com
-            // patterns are anchored to the threeplr*/nit* ad prefixes so they
-            // cannot collide with keho/qgmg/p7kg/abxc3apcastp, and the weblab
-            // rule is an exact match for the single zoar ad-trigger host so the
-            // rest of *.weblab.a2z.com is left alone.
-            //
-            // Host inventory derived from an ad-free vs ad-supported session
-            // diff (Prime Video filter list v3.6). These are the control-plane
-            // (Volley-routed) ad hosts only — the media-plane ad segment CDNs
-            // (*.pv-cdn.net / *.akamaihd.net) are fetched by media3's
-            // DefaultHttpDataSource and are out of scope for this hook.
-            boolean blocked =
-                    // Ad exchange / decisioning (covers s. and mads. subdomains)
-                    host.equals("amazon-adsystem.com")
-                    || host.endsWith(".amazon-adsystem.com")
-                    // Ad delivery network — broadened from the old ters-* regex
-                    // to every aiv-delivery.net subdomain per the v3.6 list.
-                    || host.equals("aiv-delivery.net")
-                    || host.endsWith(".aiv-delivery.net")
-                    // Weblab ad trigger — confirmed ad-specific (absent in
-                    // ad-free sessions). Exact match keeps the rest of weblab
-                    // in the safe harbor. Prime suspect for persisting prerolls.
-                    || host.equals("zoar.triggers-v1.prod.mobile.weblab.a2z.com")
-                    || host.equals("hercule.triggers-v1.prod.mobile.weblab.a2z.com")
-                    // Ad orchestration endpoints on the video API.
-                    || host.matches("threeplr[a-z0-9.-]*\\.api\\.amazonvideo\\.com")
-                    || host.matches("nit[a-z0-9.-]*\\.api\\.amazonvideo\\.com")
-                    // s0s7: fires every ad cycle per on-device DNS log; never seen
-                    // in any PC/web capture, so its transport layer (Volley vs.
-                    // native libcurl) on this app is unconfirmed. Mirrored here as
-                    // a no-cost safety net for patch-only users without AGH — if
-                    // it's native-only this branch simply never fires.
-                    || host.equals("s0s7.api.amazonvideo.com")
-                    // Pause-screen ad endpoint surfaced via GetVodPlaybackResources
-                    // -> pauseAdsResolutionUrl (/getAds?...&format=PAUSE_ADS_STATIC).
-                    || host.equals("regolith.prime-video.amazon.dev");
-
-            if (blocked) {
-                Log.i(TAG, "enforceAdBlock: blocking " + host);
-                throw new NoConnectionError(new IOException("ads_blocked: " + host));
-            }
-        } catch (URISyntaxException e) {
-            // malformed URL — let it through, not our concern
+        // Policy lives in AdHostFilter (pure, JVM-testable). This wrapper is
+        // just the Volley surface: pull the URL, ask, and fail fast with a real
+        // NoConnectionError — the same exception Volley raises for genuine
+        // connectivity failures, so its RetryPolicy/NetworkDispatcher resolve
+        // the app's ad-loading state machine immediately instead of stalling on
+        // a response that will never arrive.
+        //
+        // The blocked set is the control-plane (Volley-routed) ad hosts plus the
+        // getVideoAds decisioning PATH on the dual-use atv-ps.amazon.com host.
+        // Media-plane ad segment CDNs (*.pv-cdn.net / *.akamaihd.net) go through
+        // media3's DefaultHttpDataSource, not Volley, and are out of scope here.
+        String reason = AdHostFilter.blockReason(request.getUrl());
+        if (reason != null) {
+            Log.i(TAG, "enforceAdBlock: blocking " + reason);
+            throw new NoConnectionError(new IOException("ads_blocked: " + reason));
         }
     }
 
