@@ -3,6 +3,7 @@
 
 #include <android/log.h>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 #define TAG "PVNativeHook"
@@ -18,8 +19,12 @@ Module find_module(const char* soname_substr) {
         LOGW("find_module: cannot open /proc/self/maps");
         return m;
     }
-    char line[512];
-    while (fgets(line, sizeof(line), f)) {
+    // getline grows the buffer as needed. A fixed buffer can truncate a maps
+    // line when the pathname is long (Android paths approach PATH_MAX), which
+    // would split the soname off the end and miss the module entirely.
+    char*  line = nullptr;
+    size_t cap  = 0;
+    while (getline(&line, &cap, f) != -1) {
         if (!strstr(line, soname_substr)) continue;
 
         uintptr_t start = 0, end = 0;
@@ -35,6 +40,7 @@ Module find_module(const char* soname_substr) {
             m.text_size = end - start;
         }
     }
+    free(line);
     fclose(f);
 
     if (m.valid()) {

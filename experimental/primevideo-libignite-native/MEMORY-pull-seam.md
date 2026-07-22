@@ -39,6 +39,18 @@ so every chunk is safely skipped and the ads survive. The fix is to strip the
    hook MUST rewrite `Content-Length` (or use chunked transfer-encoding) or the
    app's HTTP layer waits for bytes that never come.
 
+## Device-phase hook requirements (don't forget these when wiring)
+
+- **Reentrancy / thread-safety.** The seam function (memcpy for the movies push
+  path, and likely a hot read/copy for the pull path) is called from EVERY
+  thread. The hook body must be reentrant and signal-safe: no non-reentrant libc
+  in the hot path, no global mutable state without care, keep allocation off the
+  hot path. Stress-test under concurrent playback before trusting it. (Raised by
+  an external audit, 2026-07-22 — a valid point; not yet designed for.)
+- **Per-response keying + body-complete detection** is the reassembler's missing
+  framing driver (see `prs_reassembly.h`); it's the same device-side integration
+  work as the Content-Length fixup above.
+
 ## What's already built & proven (no need to redo)
 
 - `jni/prs_reassembly.h` (`PrsReassembler`) — accumulate → strip complete body
