@@ -1,3 +1,10 @@
+# [1.14.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.13.0...v1.14.0) (2026-07-22)
+
+
+### Features
+
+* **disney:** add 26.12.1+rc1 to compatible targets ([fb8f3f4](https://github.com/ajstrick81/morphe-androidtv-patches/commit/fb8f3f4162e6c31155ddb72dc0a87aaeb8f8f39d))
+
 # [1.13.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.12.3...v1.13.0) (2026-07-20)
 
 
