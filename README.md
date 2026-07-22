@@ -16,7 +16,7 @@ I'm just like you — I enjoy watching TV and movies without being bored and ann
 
 | App | Package | Status | Tested Version | Date |
 |-----|---------|--------|---------------|------|
-| 🟢 Disney+ | `com.disney.disneyplus` | Working | `26.9.2+rc1-2026.06.12` | 6/17/26 |
+| 🟢 Disney+ | `com.disney.disneyplus` | Working | `26.12.1+rc1-2026.07.15` | 7/21/26 |
 | 🟡 Prime Video | `com.amazon.amazonvideo.livingroom` | Partial/Testing — [DNS filters](dns/README.md) required; native prerolls may still appear | `6.23.23+v15.5.0.70-armv7a` | 6/26/26 |
 | 🟢 HBO Max | `com.wbd.hbomax` | Working | `v7.7.0.78` | 7/18/26 |
 | 🟢 Peacock | `com.peacocktv.peacockandroid` | Working — no DNS required | `v7.6.100` | 7/16/26 |
@@ -50,7 +50,7 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 ### 🎬 Disney+
 
-1. Open the **[Disney+ (Android TV) listing on APKMirror](https://www.apkmirror.com/apk/disney/disney-android-tv/)** and select version **`26.9.2+rc1-2026.06.12`**
+1. Open the **[Disney+ (Android TV) listing on APKMirror](https://www.apkmirror.com/apk/disney/disney-android-tv/)** and select version **`26.12.1+rc1-2026.07.15`**
 2. Download the `.apkm` file
 3. Select it in Morphe Manager
 4. Apply the patch

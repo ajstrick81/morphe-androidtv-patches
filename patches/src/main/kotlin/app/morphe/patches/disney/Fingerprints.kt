@@ -3,10 +3,15 @@
  * https://gitlab.com/ReVanced/revanced-patches/-/blob/main/patches/src/main/kotlin/app/revanced/patches/disneyplus/ads/Fingerprints.kt
  * ALL CREDIT GOES TO RookieEnough FOR THE ORIGINAL CODE
  *
- * Updated for Disney+ Android TV v26.8.0+rc6 (versionCode 1779314460)
- * - InsertionGetPointsFingerprint:  VALIDATED ✅  (class + method unchanged)
- * - InsertionGetRangesFingerprint:  VALIDATED ✅  (class + method unchanged)
- * - PauseAdStartedFingerprint:      NEW ✅  targets MediaXPauseSession.started()
+ * Verified on Disney+ Android TV v26.12.1+rc1-2026.07.15 (versionCode 1784077450)
+ * — all fingerprints resolve unchanged; on-device pre- and mid-roll ads gone for
+ * both movies and TV (AGH off). Previously validated on v26.8.0+rc6 (1779314460)
+ * and the DMP-pipeline fix landed on v26.9.2+rc1 (1781224190).
+ * - InsertionGetPointsFingerprint:     VALIDATED ✅  (legacy DSS-SDK Insertion)
+ * - InsertionGetRangesFingerprint:     VALIDATED ✅  (legacy DSS-SDK Insertion)
+ * - DmpInsertionGetPointsFingerprint:  VALIDATED ✅  (new com.disney.dmp Insertion)
+ * - DmpInsertionGetRangesFingerprint:  VALIDATED ✅  (new com.disney.dmp Insertion)
+ * - PauseAdStartedFingerprint:         VALIDATED ✅  MediaXPauseSession.started()
  *
  * Pause ad patch history:
  *   v1 — targeted onPauseScheduled() → no match (wrong method)
@@ -22,8 +27,8 @@ package app.morphe.patches.disney
 import app.morphe.patcher.Fingerprint
 
 // ---------------------------------------------------------------------------
-// Existing fingerprints — validated present and structurally unchanged in
-// com.dss.sdk.internal.media.Insertion as of v26.8.0+rc6-2026.05.20
+// Legacy pipeline — validated present and structurally unchanged in
+// com.dss.sdk.internal.media.Insertion through v26.12.1+rc1-2026.07.15
 // ---------------------------------------------------------------------------
 
 internal object InsertionGetPointsFingerprint : Fingerprint(
