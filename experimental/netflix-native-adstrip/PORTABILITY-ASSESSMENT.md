@@ -109,6 +109,21 @@ The empirical steps can't run in this cloud container. To move forward, upload h
 
 Without (1) and (2), the honest status is: **plausible on category, blocked on MSL, unproven.**
 
+## 4b. Prior art surveyed (and why it doesn't move us)
+
+Community repos evaluated for Netflix ad-structure insight. Pattern so far: they
+operate at the wrong layer (server-side, or web-DOM) for a native-TV media-plane strip.
+
+| Repo | What it is | Useful for us? |
+|---|---|---|
+| `cruizviquez/Micro-Netflix-Ads-Ctr` | Flask + scikit-learn CTR **simulation** on synthetic data; Netflix-styled UI. No real internals. | No — models the ad *server's* decisioning, not the client media plane. |
+| `Dreamlinerm/Netflix-Prime-Auto-Skip` | Browser **web** extension; detects ads by DOM scraping (`span[class*="mmvz9h"]`, `data-uia="pause-ad-*"`) and skips via `video.playbackRate=8` + mute. No manifest/API. | No — wrong platform (web DOM, not native nrdp) and wrong strategy (drives the player, doesn't strip the stream). Selectors don't exist in `com.netflix.ninja`. |
+
+Strategic note: both sidestep the stream rather than strip it. The "skip/accelerate the
+player" idea has a native analogue (hook nrdp playback control, not the media bytes) but
+that's a different hook target than this toolkit's and is unproven-reachable — flag it as an
+alt path, not a lead.
+
 ## 5. Verdict
 
 - ✅ Toolkit is real and its transforms pass here.
