@@ -46,8 +46,19 @@ refactors are behavior-preserving (see commits `f8e3338`, `7314766`):
 **Native filter/reassembly/sigscan/sniff/inflate — 103 assertions:**
 ```
 cd experimental/primevideo-libignite-native/jni
-g++ -std=c++17 -D_GNU_SOURCE -Wall test_manifest_filter.cpp manifest_filter.cpp -lz -o /tmp/pvtest && /tmp/pvtest | tail -1
-# expect: ALL TESTS PASSED (0 failure(s))
+# NB: manifest_filter.cpp calls pvfilter::filter_prs (in prs_filter.cpp) and the
+# prs test calls pvfilter::filter (in manifest_filter.cpp) — both .cpp are needed
+# to link, so every native test binary lists both lib sources.
+g++ -std=c++17 -D_GNU_SOURCE -Wall test_manifest_filter.cpp manifest_filter.cpp prs_filter.cpp -lz -o /tmp/pvtest_manifest && /tmp/pvtest_manifest | tail -1
+g++ -std=c++17 -D_GNU_SOURCE -Wall test_prs_filter.cpp      prs_filter.cpp manifest_filter.cpp -lz -o /tmp/pvtest_prs      && /tmp/pvtest_prs      | tail -1
+# expect both: ALL TESTS PASSED (0 failure(s))
+```
+
+**Memcpy-seam blanker (the productized transform, PRODUCTIZATION.md §5) — 75 checks:**
+```
+cd experimental/primevideo-libignite-native/jni
+g++ -std=c++17 -D_GNU_SOURCE -Wall test_prs_blank.cpp prs_blank.cpp -o /tmp/pvtest_blank && /tmp/pvtest_blank | tail -1
+# expect: ALL TESTS PASSED (75 check(s), 0 failure(s))
 ```
 
 **Extension host filter + ad-group stripper — 34 + 17 assertions:**

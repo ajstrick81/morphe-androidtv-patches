@@ -42,8 +42,13 @@ JavaScript and must be rewritten in C. That is the main net-new code.
 - `jni/hooks.cpp`, `jni/inflate_filter.h`, `jni/manifest_filter.*`, `ssl_reassembly.h` — written to
   hook inflate/SSL_read. The new target is **libc `memcpy`/`memmove`** with the complete-array rule.
 - `jni/prs_filter.{cpp,h}` — has an in-process PRS strip already (host-tested), but its trigger
-  assumed the inflate path. Its transform (drop `type:"Remote"`) is the right idea; re-wire it to
-  the memcpy hook + the complete-array/same-length-blank discipline we proved.
+  assumed the inflate path AND it *shrinks* the buffer (wrong for the fixed-length memcpy copy).
+  Its transform idea (drop `type:"Remote"`) was the seed for the §5 port below.
+
+  **DONE (§5):** the memcpy-seam transform now lives in `jni/prs_blank.{cpp,h}` +
+  `jni/test_prs_blank.cpp` — a faithful C port of `cmod-strip2.js` doing SAME-LENGTH,
+  complete-array-only blanking (75 host checks, mutation-verified). `prs_filter` is superseded by
+  it for the memcpy path and can be retired once `prs_blank` is wired into the `.so` loader.
 
 ## 4. Two tracks
 
@@ -72,17 +77,31 @@ The installed gadget can auto-load a script from a baked-in config at startup �
 
 **Recommendation:** Track A for the multi-day soak, then Track B for release.
 
-## 5. JS → C porting spec (the one piece of net-new code)
+## 5. JS → C porting spec (the one piece of net-new code) — ✅ DONE
 
-Port from `cmod-strip2.js` (JS) into the `.so` (C), operating on the memcpy `src` before the copy:
-- `scanVal` — string/nesting-aware value scanner; returns **truncation sentinel** if a value has
-  no closing quote/brace within the buffer (this is what makes "complete only" safe).
-- `parseComplete` — parse the array from `[`; return NULL if ANY element is truncated or the array
-  never closes with `]`. NULL ⇒ do not touch the buffer.
-- `blankRanges` — for each `Remote` element, blank `[start, commaAfter+1]` (or `[prevComma, end]`
-  for the last) with 0x20 spaces. Same length ⇒ JSON stays valid, buffer length unchanged.
-- Keep the native filter cheap: cheap byte-anchor before full compare; only parse on a marker hit
-  (rare). No allocation on the hot path.
+Ported from `cmod-strip2.js` into `jni/prs_blank.{cpp,h}`, host-tested in
+`jni/test_prs_blank.cpp` (75 checks, all green; each mutation-verified to fail when the code
+breaks — build/run per HANDOFF.md "Re-verify"). Function names mirror the JS for side-by-side diff:
+- `scan_val` — string/nesting-aware value scanner; returns a **truncation sentinel** (`-1`) if a
+  value has no closing quote/brace within the buffer (this is what makes "complete only" safe).
+- `parse_complete` — parses the array from `[`; returns false if ANY element is truncated or the
+  array never closes with `]`. False ⇒ do not touch the buffer (black-screen safety).
+- `blank_ranges` — blanks each `Remote` element + surplus commas with 0x20 spaces. Same length ⇒
+  JSON stays valid, buffer length unchanged.
+- `find_marker` — cheap byte-anchor (`intraTitlePlaylist":[`) before any parse; parse only on a
+  hit. (Host build uses a small `std::vector` for the element list; the `.so` hot path can swap in
+  a fixed-size stack array — the array only builds on a marker hit, which is rare.)
+
+**⚠️ Bug found & fixed during the port — read before touching `blank_ranges`.** The JS
+`blankRanges` rule ("blank each Remote + its *own* trailing comma; for a *trailing* Remote blank
+the *preceding* comma") leaves a **trailing comma → invalid JSON** for 2+ consecutive Remote
+elements at the array tail (`[Main,Remote,Remote]` → `[Main, ]`). The bench never hit it (content
+playlists end on a `Main`), so on every shape it validated the two are byte-identical. The C port
+uses a correct rule instead — *keep exactly the comma after each surviving element that still has a
+survivor after it* — which produces valid JSON even when ads are last (guarded by the `tail2` test,
+important for the denser TV-show playlists §6.1 flags). **When wiring the `.so`, use this rule, not
+the JS one; and if you re-derive from `cmod-strip2.js`, port `prs_blank.cpp`'s comma logic, not the
+JS `blankRanges`.**
 
 ## 6. Must-resolve BEFORE release
 
