@@ -97,10 +97,34 @@ manifest concept, and Open Connect are shared with the TV runtime, so it's real 
     with a signed `t=` token (~12h expiry). Not MSL-encrypted, but Widevine-encrypted media.
     Confirms the §0 rule-outs: ads and content share Open Connect hosts → **DNS can't split them**,
     and the schedule isn't in bytecode → **no OkHttp/ExoPlayer chokepoint.**
-- **New lead — the ad system is internally "Monet".** The gist names Netflix's ad tech *Monet*
-  but (like every source so far) carries **no ad-break schema** — the author's session hit no ad
-  break. Still, "Monet" is a concrete string/term to hunt in the APK's `.so` symbols/strings and
-  in any ad-tier manifest.
+- **"Monet" lead — weaker than it first looked (corrected after reading the full gist).** The
+  gist's *only* Monet evidence is a **sandboxed marketing iframe** on Akamai
+  (`ae.nflximg.net/monet/scripts/`) firing **conversion/retargeting pixels** —
+  `adwords_Simplicity_NMLanding`, `fb_simplicity_nmLanding`, `tiktok_nmLanding` (signup-funnel
+  tags), not video ad-break inserts. The author's session was a normal **non-ad-tier** browse, so
+  no video ad break appeared → still **no ad-break schema anywhere in the gist.** Treat `/monet/`
+  as *marketing* ad-tech; the ad-supported-plan video insertion is a separate surface this capture
+  never touched. Don't key a strip on "Monet" without confirming it against an actual ad-tier break.
+
+### How this teardown was produced — and why it doesn't extend to the app for free
+
+The gist is **not APK/binary analysis** (it says so: "built entirely from live network traffic
+analysis … 177 requests captured"). Its precision comes purely from **reading self-documenting HTTP
+signals** in a captured **web** session: custom `x-netflix.*` headers, URL path segments
+(`/cadmium/licensedmanifest/`, `/msl_v1/nrdjs/`), query params (`drmSystem=widevine`), GraphQL
+persisted-query operation names, `Content-Encoding: msl_v1` — then naming each subsystem from its
+evidence string (cross-ref'd to Netflix's open-source, e.g. Falcor). No decompilation.
+
+Transfer to `com.netflix.ninja`:
+- **Same §1 capture method applies** (device proxy + CA) and is worth doing to enumerate the app's
+  endpoints/envelopes — but web is easy precisely because most web calls aren't MSL and DevTools
+  exposes all; the **app pins to MSL for playback**, so the licensed-manifest call is captured only
+  as ciphertext.
+- **`/nrdjs/` in the web MSL path cross-confirms our target** — same NRD platform as the nrdp
+  runtime inside `libnetflix.so`. Independent confirmation the seam is there.
+- **Net:** the gist hands us the endpoint map and the MSL envelope shape, not the plaintext. To read
+  the manifest on the app we still need the MSL decrypt hook (→ why we want `libnetflix.so`), on an
+  ad-tier account, mid-break.
 
 Net effect on the port: this **raises confidence that the seam is post-MSL in the native runtime**
 (not at the TLS boundary) and gives the manifest's shape to expect — but it does **not** supply the
