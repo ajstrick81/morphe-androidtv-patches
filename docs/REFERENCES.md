@@ -32,6 +32,10 @@ We are grateful to the many communities and individual contributors — includin
   * **Repository:** [Dreamlinerm/Netflix-Prime-Auto-Skip](https://github.com/Dreamlinerm/Netflix-Prime-Auto-Skip)
   * **Summary:** Userscript automation for handling web playback state, skipping intro/recap sequences, and suppressing ads.
 
+* **Skipix**
+  * **Repository:** [InlitX / skipix](https://github.com/InlitX/skipix)
+  * **Summary:** Browser extension (Chrome/Edge/Brave/Firefox) that detects and skips ads on Netflix by accelerating playback and muting audio during advertisement breaks, with time-saved tracking. Studied for ad-detection and playback-manipulation logic that may translate to APK-level patching.
+
 ---
 
 ### 3. Patches & Extensions
