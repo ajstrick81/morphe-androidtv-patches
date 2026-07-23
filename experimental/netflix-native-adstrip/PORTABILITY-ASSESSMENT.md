@@ -388,6 +388,34 @@ player" idea has a native analogue (hook nrdp playback control, not the media by
 that's a different hook target than this toolkit's and is unproven-reachable — flag it as an
 alt path, not a lead.
 
+## 3e. EMPIRICAL CAPTURE — pure same-host SSAI, nothing to block (measured 2026-07-23)
+
+On-device PCAPdroid capture from the Onn (ad-tier account), a real session that **included a
+15-second pre-roll**. Analyzed with `testing/scripts/analyze_pcap.py` (DNS + TLS-SNI host
+inventory; no decryption needed). Behavioral note: **~7 movies played with no pre-roll, then one
+did** → the ad decision is **stateful/frequency-capped**, not per-title (matches the toolkit's own
+`heap-oracle.js` frequency-cap guard).
+
+**Result — 18 unique hosts in the whole session; exactly ONE is non-Netflix:**
+- Content **and the ad** both served from the same Open Connect byte-range hosts:
+  `ipv4-c0NN-dpa001-…oca.nflxvideo.net`, `ipv4-c7NN-ord001-ix…oca.nflxvideo.net`.
+- Netflix control/telemetry: `api-global.netflix.com`, `nrdp26.{prod.ftl,ws.prod.cloud,logs,push.prod}.netflix.com`,
+  `logs.netflix.com`, `occ-0-…nflxso.net`, `preapp.prod.partner.netflix.net`, `…darnuid.netflix.com`.
+- **Only non-Netflix host: `sessions.bugsnag.com`** — crash reporting, not ads.
+- **Zero** third-party ad hosts / beacons (adnxs/doubleclick/xandr/nielsen/freewheel/… = 0 hits).
+
+**Conclusion — the ad footprint is indistinguishable from content at the network layer:**
+- The pre-roll came from the **same `oca.nflxvideo.net` OCA infrastructure** as the movie, over the
+  same TLS sessions — textbook **SSAI**. There is **no separate ad host, no ad-decision call to a
+  distinct domain, and no client-fired third-party beacon.** Ad telemetry rides inside MSL to
+  Netflix's own `logs.netflix.com` (Ichnaea).
+- **DNS / AdGuard is useless here:** the only blockable non-Netflix host is Bugsnag (crash
+  telemetry); blocking `oca.nflxvideo.net` would kill *all* video, ads and content alike.
+- **No network-layer interception point** exists that isn't either same-host content or MSL ciphertext.
+
+Caveat: one session, one pre-roll (not a mid-roll break). But the result is unambiguous and converges
+with every static finding (SSAI + MSL + appboot signature), so it's very likely representative.
+
 ## 8. Verdict
 
 - ✅ Toolkit is real and its transforms pass here.
@@ -407,9 +435,15 @@ alt path, not a lead.
   **appboot UI app**, which is **RSA/ECDSA signature-verified against a pubkey baked into
   `libnetflix.so`** and served from `appboot.netflix.com` with MSL/device context.
 - 🧱 **Honest feasibility:** Netflix wraps its ads in three independent layers — TLS → MSL → appboot
-  signature — and the only easily-modifiable layer (milo) is transport that sees only ciphertext. A
-  JS-layer strip would require defeating the appboot signature (native pubkey patch in `libnetflix.so`
-  + re-hosting the app + MSL context). This is a **very high-effort, low-certainty** target, well
-  beyond the native toolkit's model, and much harder than the repo's other (working) apps.
-  Recommendation: treat Netflix as **research-parked** unless an ad-tier manifest capture shows the
-  ad-break strip is trivially viable at a layer we can actually reach.
+  signature — and the only easily-modifiable layer (milo) is transport that sees only ciphertext.
+- 📡 **Empirically confirmed (§3e):** an on-device capture of a real pre-roll shows **pure same-host
+  SSAI** — the ad is served from the same `oca.nflxvideo.net` OCA hosts as content, with **zero
+  third-party ad hosts/beacons.** So there is **no DNS/AdGuard block, and no network interception
+  point** that isn't same-host content or MSL ciphertext. Every avenue this toolkit and its
+  companion tools can reach is closed.
+- ⛔ **Final verdict — Netflix is not strippable with our toolset.** The only conceivable paths left
+  are (a) defeat the appboot RSA signature via a native pubkey patch in `libnetflix.so` + re-host the
+  UI app, or (b) patch the native ad-scheduling logic inside `libnetflix.so` directly — both deep,
+  version-fragile native reverse-engineering far beyond the bytecode/DNS model that makes the repo's
+  other apps tractable. **Recommendation: research-parked / closed.** Documented end-to-end here so
+  the conclusion is resumable if Netflix ever moves ads to a separable plane.
