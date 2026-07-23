@@ -85,9 +85,24 @@ diff ad-break hosts from content hosts.
 
 ---
 
-## What the analysis will extract from the pcap
+## Analyze the pcap  (`scripts/analyze_pcap.py`)
 
-- Full **DNS/SNI host inventory**, bucketed by your timestamps.
+You can run the first pass yourself (or just upload the pcap and I'll run it):
+
+```bash
+# needs scapy:  pip install scapy   (reads .pcap and .pcapng, no TLS decryption needed)
+python3 scripts/analyze_pcap.py testing/out/netflix-capture.pcap --ad 2:14-2:45
+```
+
+`--ad MM:SS-MM:SS` is your noted ad-break window as an **offset from the first
+packet**. The report prints the DNS/SNI host inventory with per-host bytes,
+flow count, and first/last-seen time, and — the key output — a list of
+**HOSTS SEEN ONLY DURING THE AD BREAK**. That AD-ONLY set (plus any host the
+tool flags `ad-domain?`) is exactly what to test-block in AdGuard or point the
+mitm at. `--csv out.csv` / `--json out.json` dump the full table.
+
+What it extracts:
+- Full **DNS/SNI host inventory**, bucketed by your `--ad` window.
 - **Hosts that appear only during the ad break** — the tell for a separate ad plane.
 - Per-flow **timing/volume** to distinguish ad segments from content.
 - If `--decrypt` cracked anything: the **HTTP payloads** of un-pinned flows
