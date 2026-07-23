@@ -256,6 +256,35 @@ in the Hermes heap → parsed by JS`. So:
 Anti-tamper: statically-linked OpenSSL + milo hash-verification + version pinning; a Hermes/JS-bundle
 approach must contend with `milo_update_hash` (though `milo_ignore_hash_errors` is intriguing).
 
+### 3c. milo config-override surface — a plausible strip delivery path (measured 2026-07-22)
+
+Chasing the integrity question in `libnetflix.so` surfaced a **config-override mechanism** that could
+deliver a JS-layer strip *without* cracking MSL or the milo hash. All of these are plain
+`nrdp.js_options` keys (same surface that sets dozens of runtime options; populated from nrdp
+bootargs/config at startup — Java side: `getNflxCmdLineOptions()`, `SetConfigFromNrdp(String)`,
+`nativePropertyGet`, storage keys `MILO_STAGING_URL`/`MILO_STABLE_URL`):
+
+- `milo_update_url` — **override where milo is fetched** (default `https://occ.a.nflxso.net/genc/nrdp/milo/1.0.3806-…/milo.prod.js`)
+- `milo_update_hash` — the expected integrity hash (default `634c8ca88f3c…`)
+- `milo_ignore_hash_errors` — **ignore hash mismatch** (JS getter `get milo_ignore_hash_errors(){return this.#re}`)
+- `milo_ignore_ssl_mismatch`, `milo_http_proxy` — ignore TLS mismatch / route the fetch through a proxy
+
+**Candidate strip path (unproven):** serve a modified (ad-stripped) milo, point `milo_update_url` at
+it, set `milo_ignore_hash_errors=true` → the app runs our milo. This sidesteps MSL (we're replacing
+the *player*, not decrypting the manifest) and the integrity hash.
+
+**The load-bearing open question:** can `nrdp.js_options.milo_*` be **set in a production build**?
+This is `NF_ANDROID_PROD_BUILD=true` / `BUILD_PRODUCTION=ON` / `NRDP_HAS_QA=AUTO`, so this QA/bring-up
+surface may be locked down in prod. Whether js_options is populated from a patch-writable source
+(config file, intent extra, device property, or a bytecode injection at the `SetConfigFromNrdp` seam)
+is **testable on device** and is now the key feasibility gate for a milo-override strip.
+
+**Also settled — the dex is a thin shell.** A scan of the readable `com.netflix.*` namespace found
+**no** milo loader, JS-bridge, or integrity class (only the Bugsnag telemetry reporter). milo fetch,
+the Hermes bridge, MSL, and integrity all live in native `libnetflix.so`. → **No further dex mining
+is warranted**; the two live fronts are (a) obtaining `milo.prod.js` to learn *what* to strip, and
+(b) testing whether the milo-override config path is reachable in prod (*how* to ship it).
+
 ## 4. Mechanical port worksheet (placeholder fills, PORTING-CHECKLIST)
 
 Updated with measured values from §3. `[VERIFY]` items now resolved except the transform choice.
