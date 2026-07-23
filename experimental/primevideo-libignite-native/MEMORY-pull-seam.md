@@ -14,6 +14,44 @@ playlist arrives only as truncated chunks (and can exceed the 256KB size gate),
 so every chunk is safely skipped and the ads survive. The fix is to strip the
 **whole reassembled body**, which is exactly what the rig did off-device.
 
+## ⚡ Test this cheaper alternative FIRST (could obviate the native strip)
+
+**Lead from a web project — `WINOFFRG/ottpro` (browser Prime Video blocker), reviewed 2026-07-23.**
+It kills ads on *web* Prime Video from the **request / control-plane** side, not by
+stripping the response the way we do. Two request-side levers, both against
+endpoints we already know:
+
+1. **Hard-block the ad-schedule fetch** `cdp/getVideoAds` → return empty `{}`.
+   (This is their *primary* lever.)
+2. **Rewrite the PRS *request* body** on the same `GetVodPlaybackResources` we
+   target — set `vodPlaylistedPlaybackUrlsRequest.ads.gdpr` consent fields
+   (`consentMap`, `enabled`) — to nudge the server toward a no-ads playlist.
+
+**Why this matters:** if a request-side flag (or nulling `getVideoAds`) makes the
+server hand back an **ad-free playlist**, then the entire native RESPONSE strip —
+`prs_blank`, `prs_reassembly`, the pull-seam Ghidra hunt below — is **unnecessary**.
+A tiny request edit would replace all of it. This is a ~15-minute test on gear you
+already have.
+
+**The test (MITM rig, which already sits on the request side):**
+- Capture the ATV `GetVodPlaybackResources` **request** body; look for an
+  `ads` / `gdpr` / consent structure (the ATV schema may differ from web).
+- Try (a) nulling `cdp/getVideoAds`, and (b) adding the consent flag; observe
+  whether the response returns ad-free.
+
+**Honest caveats:** web ≠ ATV — the request schema may differ or the server may
+gate ads by plan/account and ignore consent; `consentMap` semantics are murky
+(GDPR personalization vs ad presence); their `getVideoAds` block is likely doing
+most of the work. And in-process this is our deferred **Phase B** (a *request*-side
+hook, a different seam than the response `memcpy`) — but you don't need to build
+that to *test* the hypothesis on the rig.
+
+**Not wasted either way.** Even if the request-side route works, the native
+response strip stays valuable: it's resistant to server-side changes (Amazon can
+patch a consent loophole overnight; they can't easily stop us editing the decoded
+body in-process), and the seam/APK mapping we've built is the reusable asset. Treat
+this as "try the cheap lever first; keep the robust one in reserve."
+
 ## The next step (do these in order, on device)
 
 1. **Validate the direction with ONE capture (cheap, do first).** Pull a real
