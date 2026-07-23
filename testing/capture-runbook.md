@@ -108,6 +108,37 @@ What it extracts:
 - If `--decrypt` cracked anything: the **HTTP payloads** of un-pinned flows
   (ad-decision calls, impression/quartile beacons → break & creative IDs).
 
+## A/B capture: ad title vs ad-free title (the strongest diff)
+
+Observed: **PG/kids/family titles on the ad tier play no ads.** That's a
+naturally-occurring ad-free control on the *same account* — and diffing an
+ad-title startup against an ad-free-title startup isolates the ad-trigger
+machinery far more cleanly than a within-title content-vs-ad diff (which SSAI
+muddies). Do two short, same-profile/same-network captures:
+
+```bash
+cd testing
+./scripts/capture.sh start netflix --name ad-title.pcap
+#   → start an AD-supported movie, let it reach playback (~60s), then:
+./scripts/capture.sh stop
+./scripts/capture.sh pull --name ad-title.pcap
+
+./scripts/capture.sh start netflix --name adfree-title.pcap
+#   → start a PG/kids movie (no ads), let it reach playback (~60s), then:
+./scripts/capture.sh stop
+./scripts/capture.sh pull --name adfree-title.pcap
+
+# diff them: hosts in the ad title but NOT the ad-free title
+python3 scripts/analyze_pcap.py testing/out/ad-title.pcap --vs testing/out/adfree-title.pcap
+```
+
+Reading the result:
+- **Hosts appear only in the ad title** → a **client-side ad trigger / decisioning
+  call** — a candidate to block (AdGuard) or inspect (mitm). Best case.
+- **Identical host sets** → the trigger is **server-side inside the (encrypted)
+  manifest**; the client just plays what it's told. Still a real answer — it says
+  the decision rides in MSL, not a separate call.
+
 ## Then we escalate based on what shows up
 
 - **Ad-specific hosts found** → block them in **AdGuard**; does it kill ads or
