@@ -165,6 +165,8 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 This patch template is based on the prior work of [ReVanced](https://github.com/ReVanced/revanced-patches-template). All modifications made by Morphe, along with their dates, can be found in the Git history.
 
+Much of this project's understanding builds on the work of other communities and contributors — including **RookieEnough**, **hoodles**, **Paresh**, and many others. See [`docs/REFERENCES.md`](docs/REFERENCES.md) for a running list of the open-source projects, gists, and technical analyses that informed this work.
+
 ---
 
 ## 📜 License
