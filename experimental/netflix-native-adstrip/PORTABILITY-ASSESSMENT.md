@@ -279,6 +279,34 @@ surface may be locked down in prod. Whether js_options is populated from a patch
 (config file, intent extra, device property, or a bytecode injection at the `SetConfigFromNrdp` seam)
 is **testable on device** and is now the key feasibility gate for a milo-override strip.
 
+### 3d. CORRECTION — milo is networking, not the player; the ad layer is signature-locked (measured 2026-07-23)
+
+Obtained and analyzed the real `milo.debug.js` (5.7 MB, unminified, `(c) 2024 Netflix`, milo
+`1.0.3806-57ec2bae`) — proving the direct-download method works. But it **corrects the milo pivot**:
+
+- **milo is Netflix's JS networking layer, NOT the player/ad layer.** Module census:
+  `milo.request.http`, `milo.websocket.*`, `milo.WebSocketFramer.*`, `milo.WS.parseHeader`,
+  `milo.diskCache.DiskCache`, `milo.requestManager.setShim`. A rigorous whole-file ad-vocabulary
+  census (adBreak/interstitial/midroll/preroll/cuePoint/SSAI/…) came back **empty** — the earlier
+  "ads×193" was a substring false-positive (loads/reads/payloads). **No ad logic in milo.**
+- **The player/UI app is a separate bundle loaded via `appboot`** (Gibbon `gibbon.load({url: appboot_filter_url})`),
+  from `appboot.netflix.com` — and it is **cryptographically signature-verified**, not hash-checked:
+  `appboot_key` (`KeyFormat.SPKI`), `WebCryptoAlgorithm.RSASSA_*`, `appboot_fail_nas_verify`
+  (ECDSA×101 / RSASSA×25 / SPKI×33 in the binary). The verifying **public key is baked into
+  `libnetflix.so`.**
+
+**Consequence — the milo-override strip idea does NOT reach the ad layer.** The modifiable layer
+(milo, hash-bypassable) is transport-only and sees the manifest as **MSL ciphertext**. The layer that
+holds the plaintext ad-break logic (the appboot UI app) is **RSA/ECDSA-signed against a pubkey in the
+native binary** — to modify it you'd have to defeat signature verification by patching that pubkey in
+`libnetflix.so` (deep native patching + re-hosting the app + MSL context), or forge Netflix's
+signature (infeasible). That is strictly harder than milo's hash and puts us back in native-binary
+territory — exactly what the toolkit's "no deep native work" premise tries to avoid.
+
+**Net protection stack Netflix puts around its ads:** TLS (Cronet, static OpenSSL) → MSL (JS, in the
+runtime) → appboot **signature** on the ad-bearing UI app. Three independent layers; the strippable
+one (milo hash) guards only the plumbing.
+
 **Also settled — the dex is a thin shell.** A scan of the readable `com.netflix.*` namespace found
 **no** milo loader, JS-bridge, or integrity class (only the Bugsnag telemetry reporter). milo fetch,
 the Hermes bridge, MSL, and integrity all live in native `libnetflix.so`. → **No further dex mining
@@ -374,6 +402,14 @@ alt path, not a lead.
 - 🔀 **Target redirected by the decode:** the ad-break parsing lives in the **downloadable `milo`
   JS bundle** (`occ.a.nflxso.net/genc/nrdp/milo/1.0.3806-…/milo.prod.js`, disk-cached), not in
   `libnetflix.so`. The realistic strip surface is **milo JS**, gated by `milo_update_hash`.
-- ⛔ **Blocker now:** obtain `milo.prod.js` (or an ad-tier manifest). milo likely reveals the
-  ad-break schema by static analysis — cheaper than a live MSL capture — and decides whether a
-  JS-layer strip is viable. The native toolkit, as-is, is probably the wrong tool for this target.
+- ⛔ **milo obtained — and it corrected the plan (see §3d):** milo is Netflix's JS *networking*
+  layer (hash-checked, modifiable) with **no ad logic**. The ad-break logic lives in the separate
+  **appboot UI app**, which is **RSA/ECDSA signature-verified against a pubkey baked into
+  `libnetflix.so`** and served from `appboot.netflix.com` with MSL/device context.
+- 🧱 **Honest feasibility:** Netflix wraps its ads in three independent layers — TLS → MSL → appboot
+  signature — and the only easily-modifiable layer (milo) is transport that sees only ciphertext. A
+  JS-layer strip would require defeating the appboot signature (native pubkey patch in `libnetflix.so`
+  + re-hosting the app + MSL context). This is a **very high-effort, low-certainty** target, well
+  beyond the native toolkit's model, and much harder than the repo's other (working) apps.
+  Recommendation: treat Netflix as **research-parked** unless an ad-tier manifest capture shows the
+  ad-break strip is trivially viable at a layer we can actually reach.
