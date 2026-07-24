@@ -31,6 +31,21 @@ struct RemoteStripResult {
     bool modified = false;       // at least one Remote element was blanked
     int remote_items = 0;        // count of Remote elements blanked
     int total_items = 0;         // count of elements in the array (informational)
+
+    // DIAGNOSTIC (truncated case only): how many FULLY-CLOSED Remote elements
+    // were parsed before the array hit its truncation point. If this is > 0 on
+    // a title that still prerolled, it means ad items are present-and-complete
+    // inside truncated chunk copies we currently skip — evidence the app may
+    // parse ads from those chunks before the complete copy exists. Read-only;
+    // does not change blanking behavior.
+    int trunc_complete_remotes = 0;
+    int trunc_complete_items = 0;
+
+    // Set when blank_truncated_complete is enabled and at least one fully-closed
+    // Remote element inside a TRUNCATED array was blanked. The truncated trailing
+    // element (cut mid-body) is NEVER touched — that is the black-screen invariant.
+    bool trunc_modified = false;
+    int trunc_remote_blanked = 0;
 };
 
 // Cheap pre-check used to gate the hot path before the full scan: does the
@@ -44,6 +59,19 @@ bool find_intra_title_playlist(const char* buf, size_t len, size_t* out_marker_p
 // ASCII spaces. `buf` must be writable; length is never changed.
 // If the array is truncated or the marker isn't found, `buf` is left
 // untouched and the result reflects why.
-RemoteStripResult strip_remote_items(char* buf, size_t len);
+//
+// blank_truncated_complete: when true, and the array is TRUNCATED, also blank
+// the Remote elements that fully closed before the truncation point (leaving the
+// truncated trailing element untouched). This catches ad items that arrive in
+// truncated chunk copies the app may parse before the complete copy exists.
+// Default false preserves the original complete-only behavior.
+//
+// apply: when false, the function parses and counts exactly as normal (all
+// result fields populated) but performs NO writes to buf — a dry-run used to
+// prove/disprove whether our in-place edits (not our mere presence) cause a
+// downstream failure such as a gzip CRC error during in-flight decompression.
+RemoteStripResult strip_remote_items(char* buf, size_t len,
+                                     bool blank_truncated_complete = false,
+                                     bool apply = true);
 
 } // namespace pvfilter

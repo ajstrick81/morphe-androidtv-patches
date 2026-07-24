@@ -191,6 +191,54 @@ int main() {
         CHECK(buf.find("\"Main\"") != std::string::npos, "whitespace-inside: Main kept");
     }
 
+    // ── TRUNCATED-BLANK feature (blank_truncated_complete=true) ─────────────
+    // A complete Remote element precedes the truncation point; the trailing
+    // element is cut mid-body. The complete Remote must be blanked; the cut
+    // element must be left byte-for-byte untouched; length unchanged.
+    {
+        std::string in =
+          "{\"intraTitlePlaylist\":["
+          "{\"type\":\"Remote\",\"adId\":\"ad1\"},"
+          "{\"type\":\"Main\",\"urls\":[\"https://y/main_verylong_url_that_gets_cut";  // truncated mid-body
+        std::string buf = in;
+        // Default (false): nothing touched, but the complete Remote is counted.
+        auto r0 = pvfilter::strip_remote_items(&buf[0], buf.size());
+        CHECK(r0.found_marker && !r0.complete, "trunc: marker found, not complete");
+        CHECK(r0.trunc_complete_remotes == 1, "trunc: 1 complete Remote counted before cut");
+        CHECK(!r0.trunc_modified && r0.trunc_remote_blanked == 0, "trunc default: nothing blanked");
+        CHECK(buf == in, "trunc default: buffer byte-identical (untouched)");
+
+        // Enabled (true): the complete Remote is blanked, the cut Main is intact.
+        std::string buf2 = in;
+        auto r = pvfilter::strip_remote_items(&buf2[0], buf2.size(), /*blank_truncated_complete=*/true);
+        CHECK(!r.complete, "trunc-blank: still not complete");
+        CHECK(r.trunc_modified && r.trunc_remote_blanked == 1, "trunc-blank: 1 Remote blanked");
+        CHECK(buf2.size() == in.size(), "trunc-blank: length unchanged");
+        CHECK(buf2.find("\"Remote\"") == std::string::npos, "trunc-blank: Remote literal gone");
+        // The truncated Main element (everything from its '{') must be untouched.
+        size_t main_pos = in.find("{\"type\":\"Main\"");
+        CHECK(buf2.compare(main_pos, std::string::npos, in, main_pos, std::string::npos) == 0,
+              "trunc-blank: truncated trailing element byte-identical (mid-body cut never touched)");
+        CHECK(buf2.find("main_verylong_url_that_gets_cut") != std::string::npos,
+              "trunc-blank: cut Main URL preserved");
+    }
+
+    // ── TRUNCATED-BLANK: the truncated trailing element is ITSELF a Remote ──
+    // cut mid-body. It must NOT be blanked (we never touch a partial element);
+    // the complete Main before it stays; no complete Remote exists to blank.
+    {
+        std::string in =
+          "{\"intraTitlePlaylist\":["
+          "{\"type\":\"Main\",\"startMs\":0},"
+          "{\"type\":\"Remote\",\"adId\":\"ad9\",\"urls\":[\"https://y/iad_cut";  // Remote cut mid-body
+        std::string buf = in;
+        auto r = pvfilter::strip_remote_items(&buf[0], buf.size(), /*blank_truncated_complete=*/true);
+        CHECK(!r.complete, "trunc-remote-cut: not complete");
+        CHECK(r.trunc_complete_remotes == 0, "trunc-remote-cut: no COMPLETE Remote before cut");
+        CHECK(!r.trunc_modified && r.trunc_remote_blanked == 0, "trunc-remote-cut: nothing blanked");
+        CHECK(buf == in, "trunc-remote-cut: buffer untouched (partial Remote never blanked)");
+    }
+
     std::printf(g_fail == 0 ? "ALL TESTS PASSED (0 failure(s))\n" : "%d FAILURE(S)\n", g_fail);
     return g_fail == 0 ? 0 : 1;
 }
