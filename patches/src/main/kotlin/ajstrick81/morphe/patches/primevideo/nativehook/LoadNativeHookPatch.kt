@@ -35,7 +35,7 @@ import ajstrick81.morphe.patches.primevideo.shared.Constants
 val loadNativeHookPatch = bytecodePatch(
     name = "Load native ad-strip hook",
     description = "Loads libpvhook.so at startup to blank Remote (ad) items from the " +
-        "PRS intraTitlePlaylist in-process (memcpy/memmove interception via ShadowHook).",
+        "PRS intraTitlePlaylist in-process (libignite memcpy/memmove GOT/PLT import hook).",
 ) {
     compatibleWith(Constants.COMPATIBILITY)
 

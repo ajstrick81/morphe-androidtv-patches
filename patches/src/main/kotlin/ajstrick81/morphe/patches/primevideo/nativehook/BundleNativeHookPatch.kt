@@ -27,7 +27,7 @@ import ajstrick81.morphe.patches.primevideo.shared.Constants
 val bundleNativeHookPatch = resourcePatch(
     name = "Bundle native ad-strip hook",
     description = "Packages libpvhook.so into the APK's native lib dir for the " +
-        "in-process PRS Remote-item strip (native memcpy/memmove interception via ShadowHook).",
+        "in-process PRS Remote-item strip (libignite memcpy/memmove GOT/PLT import hook).",
 ) {
     compatibleWith(Constants.COMPATIBILITY)
 
