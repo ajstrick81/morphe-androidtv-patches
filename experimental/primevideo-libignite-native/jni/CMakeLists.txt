@@ -34,7 +34,26 @@ add_library(pvhook SHARED
     hooks.cpp
     got_hook.cpp
     remote_strip.cpp
+    manifest_diag.cpp
 )
+
+# Read-only DASH-manifest diagnostic. OFF by default (shipping strip build is
+# byte-for-byte unchanged); enable with -DPV_MANIFEST_DIAG=1 at configure time.
+if(PV_MANIFEST_DIAG)
+    target_compile_definitions(pvhook PRIVATE PV_MANIFEST_DIAG=1)
+endif()
+
+# Experimental: source-side pre-copy blank for TV-show getVideoAds prerolls
+# (movie-safe — gated on getVideoAds presence). Enable with -DPV_SRC_BLANK_GVA=1.
+if(PV_SRC_BLANK_GVA)
+    target_compile_definitions(pvhook PRIVATE PV_SRC_BLANK_GVA=1)
+endif()
+
+# Experimental: neutralize the getVideoAds request URL (adMarkerId=PRE_ROLL ->
+# DISABLED) for TV-show prerolls. Enable with -DPV_NEUTER_GVA_URL=1.
+if(PV_NEUTER_GVA_URL)
+    target_compile_definitions(pvhook PRIVATE PV_NEUTER_GVA_URL=1)
+endif()
 target_include_directories(pvhook PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 find_library(log-lib log)
