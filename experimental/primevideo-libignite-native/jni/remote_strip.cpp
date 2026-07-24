@@ -157,7 +157,27 @@ bool find_intra_title_playlist(const char* buf, size_t len, size_t* out_marker_p
     return false;
 }
 
-RemoteStripResult strip_remote_items(char* buf, size_t len) {
+// Blank a single (fully-closed) element in place with spaces, taking an adjacent
+// comma with it so the surrounding array stays structurally valid. Same length
+// in, same length out. `prev_has_comma` is whether the preceding element carried
+// a trailing comma (used only for the last-element-in-a-complete-array case).
+void blank_elem(char* buf, const Elem& el, bool prev_has_comma, size_t prev_comma_pos) {
+    size_t rs, re;
+    if (el.has_comma) {
+        rs = el.start;
+        re = el.comma_pos + 1;
+    } else if (prev_has_comma) {
+        rs = prev_comma_pos;
+        re = el.end;
+    } else {
+        rs = el.start;
+        re = el.end;
+    }
+    if (re > rs) memset(buf + rs, ' ', re - rs);
+}
+
+RemoteStripResult strip_remote_items(char* buf, size_t len, bool blank_truncated_complete,
+                                     bool apply) {
     RemoteStripResult result;
 
     size_t marker_pos;
@@ -166,7 +186,26 @@ RemoteStripResult strip_remote_items(char* buf, size_t len) {
 
     size_t lb = marker_pos + kMarkerLen - 1; // marker ends in ":[" -> last char is '['
     ParseResult pr;
-    if (!parse_complete(buf, len, lb, pr)) return result; // complete stays false: do not touch buf
+    if (!parse_complete(buf, len, lb, pr)) {
+        // Truncated/malformed: the trailing element was cut mid-body and is NEVER
+        // touched. The elements parse_complete recorded before it bailed are all
+        // fully-closed. Count complete Remotes among them (diagnostic), and — if
+        // enabled — blank them: they are whole {...} objects each followed by a
+        // comma, so a same-length space-fill keeps the JSON structurally valid.
+        for (size_t k = 0; k < pr.elem_count; ++k) {
+            if (!pr.elems[k].is_remote) continue;
+            ++result.trunc_complete_remotes;
+            if (blank_truncated_complete) {
+                // In a truncated array every recorded element is comma-followed,
+                // so blank_elem takes the element + its trailing comma.
+                if (apply) blank_elem(buf, pr.elems[k], false, 0);
+                ++result.trunc_remote_blanked;
+            }
+        }
+        result.trunc_complete_items = static_cast<int>(pr.elem_count);
+        if (result.trunc_remote_blanked > 0) result.trunc_modified = true;
+        return result; // complete stays false
+    }
 
     result.complete = true;
     result.total_items = static_cast<int>(pr.elem_count);
@@ -180,19 +219,9 @@ RemoteStripResult strip_remote_items(char* buf, size_t len) {
     for (size_t k = 0; k < pr.elem_count; ++k) {
         const Elem& el = pr.elems[k];
         if (!el.is_remote) continue;
-
-        size_t rs, re;
-        if (el.has_comma) {
-            rs = el.start;
-            re = el.comma_pos + 1;
-        } else if (k > 0 && pr.elems[k - 1].has_comma) {
-            rs = pr.elems[k - 1].comma_pos;
-            re = el.end;
-        } else {
-            rs = el.start;
-            re = el.end;
-        }
-        if (re > rs) memset(buf + rs, ' ', re - rs);
+        bool prev_comma = (k > 0 && pr.elems[k - 1].has_comma);
+        size_t prev_pos = (k > 0) ? pr.elems[k - 1].comma_pos : 0;
+        if (apply) blank_elem(buf, el, prev_comma, prev_pos);
     }
 
     result.modified = true;
