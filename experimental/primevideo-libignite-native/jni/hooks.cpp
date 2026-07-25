@@ -165,11 +165,26 @@ inline void maybe_strip_src(const void*, size_t) {}
 #if PV_NEUTER_GVA_URL
 std::atomic<uint64_t> g_gva_neutered{0};
 void maybe_neuter_gva_url(const void* vsrc, size_t n) {
-    if (vsrc == nullptr || n < 16 || n > 8192) return;
+    // Real getVideoAds request-URL buffers are small plaintext (path ~140B, full
+    // URL ~360B, HTTP GET+headers ~1.2KB). Cap well below that. CRITICAL: this
+    // ALSO excludes the gzipped PRS body's zlib decompression chunks (4096/16384),
+    // which contain getVideoAds URLs too — editing one mid-inflate corrupts the
+    // gzip stream -> CURLE_BAD_CONTENT_ENCODING (61) on the PRS host -> "Something
+    // went wrong" (root-caused on-device 2026-07-25; a partial PRS chunk can carry
+    // a getVideoAds URL without the intraTitlePlaylist marker, slipping the gate).
+    if (vsrc == nullptr || n < 16 || n >= 2048) return;
+    if (n >= 4096 && (n & (n - 1)) == 0) return;  // belt-and-suspenders pow-2 skip
     char* src = const_cast<char*>(static_cast<const char*>(vsrc));
-    // Request-URL buffers only (query form); never the gzipped PRS body.
+    // Request-URL buffers only (query form); never the gzipped PRS body/fragment.
     if (pvfilter::find_bytes(src, n, "getVideoAds?") == static_cast<size_t>(-1)) return;
-    if (pvfilter::find_bytes(src, n, "intraTitlePlaylist") != static_cast<size_t>(-1)) return;
+    // Reject anything carrying PRS-RESPONSE structure. In the PRS the URL lives
+    // inside `"urlsInPriorityOrder":[...]` under `resolutionConstraints`/`nonLinearAds`
+    // within `intraTitlePlaylist`; a bare request URL has none of these. This
+    // catches small final inflate fragments the size cap alone might miss.
+    if (pvfilter::find_bytes(src, n, "intraTitlePlaylist")  != static_cast<size_t>(-1)) return;
+    if (pvfilter::find_bytes(src, n, "urlsInPriorityOrder") != static_cast<size_t>(-1)) return;
+    if (pvfilter::find_bytes(src, n, "resolutionConstraints")!= static_cast<size_t>(-1)) return;
+    if (pvfilter::find_bytes(src, n, "nonLinearAds")        != static_cast<size_t>(-1)) return;
     // Named roll markers → same-length "DISABLED*" (an unknown-but-clean marker →
     // server returns an empty ad pod, proven graceful for PRE_ROLL). "adMarkerId="
     // is 11 chars; the value starts at +11. vlen = value length (also repl length).
