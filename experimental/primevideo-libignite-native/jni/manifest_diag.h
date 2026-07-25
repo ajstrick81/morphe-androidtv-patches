@@ -1,3 +1,9 @@
+// manifest_diag.h — the portable scanner core of `adprobe`, the read-only ad-seam
+// diagnostic (find/name ad-scheduling fields + dump context). Reusable across
+// targets by swapping keyword/marker strings; the INJECTION front-end is app-
+// specific (native memcpy hook here; a bytecode hook for Java apps like Peacock/
+// Pluto/Tubi/FoxOne; a JS-VM tap for Netflix). Full guide: docs/ADPROBE_DIAGNOSTIC.md.
+//
 // manifest_diag.h — READ-ONLY diagnostic scanner for DASH .mpd buffers.
 //
 // Purpose: on-device confirmation that TV-show ad breaks are physically embedded
