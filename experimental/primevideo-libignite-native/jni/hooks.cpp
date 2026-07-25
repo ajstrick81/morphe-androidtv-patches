@@ -170,19 +170,58 @@ void maybe_neuter_gva_url(const void* vsrc, size_t n) {
     // Request-URL buffers only (query form); never the gzipped PRS body.
     if (pvfilter::find_bytes(src, n, "getVideoAds?") == static_cast<size_t>(-1)) return;
     if (pvfilter::find_bytes(src, n, "intraTitlePlaylist") != static_cast<size_t>(-1)) return;
-    const char key[] = "adMarkerId=PRE_ROLL";      // 19 chars; value at +11 is "PRE_ROLL" (8)
-    const size_t klen = sizeof(key) - 1;
-    size_t off = 0; int count = 0;
-    for (;;) {
-        size_t rel = pvfilter::find_bytes(src + off, n - off, key);
-        if (rel == static_cast<size_t>(-1)) break;
-        size_t pos = off + rel;
-        memcpy(src + pos + 11, "DISABLED", 8);     // PRE_ROLL -> DISABLED (same length)
-        ++count; off = pos + klen;
+    // Named roll markers → same-length "DISABLED*" (an unknown-but-clean marker →
+    // server returns an empty ad pod, proven graceful for PRE_ROLL). "adMarkerId="
+    // is 11 chars; the value starts at +11. vlen = value length (also repl length).
+    struct Marker { const char* key; size_t vlen; const char* repl; };
+    static const Marker kMarkers[] = {
+        {"adMarkerId=PRE_ROLL",  8, "DISABLED"},   // preroll  (proven)
+        {"adMarkerId=MID_ROLL",  8, "DISABLED"},   // midroll
+        {"adMarkerId=POST_ROLL", 9, "DISABLED0"},  // postroll
+    };
+    int count = 0;
+    for (const Marker& m : kMarkers) {
+        const size_t klen = 11 + m.vlen;           // "adMarkerId=" + value
+        size_t off = 0;
+        for (;;) {
+            size_t rel = pvfilter::find_bytes(src + off, n - off, m.key);
+            if (rel == static_cast<size_t>(-1)) break;
+            size_t pos = off + rel;
+            memcpy(src + pos + 11, m.repl, m.vlen);
+            ++count; off = pos + klen;
+        }
     }
+    // Mid/post-roll markers are per-break UUIDs (e.g. adMarkerId=569d6493-a089-...),
+    // NOT named. Rewrite any 36-char UUID adMarkerId value to the NIL UUID
+    // (00000000-0000-0000-0000-000000000000) — format-preserving (hyphens at
+    // 8/13/18/23) so the server treats it as an unknown-but-valid break → empty pod,
+    // rather than a malformed value → error. Also neutralizes nonLinearAds nextUpAd.
+    int uuids = 0;
+    {
+        const char amk[] = "adMarkerId=";
+        size_t off = 0;
+        for (;;) {
+            size_t rel = pvfilter::find_bytes(src + off, n - off, amk);
+            if (rel == static_cast<size_t>(-1)) break;
+            size_t vpos = off + rel + 11;              // value start (after "adMarkerId=")
+            size_t vlen = 0;
+            while (vpos + vlen < n) {
+                char c = src[vpos + vlen];
+                if (c == '&' || c == '"' || c == '\\' || c == ' ' || c == '\0') break;
+                ++vlen;
+            }
+            if (vlen == 36 && src[vpos+8]=='-' && src[vpos+13]=='-' &&
+                src[vpos+18]=='-' && src[vpos+23]=='-') {
+                for (size_t i = 0; i < 36; ++i) if (src[vpos+i] != '-') src[vpos+i] = '0';
+                ++uuids;
+            }
+            off = vpos + (vlen ? vlen : 1);
+        }
+    }
+    count += uuids;
     if (count > 0) {
         g_gva_neutered.fetch_add(static_cast<uint64_t>(count), std::memory_order_relaxed);
-        LOGI("NEUTER-GVA: rewrote %d adMarkerId=PRE_ROLL->DISABLED (n=%zu) pre-copy", count, n);
+        LOGI("NEUTER-GVA: rewrote %d marker(s) (%d UUID->nil) (n=%zu) pre-copy", count, uuids, n);
     }
 }
 #else
