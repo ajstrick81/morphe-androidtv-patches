@@ -8,35 +8,45 @@
  * Coverage:
  *   ✅ VOD ads              — createVodStreamRequest() empty zzdm →
  *                             IMA SDK throws → fallback to pre-cached CDN URL
- *   ✅ SSAI media source    — Lb6/h;.b0() blocked → no SSAI startup →
- *                             requestStream() never called → no DAI manifest URL
- *   ✅ DAI StreamManager    — Lb6/h;.m0() blocked → no ad segment scheduling
- *   ✅ TXXX dispatch        — Lu70/i;.onMetadata() blocked → no MLB EVI/IMA cues
- *   🧪 Commercial-break overlay — hooks onAdBreakStarted()/onAdBreakEnded()
- *                             to show/hide a full-screen overlay (Patch 5).
- *                             RE-ENABLED ALONGSIDE Patches 2/3/4 for field
- *                             testing — see note below.
+ *   🧪 SSAI media source    — Lb6/h;.b0() blocked (no confirmed effect on
+ *                             live ad segments — see status note)
+ *   🧪 DAI StreamManager    — Lb6/h;.m0() blocked (same caveat as above)
+ *   🧪 TXXX dispatch        — Lu70/i;.onMetadata() blocked (same caveat)
+ *   🧪 Commercial-break overlay (Patch 5) — shows a full-screen overlay
+ *                             during ad breaks. Primary trigger is now the
+ *                             manifest rewriter (Patch 6), which signals an ad
+ *                             break whenever it sees ad markers in a media
+ *                             playlist; the IMA onAdBreakStarted()/
+ *                             onAdBreakEnded() hooks are kept as a backup
+ *                             (never observed firing in field tests).
+ *   🧪 HLS manifest ad-segment stripping (Patch 6) — rewrites the .m3u8
+ *                             playlist itself to drop dclk_video_ads
+ *                             segments before ExoPlayer parses them.
+ *                             Not yet field-tested.
  *
  * STATUS NOTE (this revision):
  *
- *   A prior revision disabled Patches 2/3/4 (blocking the SSAI session,
- *   DAI StreamManager, and TXXX metadata dispatch outright) in favor of
- *   Patch 5's overlay, reasoning that blocking SSAI was unconfirmed-safe
- *   for live games. A logcat capture was taken to validate this — but it
- *   was mistakenly captured against v1.4.107, a build that predates Patch
- *   5 entirely, so it only confirmed v1.4.107's pre-existing behavior
- *   (Patches 2/3/4 active, no overlay code present) and proved nothing
- *   about whether Patch 5 actually works.
+ *   Two logcat captures against builds with Patches 2/3/4 active (most
+ *   recently v1.5.1, confirmed against app v26.8.1.1) both showed
+ *   dclk_video_ads segments STILL being fetched during live ad breaks —
+ *   36 occurrences in the second capture — and the Patch 5 overlay never
+ *   firing, with no crashes either time. This falsifies the original theory
+ *   that blocking Lb6/h;.b0()/m0() would prevent requestStream() and thus
+ *   prevent ad segment fetching: live SSAI/DAI ad segments are stitched
+ *   directly into the HLS manifest server-side, so the player just
+ *   sequentially requests whatever the manifest lists — there's no
+ *   client-side "ad request" call gating segment fetches for IMA SDK
+ *   method-blocking to intercept.
  *
- *   Patches 2/3/4 are re-enabled here and Patch 5 is left active as well,
- *   so the next field test (logcat against THIS build) can determine:
- *     - whether Patches 2/3/4 cause any live-playback regressions, and
- *     - whether onAdBreakStarted()/onAdBreakEnded() ever fire once the
- *       SSAI session itself is blocked (they may not — Patch 2/3 prevent
- *       Lb6/h$g; construction, which is plausibly upstream of however
- *       those callbacks get invoked — but this needs to be confirmed by
- *       logcat rather than assumed).
- *   Update this note once results come back.
+ *   Patch 6 is the pivot: rather than blocking IMA SDK methods, it rewrites
+ *   the manifest text itself at the data-source level (Lr5/a;.f(), Media3's
+ *   OkHttpDataSource.open()) — see AtBatFingerprints.kt and
+ *   MlbManifestRewriter.kt for the full mechanism. Patches 2/3/4/5 are left
+ *   in place as belt-and-suspenders (Patch 1a/1b's VOD path and any
+ *   tracking/cue suppression they still provide), but Patch 6 is the one
+ *   actually expected to stop live ad segments. Needs a field test (logcat
+ *   against a build containing Patch 6) before that expectation is
+ *   confirmed — update this note once results come back.
  */
 
 package app.morphe.patches.mlbtv
@@ -47,6 +57,8 @@ import app.morphe.patches.shared.compat.AppCompatibilities
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
 @Suppress("unused")
@@ -161,6 +173,13 @@ val atbatPatch = bytecodePatch(
                     ((instruction as ReferenceInstruction).reference as? MethodReference)?.name ==
                         "getAdViewGroup"
             }
+            // Fail loud at patch time: a -1 here would silently make
+            // moveResultIndex 0 and register a garbage view group, leaving the
+            // overlay with nothing valid to attach to (it would never show).
+            check(getAdViewGroupIndex != -1) {
+                "SsaiDisplayContainerFingerprint matched but no getAdViewGroup() call was found — " +
+                    "the overlay's ad view group cannot be registered"
+            }
             val moveResultIndex = getAdViewGroupIndex + 1
             val adViewGroupRegister =
                 (instructions[moveResultIndex] as OneRegisterInstruction).registerA
@@ -182,9 +201,13 @@ val atbatPatch = bytecodePatch(
         }
 
         // 5b/5c — wire the no-op ad-break lifecycle callbacks to show/hide
-        // the overlay. Both bodies are a single return-void (1 register,
-        // `this`), so prepending at index 0 is unconditionally safe — no
-        // registers are live yet for the verifier to conflict over.
+        // the overlay. These are now a BACKUP trigger: the primary trigger is
+        // MlbManifestRewriter.signalAdBreak() (Patch 6), which fires off the
+        // actual manifest content and does not depend on these callbacks ever
+        // running (they never were observed firing in field tests). Both
+        // bodies are a single return-void (1 register, `this`), so prepending
+        // at index 0 is unconditionally safe — no registers are live yet for
+        // the verifier to conflict over.
         AdBreakStartedFingerprint.method.addInstructions(
             0,
             """
@@ -198,5 +221,57 @@ val atbatPatch = bytecodePatch(
                 invoke-static {}, Lajstrick81/morphe/extension/mlbtv/ads/AdBreakOverlayHelper;->hideOverlay()V
             """.trimIndent(),
         )
+
+        // ------------------------------------------------------------------
+        // Patch 6: HLS Manifest Ad-Segment Stripping — Lr5/a;.f(Lq5/i;)J
+        //
+        // Patches 2/3/4 block the IMA SDK's own DAI/SSAI Java methods, but
+        // logcat against v1.5.1 confirmed dclk_video_ads segments are STILL
+        // fetched during live games regardless — they're stitched into the
+        // HLS manifest server-side, so there's no client-side "ad request"
+        // call left to intercept. The only remaining point of control is the
+        // manifest text itself, before ExoPlayer's HLS parser reads it.
+        //
+        // f(Lq5/i;)J is OkHttpDataSource.open(): it stores the raw response
+        // InputStream into the data source's only Ljava/io/InputStream;
+        // field right after the network read. We splice
+        // MlbManifestRewriter.wrap() in at that exact point — it passes
+        // through non-manifest fetches (segments, etc.) untouched and only
+        // rewrites .m3u8 responses that actually contain ad markers.
+        //
+        // Register safety: this reuses the InputStream register already
+        // live at the iput-object site (no new register is introduced for
+        // it) and passes the DataSpec parameter via its own untouched `p1`
+        // register — f() takes exactly one declared parameter, so `p1` is
+        // guaranteed to hold it for the lifetime of the method regardless of
+        // any internal `move-object` the method does with its own locals.
+        // The extension method itself uses reflection to pull the Uri out of
+        // the DataSpec rather than requiring its obfuscated type at the
+        // smali call site.
+        // ------------------------------------------------------------------
+        OkHttpDataSourceOpenFingerprint.method.apply {
+            val instructions = implementation!!.instructions
+            val iputStreamIndex = instructions.indexOfFirst { instruction ->
+                instruction.opcode == Opcode.IPUT_OBJECT &&
+                    ((instruction as ReferenceInstruction).reference as? FieldReference)?.type ==
+                        "Ljava/io/InputStream;"
+            }
+            // Fail loud at patch time: a -1 here would index instructions[-1]
+            // and throw an opaque IndexOutOfBounds; surface the real cause
+            // (the manifest rewriter could not be spliced in) instead.
+            check(iputStreamIndex != -1) {
+                "OkHttpDataSourceOpenFingerprint matched but no InputStream iput-object was found — " +
+                    "the manifest rewriter cannot be spliced in"
+            }
+            val streamRegister = "v${(instructions[iputStreamIndex] as TwoRegisterInstruction).registerA}"
+
+            addInstructions(
+                iputStreamIndex,
+                """
+                    invoke-static {p1, $streamRegister}, Lajstrick81/morphe/extension/mlbtv/ads/MlbManifestRewriter;->wrap(Ljava/lang/Object;Ljava/io/InputStream;)Ljava/io/InputStream;
+                    move-result-object $streamRegister
+                """.trimIndent(),
+            )
+        }
     }
 }
