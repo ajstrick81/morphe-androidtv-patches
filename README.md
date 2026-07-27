@@ -26,6 +26,7 @@ I'm just like you — I enjoy watching TV and movies without being bored and ann
 | 🟡 Paramount+ | `com.cbs.ott` | ✅ Use `v16.8.0` — newer versions (`v16.12`) still in development | `v16.8.0` | 7/19/26 |
 | 🔴 Fox One | **Under Development** | — |
 | 🔴 MLB TV | **Under Development** | — |
+| 🔴 Twitch (Purple TV) | `tv.twitch.android.app` | **Under Development** — manifest-only patch adds Android TV installability (leanback feature flag + TV launcher entry) on top of [Purple TV](https://github.com/nyanarchive/purpletv); the UI itself is still touch-first and not yet D-pad navigable | — | 7/27/26 |
 
 > 🟢 Working &nbsp;&nbsp; 🟡 Partial/Testing &nbsp;&nbsp; 🔴 Under Development / Broken
 
