@@ -1,3 +1,15 @@
+# [1.15.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.14.0...v1.15.0) (2026-07-27)
+
+
+### Bug Fixes
+
+* **primevideo-native:** skip decompression chunks to stop CURL 61 corruption ([9787c81](https://github.com/ajstrick81/morphe-androidtv-patches/commit/9787c8170e44eec3ce9d19e10b43351290139dbf))
+
+
+### Features
+
+* **primevideo-native:** working GOT/PLT import hook for in-process ad strip ([516017d](https://github.com/ajstrick81/morphe-androidtv-patches/commit/516017d20a21bd18c252d602cf783442003434d4))
+
 # [1.14.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.13.0...v1.14.0) (2026-07-22)
 
 
