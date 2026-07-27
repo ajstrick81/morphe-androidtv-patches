@@ -12,6 +12,14 @@
     public static *** skipAllExo2AdGroups(com.google.common.collect.ImmutableMap);
     public static *** enforceAdBlock(com.android.volley.Request);
 }
+
+# Prime Video native ad-strip loader — called directly from injected smali
+# in Application.onCreate via invoke-static {}. Without this rule R8 sees it
+# as unreferenced (nothing in the extension's own code graph calls it) and
+# would strip or rename it, breaking the loadLibrary("pvhook") call.
+-keep class ajstrick81.morphe.extension.primevideo.nativehook.NativeHookLoader {
+    public static void load();
+}
 # Peacock — existing entry
 # emptyAdPlaybackState is called reflectively by the Sky SDK layer patches.
 -keep class ajstrick81.morphe.extension.peacock.ads.SkipAdsPatch {
