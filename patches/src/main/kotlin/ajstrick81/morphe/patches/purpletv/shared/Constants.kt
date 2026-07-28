@@ -3,18 +3,19 @@ package ajstrick81.morphe.patches.purpletv.shared
 import app.morphe.patcher.patch.AppTarget
 import app.morphe.patcher.patch.Compatibility
 
-// Purple TV (https://github.com/nyanarchive/purpletv) is itself a patch layer
-// applied on top of the stock, mobile-only Twitch APK (package
-// tv.twitch.android.app). There is no official Android TV build of Twitch to
-// target, unlike every other app in this repo — so this patch is expected to
-// be applied to an already Purple-TV-patched APK, and no specific version has
-// been verified on an Android TV device yet. Update/expand the target list
-// below once a version has actually been tested.
+// Targets the stock, mobile-only official Twitch APK (package
+// tv.twitch.android.app) directly — there is no official Android TV build of
+// Twitch to target, unlike every other app in this repo. v30.2.2
+// (versionCode 3002026) has been decompiled and analyzed (dex-level fingerprint
+// targets confirmed present), but no patch in this package has been verified
+// working on an actual Android TV device yet. These patches are independent of
+// and can be combined with Purple TV (https://github.com/nyanarchive/purpletv),
+// which does its own separate bytecode patching of the same base APK.
 object Constants {
     val COMPATIBILITY = Compatibility(
-        name = "Twitch (Purple TV)",
+        name = "Twitch",
         packageName = "tv.twitch.android.app",
         appIconColor = 0x9146FF,
-        targets = listOf(AppTarget("UNTESTED")),
+        targets = listOf(AppTarget("30.2.2")),
     )
 }
