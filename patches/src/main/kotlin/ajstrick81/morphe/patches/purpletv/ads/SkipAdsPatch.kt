@@ -5,7 +5,7 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Spoof playerType on the playback access token request
+// Layer 1 — Spoof playerType on the playback access token request
 //
 // Background (see project research notes): Twitch's Android app plays back
 // through the Amazon IVS Player SDK, and confirmed via direct dex analysis that
@@ -52,16 +52,50 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 // class (live playback, VOD/clips) pass an explicit value for it — it already
 // defaults to absent on the wire, so there's nothing to spoof there.
 // ─────────────────────────────────────────────────────────────────────────────
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// Layer 2 — Block the GrandDads ad-eligibility request
+//
+// This is a real, shipped technique, not a guess: a decompiled 2024 Purple TV
+// build shows its own AdBlocker class short-circuiting Twitch's
+// GrandDadsApiImpl.shouldDeclineAds at the very top of the method — before any
+// GraphQL query is built or sent — returning a "declined" response
+// immediately when their ad-block setting is on. That exact call chain
+// (VideoAdManager -> AdEligibilityFetcher -> GrandDadsFetcher ->
+// GrandDadsApiImpl -> GrandDadsQuery) was independently re-confirmed present
+// and unpatched in this session's v30.2.2 official APK via the query's own
+// document() string and the shared GraphQL repository class it flows through.
+//
+// What differs here from Purple TV's own approach: Purple TV's patch returns
+// a specific Twitch-internal sealed response object
+// (GrandDadsResponse.AdContextUnavailable). That class's obfuscated identity
+// in v30.2.2 could not be pinned down from static analysis alone — its
+// GraphQL Data-class fields are fully R8-renamed with no readable anchor
+// (checked directly; see Fingerprints.kt Layer 2/3 comments) — and
+// constructing the wrong sealed-class shape risks a ClassCastException where
+// Purple TV's approach risks nothing, since Purple TV had the real class name
+// to work with via their own toolchain.
+//
+// Instead, this patch makes the request method raise a Single.error(...)
+// immediately, skipping the GraphQL call entirely. This is inferred safe
+// rather than confirmed safe: ad-fetching code operating at Twitch's scale
+// has to tolerate real network failures for this exact call (timeouts, no
+// connectivity) constantly in production, so an error path is almost
+// certainly already handled gracefully upstream (VideoAdManager /
+// AdEligibilityFetcher) rather than crashing the player. This has NOT been
+// confirmed on a real device.
+// ─────────────────────────────────────────────────────────────────────────────
 @Suppress("unused")
 val skipAdsPatch = bytecodePatch(
-    name = "Spoof player type (ad suppression)",
-    description = "Overwrites the playerType value sent on Twitch's playback access token " +
-        "request (normally \"mobile_player\" for live viewing) with an alternate declared " +
-        "player context, aiming to receive a manifest variant the ad server doesn't insert " +
-        "ads into. Ad decisioning happens server-side for this app — there is no client-side " +
-        "ad event to intercept after the fact — so this is the only lever available at the " +
-        "bytecode level. UNTESTED: the specific replacement value may need adjustment after " +
-        "a real playback test; see the candidate list in SkipAdsPatch.kt.",
+    name = "Spoof player type + block GrandDads ad-eligibility request",
+    description = "Two independent ad-suppression layers. Layer 1 overwrites the playerType " +
+        "value sent on Twitch's playback access token request (normally \"mobile_player\" for " +
+        "live viewing) with an alternate declared player context, aiming to receive a manifest " +
+        "variant the ad server doesn't insert ads into. Layer 2 blocks the \"GrandDads\" " +
+        "ad-eligibility GraphQL request that a decompiled Purple TV build confirms is the real " +
+        "per-session ad-decisioning call, by making the request fail immediately instead of " +
+        "reaching the network. Both layers are UNTESTED on a real device — see the comments in " +
+        "SkipAdsPatch.kt for what's confirmed vs. inferred for each.",
 ) {
     compatibleWith(Constants.COMPATIBILITY)
 
@@ -73,6 +107,22 @@ val skipAdsPatch = bytecodePatch(
             0,
             """
                 const-string p1, "background_audio"
+            """.trimIndent(),
+        )
+
+        // Raise an error immediately instead of building/dispatching the
+        // GrandDads query. The method's declared return type is the generic
+        // Ljava/lang/Object; (Kotlin Function1 erasure), and Single<T> is a
+        // valid Object, so this is bytecode-verifier-safe regardless of what
+        // the caller does with the result.
+        DeclineAdsRequestFingerprint.method.addInstructions(
+            0,
+            """
+                new-instance v0, Ljava/lang/RuntimeException;
+                invoke-direct {v0}, Ljava/lang/RuntimeException;-><init>()V
+                invoke-static {v0}, Lio/reactivex/Single;->error(Ljava/lang/Throwable;)Lio/reactivex/Single;
+                move-result-object v0
+                return-object v0
             """.trimIndent(),
         )
     }

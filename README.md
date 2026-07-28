@@ -26,7 +26,7 @@ I'm just like you — I enjoy watching TV and movies without being bored and ann
 | 🟡 Paramount+ | `com.cbs.ott` | ✅ Use `v16.8.0` — newer versions (`v16.12`) still in development | `v16.8.0` | 7/19/26 |
 | 🔴 Fox One | **Under Development** | — |
 | 🔴 MLB TV | **Under Development** | — |
-| 🔴 Twitch | `tv.twitch.android.app` | **Under Development** — Android TV installability patch (leanback + TV launcher entry) plus an untested ad-suppression patch that spoofs the playerType sent on the playback access token request; ads are server-side stitched, so this needs live testing to confirm it actually yields an ad-free manifest | `30.2.2` (analyzed, not yet device-tested) | 7/28/26 |
+| 🔴 Twitch | `tv.twitch.android.app` | **Under Development** — Android TV installability patch (leanback + TV launcher entry) plus a two-layer ad-suppression patch: playerType spoofing on the playback token request, and blocking the "GrandDads" ad-eligibility GraphQL request (technique confirmed shipping in a decompiled Purple TV build, reimplemented independently for the official APK). Both layers untested on device | `30.2.2` (analyzed, not yet device-tested) | 7/28/26 |
 
 > 🟢 Working &nbsp;&nbsp; 🟡 Partial/Testing &nbsp;&nbsp; 🔴 Under Development / Broken
 

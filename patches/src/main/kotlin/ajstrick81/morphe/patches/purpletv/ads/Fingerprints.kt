@@ -4,6 +4,7 @@ import app.morphe.patcher.Fingerprint
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.reference.StringReference
+import com.android.tools.smali.dexlib2.iface.reference.TypeReference
 
 // ── Layer 1 ──────────────────────────────────────────────────────────────────
 // Target: PlaybackAccessTokenParams.<init>(String playerType, Optional hasAdblock
@@ -42,5 +43,48 @@ internal object PlaybackAccessTokenParamsConstructorFingerprint : Fingerprint(
                                 ?.string == "PlaybackAccessTokenParams(disableHTTPS="
                     } == true
             }
+    },
+)
+
+// ── Layer 2 ──────────────────────────────────────────────────────────────────
+// Target: the GraphQL query Twitch's own client calls "GrandDads" internally —
+// the actual per-session ad-eligibility/decisioning request (distinct from the
+// playback access token request Layer 1 targets). This is the mechanism behind
+// dynamic ad rotation: it returns a decline decision from the ad server before
+// any specific ad creative is requested.
+//
+// Confirmed present and structurally unchanged between a decompiled 2024
+// Purple TV build (which carries readable, unminified names for its own
+// bundled Twitch code) and the current v30.2.2 official APK analyzed here —
+// same query text, same AdRequestContext/AdRequestClientContext/
+// AdRequestPlayerContext shape, same shared GraphQL repository class handling
+// both this query and the playback token request from Layer 1.
+//
+// The query's document text is embedded as a compile-time string constant by
+// Apollo's GraphQL codegen, making it a stable anchor independent of R8
+// renaming — this identifies the query class itself.
+internal object GrandDadsQueryDocumentFingerprint : Fingerprint(
+    returnType = "Ljava/lang/String;",
+    strings = listOf("query GrandDads(\$context: AdRequestContext!)"),
+)
+
+// ── Layer 3 ──────────────────────────────────────────────────────────────────
+// Target: the method that actually constructs and dispatches the GrandDads
+// query — the equivalent of what a decompiled Purple TV build shows as
+// GrandDadsApiImpl.shouldDeclineAds / GrandDadsFetcher$shouldDeclineAds$2.
+// R8 has merged this into a shared lambda-dispatch class in the official
+// build (confirmed via direct disassembly), so it isn't matchable by name.
+//
+// Located by scanning for a NEW_INSTANCE of the class Layer 2 identifies —
+// this only depends on the *relationship* between the two obfuscated names,
+// not on either one directly, so it survives independent per-build renaming
+// of both classes.
+internal object DeclineAdsRequestFingerprint : Fingerprint(
+    custom = { method, classDef ->
+        method.implementation?.instructions?.any { instruction ->
+            instruction.opcode == Opcode.NEW_INSTANCE &&
+                (instruction as ReferenceInstruction).reference.let { it as? TypeReference }
+                    ?.type == GrandDadsQueryDocumentFingerprint.method.definingClass
+        } == true
     },
 )
