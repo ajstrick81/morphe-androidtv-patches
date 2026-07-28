@@ -110,6 +110,14 @@ val skipAdsPatch = bytecodePatch(
             """.trimIndent(),
         )
 
+        // Validation-only: confirms the GrandDads query still exists in this
+        // build at all before relying on DeclineAdsRequestFingerprint's
+        // version-pinned class/method names below. If Twitch ever renames or
+        // removes the query itself, this fails loudly here instead of
+        // silently leaving Layer 3 patching the wrong (or nonexistent)
+        // method on some future version. Result intentionally unused.
+        GrandDadsQueryDocumentFingerprint.method
+
         // Raise an error immediately instead of building/dispatching the
         // GrandDads query. The method's declared return type is the generic
         // Ljava/lang/Object; (Kotlin Function1 erasure), and Single<T> is a
