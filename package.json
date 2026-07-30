@@ -1,7 +1,4 @@
 {
-  "scripts": {
-    "lint:dns": "node tools/lint-dns-rules.mjs"
-  },
   "devDependencies": {
     "@cleyrop-org/semantic-release-backmerge": "^5.2.4",
     "@MorpheApp/changelog": "git+https://github.com/MorpheApp/changelog.git#bundle",

@@ -17,7 +17,7 @@ I'm just like you — I enjoy watching TV and movies without being bored and ann
 | App | Package | Status | Tested Version | Date |
 |-----|---------|--------|---------------|------|
 | 🟢 Disney+ | `com.disney.disneyplus` | Working | `26.12.1+rc1-2026.07.15` | 7/21/26 |
-| 🟡 Prime Video | `com.amazon.amazonvideo.livingroom` | Partial/Testing — [DNS filters](dns/README.md) required; native prerolls may still appear | `6.23.23+v15.5.0.70-armv7a` | 6/26/26 |
+| 🟢 Prime Video | `com.amazon.amazonvideo.livingroom` | Working — native in-app ad strip (movies + TV shows), no DNS required | `6.23.23+v15.5.0.70-armv7a` | 7/30/26 |
 | 🟢 HBO Max | `com.wbd.hbomax` | Working | `v7.7.0.78` | 7/18/26 |
 | 🟢 Peacock | `com.peacocktv.peacockandroid` | Working — no DNS required | `v7.6.100` | 7/16/26 |
 | 🟢 Tubi | `com.tubitv` | Working | `v10.28.5000` | 7/20/26 |
@@ -74,13 +74,15 @@ All patches follow the same general workflow using **Morphe Manager**:
 3. Select it in Morphe Manager
 4. Apply the patch
 
-> 🟡 **Partial — DNS filter required, and some ads may still appear.** Prime
-> Video picks its ad-delivery path server-side: the bytecode patch covers the
-> "Java road" while a DNS blocklist covers the "native road" the patch can't
-> see. Native prerolls are baked into the session manifest below the patchable
-> layer, so a few ads can still slip through even with both layers active. Run
-> the DNS filter alongside the patch — see [**dns/README.md**](dns/README.md)
-> for the list and the dual-layer rationale.
+> 🟢 **Working — no DNS filter needed.** Ads are stripped **in-app** by a native
+> hook (`libpvhook.so`), so movies and TV shows play ad-free without any external
+> DNS blocklist, proxy, or root. Movie prerolls/mid-rolls and TV-show
+> prerolls/mid-rolls are all removed on the device before they play.
+>
+> TV-show ad removal is newly shipped (v1.16.0) and in wider testing. One known
+> edge case: very aggressive fast-forward + resume can occasionally nudge the
+> playback position; it self-heals on a full playthrough and normal viewing is
+> unaffected. Please report anything else via an issue.
 
 ---
 
