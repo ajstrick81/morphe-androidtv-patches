@@ -37,5 +37,16 @@ add_library(pvhook SHARED
 )
 target_include_directories(pvhook PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
+# TV-show ad suppression (verified on-device 2026-07-30, Onn 4K):
+#   PV_EMPTY_REGOLITH — empty the regolith getVideoAds RESPONSE playlist (the SGAI
+#                       mid-roll/preroll path). Uses the app's own clean empty-break
+#                       path, so no ghost period on resume/scrub, and edits only the
+#                       ad-decision response (never the gzip'd player bundle).
+# The movie strip (strip_remote_items) remains unconditional. Diagnostics are OFF by
+# construction — manifest_diag.cpp is not compiled into the shipping library. (A JS
+# "count-gate" was prototyped and rejected — it corrupts the bundle download; see
+# hooks.cpp.)
+target_compile_definitions(pvhook PRIVATE PV_EMPTY_REGOLITH=1)
+
 find_library(log-lib log)
 target_link_libraries(pvhook PRIVATE ${log-lib})
