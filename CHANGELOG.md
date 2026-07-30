@@ -1,3 +1,10 @@
+# [1.16.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.15.0...v1.16.0) (2026-07-30)
+
+
+### Features
+
+* **primevideo-native:** suppress TV-show preroll/mid-roll ads (regolith) ([35c4725](https://github.com/ajstrick81/morphe-androidtv-patches/commit/35c4725aa3d5f3052f602f332700f202f6aa6a26))
+
 # [1.15.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.14.0...v1.15.0) (2026-07-27)
 
 
