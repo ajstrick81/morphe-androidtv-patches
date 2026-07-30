@@ -20,6 +20,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <dlfcn.h>
 #include <pthread.h>
 #include <unistd.h>
@@ -108,10 +109,99 @@ inline bool is_decompress_chunk(size_t n) {
 
 std::atomic<uint64_t> g_skipped_chunk{0};
 
+// Small self-contained substring search (bionic memmem). Returns the byte offset
+// of `needle` in [buf,buf+n), or (size_t)-1 if absent.
+inline size_t find_bytes(const char* buf, size_t n, const char* needle) {
+    size_t nlen = std::strlen(needle);
+    if (nlen == 0 || nlen > n) return static_cast<size_t>(-1);
+    const void* p = memmem(buf, n, needle, nlen);
+    return p ? static_cast<size_t>(static_cast<const char*>(p) - buf)
+             : static_cast<size_t>(-1);
+}
+
+// NOTE — the JS "count-gate" approach (rewriting resolveWithAdBreaks' `0===t.length`
+// guard in the downloaded QuickJS player) was prototyped and REJECTED for shipping:
+// that class lives in the gzip'd player bundle, and editing its buffer — source OR
+// destination — corrupts the in-flight decompression -> CURLE_BAD_CONTENT_ENCODING
+// (61) and a bundle refetch storm at startup (confirmed on-device 2026-07-30). It
+// also provided no measurable ad removal beyond PV_EMPTY_REGOLITH below, which does
+// the work cleanly on the ad-decision RESPONSE (post-validation) rather than the
+// bundle. TV ads are handled entirely by PATH 2.
+
+// ── TV: empty the regolith getVideoAds RESPONSE `playlist` array ──────────────
+// The dominant SGAI ad path (AdBreakManager.resolveAndInsert) builds every ad
+// period from the resolved regolith response `e.playlist`. Wire format (verified
+// on-device, decompressed plaintext, ~4.5KB, single buffer):
+//   {"description":{"adDeliverySessionId":"..._PBP_EXPL_...","adMarkerId":"PRE_ROLL"},
+//    "playlist":[{…ad…},{…ad…}],"measurement":{…}}
+// Blanking the array interior to spaces (same length, matched-bracket, string-aware)
+// makes e.playlist.length===0 consistently, so the app runs its OWN designed clean
+// empty-break path: no periods built, insertBefore([])/insertAfter([]) no-op,
+// sendEmptyAdBreakTrackingEvents, and unblockXpPlaylistIndex(a+0) unblocks the
+// CORRECT index -> NO ghost period. dst-side (post-decompress -> no CRC-61); only
+// acts on a COMPLETE array (matching ']' present); skips pow2 chunks.
+#ifndef PV_EMPTY_REGOLITH
+#define PV_EMPTY_REGOLITH 0
+#endif
+#if PV_EMPTY_REGOLITH
+std::atomic<uint64_t> g_rego_emptied{0};
+std::atomic<uint64_t> g_rego_seen{0};
+// JSON-aware matching-bracket finder: index of the ']'/'}' closing `open`, or
+// (size_t)-1 if unclosed within [open,n). String/escape aware.
+size_t json_match_bracket(const char* buf, size_t n, size_t open) {
+    int depth = 0; bool in_str = false, esc = false;
+    for (size_t i = open; i < n; ++i) {
+        char c = buf[i];
+        if (in_str) {
+            if (esc) esc = false;
+            else if (c == '\\') esc = true;
+            else if (c == '"') in_str = false;
+            continue;
+        }
+        if (c == '"') { in_str = true; }
+        else if (c == '[' || c == '{') { ++depth; }
+        else if (c == ']' || c == '}') { if (--depth == 0) return i; }
+    }
+    return static_cast<size_t>(-1);
+}
+void maybe_empty_regolith(void* vbuf, size_t n) {
+    if (vbuf == nullptr || n < 128 || n > kMaxScanLen) return;
+    if (is_decompress_chunk(n)) return;
+    char* buf = static_cast<char*>(vbuf);
+    size_t pl = find_bytes(buf, n, "\"playlist\":[");
+    if (pl == static_cast<size_t>(-1)) return;
+    if (find_bytes(buf, n, "adDeliverySessionId") == static_cast<size_t>(-1)) return;
+    if (find_bytes(buf, n, "\"measurement\"")      == static_cast<size_t>(-1)) return;
+    if (find_bytes(buf, n, "intraTitlePlaylist")   != static_cast<size_t>(-1)) return;  // exclude PRS
+    g_rego_seen.fetch_add(1, std::memory_order_relaxed);
+    size_t open = pl + 11;                                // index of '[' in "\"playlist\":["
+    size_t close = json_match_bracket(buf, n, open);
+    if (close == static_cast<size_t>(-1)) return;         // truncated array — leave untouched
+    if (close <= open + 1) return;                        // already empty
+    int ads = 1; int depth = 0; bool in_str = false, esc = false;
+    for (size_t i = open; i < close; ++i) {
+        char c = buf[i];
+        if (in_str) { if (esc) esc = false; else if (c == '\\') esc = true; else if (c == '"') in_str = false; continue; }
+        if (c == '"') in_str = true;
+        else if (c == '[' || c == '{') ++depth;
+        else if (c == ']' || c == '}') --depth;
+        else if (c == ',' && depth == 1) ++ads;
+    }
+    for (size_t i = open + 1; i < close; ++i) buf[i] = ' ';   // same-length empty array
+    uint64_t c = g_rego_emptied.fetch_add(1, std::memory_order_relaxed);
+    if (c < 40)
+        LOGI("[rego] emptied playlist (~%d ad(s), interior %zu bytes blanked) n=%zu",
+             ads, close - open - 1, n);
+}
+#else
+inline void maybe_empty_regolith(void*, size_t) {}
+#endif
+
 void maybe_strip(const void* src, size_t n, const void* caller) {
     g_calls_total.fetch_add(1, std::memory_order_relaxed);
     if (src == nullptr || n < kMinScanLen || n > kMaxScanLen) return;
     if (is_decompress_chunk(n)) { g_skipped_chunk.fetch_add(1, std::memory_order_relaxed); return; }
+    maybe_empty_regolith(const_cast<void*>(src), n);   // TV: empty regolith ad-decision response (dst-side)
     g_calls_in_gate.fetch_add(1, std::memory_order_relaxed);
 
     uint64_t prev_max = g_max_n.load(std::memory_order_relaxed);
