@@ -74,7 +74,7 @@ import app.morphe.patcher.Fingerprint
 // not the constructor directly — the constructor's signature is generic
 // enough that it could false-match without the string anchor.
 object PlaybackAccessTokenParamsToStringFingerprint : Fingerprint(
-    strings = listOf("PlaybackAccessTokenParams(playerType=")
+    strings = listOf("PlaybackAccessTokenParams(disableHTTPS=")
 )
 
 // Layer 2 — GrandDads ad-eligibility query document
@@ -87,18 +87,19 @@ object GrandDadsQueryDocumentFingerprint : Fingerprint(
     strings = listOf("query GrandDads")
 )
 
-// Layer 3 — GrandDadsApiImpl.shouldDeclineAds (version-pinned)
+// Layer 3 — GrandDadsApiImpl.shouldDeclineAds — NOT YET FOUND.
 //
-// This is the method Purple TV's AdBlocker short-circuits. In v30.2.2,
-// it lives at Lhs9; method f (obfuscated). Because the Morphe framework's
-// Fingerprint.method requires an execute{} context for dynamic resolution,
-// and cross-fingerprint references don't compile outside that context, this
-// fingerprint is version-pinned to the exact obfuscated names.
+// Purple TV's AdBlocker short-circuits this method. The `Lhs9;` / method `f`
+// pin previously here was verified WRONG on 2026-07-28 against v30.2.2 smali:
+// `Lhs9;` is a shared SAM-lambda dispatch class (implements `Lt5h;`, methods
+// a/b/c/e/f/i/l/m... selected by a numeric tag field at construction), and
+// method `f` in this build is an unrelated method building playback/ad-context
+// objects that returns an RxJava2 `Observable`, not `Single`. This app is also
+// RxJava2-only (`io.reactivex.*`, itself R8-renamed) — there is no
+// `io.reactivex.rxjava3` anywhere in the dex, so any fingerprint/injection
+// targeting that package is wrong regardless of which method is pinned.
 //
-// When the app updates and class/method names change, this fingerprint
-// will need to be re-derived from a fresh decompilation.
-object DeclineAdsRequestFingerprint : Fingerprint(
-    definingClass = "Lhs9;",
-    name = "f",
-    returnType = "Lio/reactivex/rxjava3/core/Single;"
-)
+// The `GrandDadsQueryDocumentFingerprint` above (anchored on the "query
+// GrandDads" GQL document string) still reliably locates the query class —
+// the real next step is tracing ITS actual callers (not guessing a lambda
+// dispatch letter) to find the true shouldDeclineAds call site.

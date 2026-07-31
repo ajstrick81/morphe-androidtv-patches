@@ -14,9 +14,8 @@ import ajstrick81.morphe.patches.twitch.shared.Constants
 @Suppress("unused")
 val skipAdsPatch = bytecodePatch(
     name = "Skip ads",
-    description = "Suppresses Twitch ads via two layers: spoofs the playerType on the " +
-        "stream access token request to reduce server-side ad fill, and blocks the " +
-        "GrandDads ad-eligibility query to prevent client-side ad decisioning. " +
+    description = "Suppresses Twitch ads by spoofing the playerType on the stream access " +
+        "token request to reduce server-side ad fill. " +
         "UNTESTED — requires on-device validation.",
 ) {
     compatibleWith(Constants.COMPATIBILITY)
@@ -39,16 +38,19 @@ val skipAdsPatch = bytecodePatch(
         //   - "embed" (web embed context)
         //
         // Technique credit: TwitchAdSolutions (playerType spoofing concept)
+        //
+        // Verified 2026-07-28 against v30.2.2 smali (class `Ls1r;`): the
+        // toString() field order in this build is
+        // disableHTTPS,hasAdblock,playerBackend,playerType,maid,notificationID
+        // — playerType is field `d` (String, non-Optional/required), and the
+        // single physical constructor is `<init>(Ljava/lang/String;Lu1q;I)V`
+        // where p1 is iput directly into `d`. So p1 IS playerType here,
+        // confirming the register choice below is correct for this build.
         val toStringMethod = PlaybackAccessTokenParamsToStringFingerprint.method
         val paramsClass = toStringMethod.definingClass
 
-        val constructor = toStringMethod.classDef.methods.first { it.name == "<init>" }
+        val constructor = mutableClassDefBy(paramsClass).methods.first { it.name == "<init>" }
 
-        // The constructor's first String parameter is playerType. In Kotlin
-        // data classes, constructor parameters map to registers p1, p2, ...
-        // after p0 (this). We overwrite the playerType register with our
-        // spoofed value. The exact register depends on parameter order —
-        // playerType is first in the data class, so it's p1.
         constructor.addInstructions(
             0,
             """
@@ -56,26 +58,25 @@ val skipAdsPatch = bytecodePatch(
             """,
         )
 
-        // Layer 2 — GrandDads ad-eligibility block
+        // Layer 2 — GrandDads ad-eligibility block — REMOVED 2026-07-28.
         //
-        // Short-circuits the shouldDeclineAds method to return
-        // Single.error(...) immediately, preventing the GrandDads GQL
-        // query from ever executing. Downstream callers handle Single
-        // errors gracefully (the ad system treats eligibility failures as
-        // "no ads" — same behavior Purple TV achieves by returning
-        // AdContextUnavailable).
+        // The DeclineAdsRequestFingerprint pin (Lhs9;->f) was verified WRONG
+        // against v30.2.2 smali: Lhs9; is a shared SAM-lambda dispatch class
+        // (implements Lt5h;, dispatches on a numeric tag field to methods
+        // a/b/c/e/f/i/l/m...), and method `f` in this build is an unrelated
+        // ~700-instruction method that builds playback/ad-context objects and
+        // returns an RxJava2 `io.reactivex.internal.operators.observable.j1`
+        // (Observable), not a Single. It is not shouldDeclineAds.
         //
-        // Technique credit: Purple TV (GrandDads short-circuit approach)
-        DeclineAdsRequestFingerprint.method.addInstructions(
-            0,
-            """
-                new-instance v0, Ljava/lang/Exception;
-                const-string v1, "ads blocked"
-                invoke-direct {v0, v1}, Ljava/lang/Exception;-><init>(Ljava/lang/String;)V
-                invoke-static {v0}, Lio/reactivex/rxjava3/core/Single;->error(Ljava/lang/Throwable;)Lio/reactivex/rxjava3/core/Single;
-                move-result-object v0
-                return-object v0
-            """,
-        )
+        // The injected smali also referenced `Lio/reactivex/rxjava3/core/
+        // Single;`, which does not exist anywhere in this app — this build is
+        // RxJava2-only (`io.reactivex.*`, itself R8-renamed to single-letter
+        // classes like `Lio/reactivex/v;`, not "Single"/"Observable" by name).
+        // That reference would have failed to resolve at runtime even if the
+        // method pin had been right.
+        //
+        // Re-deriving the real GrandDads/shouldDeclineAds call site (finding
+        // it via the "query GrandDads" document string's actual caller chain,
+        // not a guessed lambda-class letter) is follow-up work, not done here.
     }
 }
