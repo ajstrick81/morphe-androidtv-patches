@@ -1,3 +1,10 @@
+# [1.17.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.16.0...v1.17.0) (2026-07-31)
+
+
+### Features
+
+* **pluto:** remove VOD ads via DASH period surgery (Skip ads Hook 5) ([#80](https://github.com/ajstrick81/morphe-androidtv-patches/issues/80)) ([901d617](https://github.com/ajstrick81/morphe-androidtv-patches/commit/901d6175d3736d2889b3b67eb17fab67a17d6bfe))
+
 # [1.16.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.15.0...v1.16.0) (2026-07-30)
 
 
