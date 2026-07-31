@@ -108,6 +108,42 @@ object StitcherSessionGetAdBreaksFingerprint : Fingerprint(
     accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.FINAL)
 )
 
+
+// ---------------------------------------------------------------------------
+// media3 DASH manifest PARSER — the safe seam for DASH period surgery (VOD removal).
+//
+// DECISIVE on-device results (2026-07-31):
+//   1. The clip-strip returned a session.json with ZERO clips, yet the movie played
+//      its full ad-laden runtime — so clips[] is UI/seek metadata, not the playback
+//      timeline. The real timeline is the stitched multi-period DASH manifest media3
+//      fetches directly.
+//   2. Wrapping AviaPlayerFactory's media3 OkHttpClient with ANY interceptor
+//      black-screens playback — media3 never even initializes (no request reaches
+//      the interceptor). The streaming/network layer is the WRONG seam here.
+//
+// The right seam is media3's manifest PARSER — and media3 is NOT obfuscated in this
+// Pluto build (real class names survive):
+//   Landroidx/media3/exoplayer/dash/manifest/DashManifestParser;->parse(
+//       Landroid/net/Uri; Ljava/io/InputStream;)
+//     Landroidx/media3/exoplayer/dash/manifest/DashManifest;
+//
+// This runs AFTER the manifest is downloaded and parsed, returning a DashManifest
+// whose `periods` list we can read (probe) or rewrite (strip). It never touches the
+// streaming OkHttp client, so it cannot break playback the way the wrap did. Ad
+// periods are identifiable by a `_ad/creative` BaseUrl on their representations
+// (Period.adaptationSets -> AdaptationSet.representations -> Representation.baseUrls
+// -> BaseUrl.url). The (Uri, InputStream) -> DashManifest signature is the single
+// public parse entry (the other parse* methods are XmlPullParser element helpers).
+object DashManifestParserParseFingerprint : Fingerprint(
+    definingClass = "Landroidx/media3/exoplayer/dash/manifest/DashManifestParser;",
+    name = "parse",
+    parameters = listOf(
+        "Landroid/net/Uri;",
+        "Ljava/io/InputStream;",
+    ),
+    returnType = "Landroidx/media3/exoplayer/dash/manifest/DashManifest;",
+)
+
 // ---------------------------------------------------------------------------
 // Tier 2 candidate — VOD auto-skip (NOT wired; requires on-device validation)
 //

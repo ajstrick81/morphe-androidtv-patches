@@ -75,3 +75,13 @@
 -keep class ajstrick81.morphe.extension.mlbtv.ads.MlbManifestRewriter {
     public static java.io.InputStream wrap(java.lang.Object, java.io.InputStream);
 }
+
+# Pluto DASH period strip — skipAdsPatch Hook 5 (see SkipAdsPatch.kt).
+# PlutoDashManifestProbe.stripAdPeriods(DashManifest) is called only from injected
+# smali (DashManifestParser.parse return), so R8 sees it as unreferenced and would
+# strip or rename it. The media3 classes it references are provided by the app at
+# runtime (compileOnly).
+-keep class ajstrick81.morphe.extension.pluto.ads.PlutoDashManifestProbe {
+    public static androidx.media3.exoplayer.dash.manifest.DashManifest stripAdPeriods(androidx.media3.exoplayer.dash.manifest.DashManifest);
+}
+-dontwarn androidx.media3.exoplayer.dash.manifest.**

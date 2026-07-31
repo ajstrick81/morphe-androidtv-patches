@@ -3,18 +3,27 @@ package ajstrick81.morphe.patches.pluto.ads
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import ajstrick81.morphe.patches.pluto.shared.Constants
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 
 @Suppress("unused")
 val skipAdsPatch = bytecodePatch(
     name = "Skip ads",
-    description = "Suppresses Pluto TV's ads. Empties the client-side ad-break timeline " +
-        "(StitcherSession.adBreaks) — the same data AdGuard strips via jsonprune — which " +
-        "removes on-demand (VOD) ad breaks entirely: ad video, markers, overlays, and " +
-        "beacons. Also no-ops pause ads and clickable-ad overlays. LIVE TV ads are real " +
-        "broadcast time in the linear feed and are not removable. Validated on-device, " +
+    description = "Removes Pluto TV's on-demand (VOD) ads entirely — ad video, markers, " +
+        "overlays, and beacons. Two layers: (1) drops the ad <Period>s from the stitched " +
+        "DASH manifest at media3's parser and re-bases the content periods contiguous, so " +
+        "the ad VIDEO is never played (verified on-device: 2:49:58 -> 2:18:41, mid-rolls " +
+        "gone); (2) empties the client-side ad-break timeline (StitcherSession.adBreaks — " +
+        "the same data AdGuard strips via jsonprune) and no-ops pause ads and clickable-ad " +
+        "overlays, removing the markers/UI/beacons. Fail-open: a manifest it can't rewrite " +
+        "is passed through unchanged (ads remain, playback never breaks). LIVE TV ads are " +
+        "real broadcast time in the linear feed and are not removable. Validated on-device, " +
         "5.66.0-leanback.",
 ) {
     compatibleWith(Constants.COMPATIBILITY)
+
+    // Hook 5 merges PlutoDashManifestProbe (stripAdPeriods) into the patched dex.
+    extendWith("extensions/extension.mpe")
 
     execute {
 
@@ -64,5 +73,33 @@ val skipAdsPatch = bytecodePatch(
                 return-object v0
             """,
         )
+
+        // Hook 5 — DASH period surgery: remove the ad VIDEO (the real removal).
+        //
+        // Hook 4 only empties the adBreaks metadata (markers/beacons/UI/seek); the
+        // ad video still plays because the stitched DASH manifest media3 fetches is
+        // a MULTI-PERIOD timeline with the ads as real <Period>s. media3 is NOT
+        // obfuscated in this build, so we route the parsed manifest through
+        // stripAdPeriods at DashManifestParser.parse's return (post-download,
+        // post-parse — it never touches the streaming OkHttp client, which
+        // black-screens playback when wrapped). It keeps only content periods
+        // (DRM rendition path; both ad flavors — siloh/_ad/creative and head/sign —
+        // are un-DRM'd), re-bases them contiguous, and rebuilds the manifest.
+        // Fail-open: any surprise returns the original manifest (ads remain,
+        // playback never breaks). See the pluto-adbreaks-suppression note and the
+        // PLUTO_VOD_ADREMOVAL_HANDOFF doc for how this seam was mapped.
+        DashManifestParserParseFingerprint.method.apply {
+            val instructions = implementation!!.instructions.toList()
+            val returnIndex = instructions.indexOfLast { it.opcode == Opcode.RETURN_OBJECT }
+            check(returnIndex >= 0) { "skipAdsPatch Hook 5: no return-object in parse()" }
+            val manifestRegister = (instructions[returnIndex] as OneRegisterInstruction).registerA
+            addInstructions(
+                returnIndex,
+                """
+                    invoke-static {v$manifestRegister}, Lajstrick81/morphe/extension/pluto/ads/PlutoDashManifestProbe;->stripAdPeriods(Landroidx/media3/exoplayer/dash/manifest/DashManifest;)Landroidx/media3/exoplayer/dash/manifest/DashManifest;
+                    move-result-object v$manifestRegister
+                """.trimIndent(),
+            )
+        }
     }
 }
