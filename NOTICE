@@ -15,4 +15,27 @@ Modifications:
 - Converted to ParameterizedFingerprint system
 - Integrated into modular patch framework
 
+- Purple TV (nyanarchive/purpletv)
+  GrandDads ad-eligibility short-circuit technique for Twitch
+  The approach of blocking GrandDadsApiImpl.shouldDeclineAds to return
+  AdContextUnavailable was discovered by reverse-engineering Purple TV's
+  AdBlocker class from PurpleTV_2.4.apk.
+  Source: https://github.com/AdrianLxM/PurpleTV
+
+- TwitchAdSolutions (pixeltris/TwitchAdSolutions)
+  playerType spoofing concept for Twitch ad suppression
+  The idea of substituting the stream access token's playerType to reduce
+  server-side ad fill originates from TwitchAdSolutions' proxy/playlist
+  rewriting techniques.
+  Source: https://github.com/pixeltris/TwitchAdSolutions
+
+- Xtra for Twitch (crackededed/Xtra)
+  Referenced as prior art for Android-side Twitch ad mitigation
+  Source: https://github.com/crackededed/Xtra
+
+Modifications:
+- Twitch techniques independently re-derived via dex disassembly of the
+  official Twitch Android APK v30.2.2, not copied from source code
+- Adapted to morphe-androidtv-patches Fingerprint/bytecodePatch framework
+
 All original authors retain credit for their contributions.

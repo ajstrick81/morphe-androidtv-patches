@@ -24,6 +24,7 @@ I'm just like you — I enjoy watching TV and movies without being bored and ann
 | 🟢 ViX | `com.univision.prendetv` | Working | `v4.47.2_tv` | 7/11/26 |
 | 🟢 Pluto TV | `tv.pluto.android` | Working — VOD ad breaks removed (video, markers, beacons); LIVE TV ads are broadcast time and remain | `5.66.0-leanback` | 7/3/26 |
 | 🟡 Paramount+ | `com.cbs.ott` | ✅ Use `v16.8.0` — newer versions (`v16.12`) still in development | `v16.8.0` | 7/19/26 |
+| 🔴 Twitch | `tv.twitch.android.app` | Under Development — untested | `30.2.2` | — |
 | 🔴 Fox One | **Under Development** | — |
 | 🔴 MLB TV | **Under Development** | — |
 
@@ -166,6 +167,13 @@ All patches follow the same general workflow using **Morphe Manager**:
 ## 🙏 Credits
 
 This patch template is based on the prior work of [ReVanced](https://github.com/ReVanced/revanced-patches-template). All modifications made by Morphe, along with their dates, can be found in the Git history.
+
+**Twitch ad-suppression techniques** are informed by:
+- [Purple TV](https://github.com/AdrianLxM/PurpleTV) (nyanarchive/purpletv) — GrandDads ad-eligibility short-circuit approach
+- [TwitchAdSolutions](https://github.com/pixeltris/TwitchAdSolutions) (pixeltris) — playerType spoofing concept
+- [Xtra for Twitch](https://github.com/crackededed/Xtra) (crackededed) — Android-side Twitch ad mitigation prior art
+
+All Twitch techniques were independently re-derived via dex disassembly and are not copied from these projects' source code. See [NOTICE](NOTICE) for full attribution details.
 
 ---
 
