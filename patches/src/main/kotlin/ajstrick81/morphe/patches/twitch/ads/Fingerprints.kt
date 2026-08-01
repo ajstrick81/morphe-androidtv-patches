@@ -34,6 +34,7 @@
 package ajstrick81.morphe.patches.twitch.ads
 
 import app.morphe.patcher.Fingerprint
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 
 // ===========================================================================
 // Twitch Android — ad architecture (confirmed by dex disassembly of v30.2.2)
@@ -87,19 +88,76 @@ object GrandDadsQueryDocumentFingerprint : Fingerprint(
     strings = listOf("query GrandDads")
 )
 
-// Layer 3 — GrandDadsApiImpl.shouldDeclineAds — NOT YET FOUND.
+// Layer 2 (real) — GrandDads ad-eligibility RESPONSE MAPPER.
 //
-// Purple TV's AdBlocker short-circuits this method. The `Lhs9;` / method `f`
-// pin previously here was verified WRONG on 2026-07-28 against v30.2.2 smali:
-// `Lhs9;` is a shared SAM-lambda dispatch class (implements `Lt5h;`, methods
-// a/b/c/e/f/i/l/m... selected by a numeric tag field at construction), and
-// method `f` in this build is an unrelated method building playback/ad-context
-// objects that returns an RxJava2 `Observable`, not `Single`. This app is also
-// RxJava2-only (`io.reactivex.*`, itself R8-renamed) — there is no
-// `io.reactivex.rxjava3` anywhere in the dex, so any fingerprint/injection
-// targeting that package is wrong regardless of which method is pinned.
+// The decisive ad-eligibility choke point. Traced 2026-07-30 from the only
+// R8-stable anchor, the "query GrandDads" document string:
+//   "query GrandDads" ── document() of Li0i (GrandDadsQuery)
+//   Li0i is constructed in exactly ONE place: Lhs9;->f (the query builder;
+//     runs when the shared Lhs9 dispatch class is invoked with tag a=0x18).
+//   Lhs9;->f calls the gql service Ld2i;->l(query, mapper, …) passing the
+//     response mapper `new Lwyh(0x4)` (a Lt5h; functor).
+//   That mapper is Lwyh;->invoke, tag-4 branch: it casts the gql response to
+//     Lg0i (GrandDadsQuery.Data) and returns a GrandDadsResponse (sealed base
+//     Lp0i): if the decision node Lg0i;->a is null → Ln0i (AdContextUnavailable
+//     singleton, INSTANCE = Ln0i;->a:Ln0i;), else Lo0i (ads-available).
 //
-// The `GrandDadsQueryDocumentFingerprint` above (anchored on the "query
-// GrandDads" GQL document string) still reliably locates the query class —
-// the real next step is tracing ITS actual callers (not guessing a lambda
-// dispatch letter) to find the true shouldDeclineAds call site.
+// SkipAdsPatch forces this mapper to ALWAYS return the AdContextUnavailable
+// sentinel Ln0i;->a — the obfuscated analog of Purple TV's
+// shouldDeclineAds → GrandDadsResponse.AdContextUnavailable.INSTANCE.
+//
+// Scope safety: the tag-4 branch begins `check-cast p1, Lg0i;`, so any
+// non-GrandDads tag-4 use of Lwyh would already ClassCastException — proving
+// tag-4 is GrandDads-exclusive and the guard is correctly scoped.
+//
+// This is a v30.2.2 obfuscated pin (Lwyh/Ln0i/tag names change per app
+// version). The `custom` predicate self-verifies the match by requiring the
+// method to reference the Ln0i sentinel, so a drifted pin fails to match
+// (patch skipped) rather than mis-applying. Re-derive via the chain above.
+object GrandDadsResponseMapperFingerprint : Fingerprint(
+    definingClass = "Lwyh;",
+    name = "invoke",
+    parameters = listOf("Ljava/lang/Object;"),
+    returnType = "Ljava/lang/Object;",
+    custom = { method, _ ->
+        method.implementation?.instructions?.any { insn ->
+            (insn as? ReferenceInstruction)?.reference?.toString()?.contains("Ln0i;") == true
+        } == true
+    }
+)
+
+// Layer 3 (real SSAI kill) — ExoPlayer stitched-ad metadata parser.
+//
+// The decisive on-device seam. Twitch live playback on Android TV runs on
+// ExoPlayer2 (NOT sealed native IVS): the player core
+// `tv.twitch.android.shared.player.core.b` (unobfuscated package) receives
+// timed HLS metadata via its onMetadata callback (method obfuscated to `G`,
+// param `com.google.android.exoplayer2.metadata.Metadata`). That method walks
+// each `#EXT-X-DATERANGE` tag, reads the tag's `CLASS` attribute, and does
+// `"twitch-stitched-ad".equals(class)` → a boolean. When true it enters ad
+// handling (parses the X-TV-TWITCH-AD-* metadata, dispatches an ad event to
+// the ad manager, fires quartile beacons); when false it takes the player's
+// own built-in "no ads" path.
+//
+// SkipAdsPatch forces that boolean false so onMetadata always takes the no-ad
+// path — the client-side analog of the TwitchAdSolutions stitched-ad strip.
+//
+// Fingerprint is version-durable: the class name is unobfuscated and the two
+// strings are HLS/Twitch protocol constants that don't change with R8. The
+// injection point (the equals→move-result) is located dynamically in the
+// patch, not by a fixed offset, so register/instruction drift doesn't break it.
+object StitchedAdMetadataFingerprint : Fingerprint(
+    definingClass = "Ltv/twitch/android/shared/player/core/b;",
+    strings = listOf("#EXT-X-DATERANGE", "twitch-stitched-ad"),
+)
+
+// NOTE (Path B / join pre-roll — investigated, not shippable): a fourth layer
+// that strips ad segments from the live HLS media playlist was prototyped
+// against ExoPlayer's HlsPlaylistParser (R8-renamed `Lxsi;`). On-device it was
+// proven INEFFECTIVE: a hook injected at that parser's parse() entry never
+// fired during live playback (0 calls across a full join with an ad), so Twitch
+// live does NOT route through ExoPlayer's stock HLS parser — it feeds ExoPlayer
+// via a custom/native IVS media source whose playlist parsing bytecode cannot
+// reach. The residual ~15s pre-roll therefore can't be stripped at the Java
+// playlist layer. See the twitch-ad-suppression handoff memory for the full
+// trace before re-attempting.
