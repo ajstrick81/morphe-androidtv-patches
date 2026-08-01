@@ -1,3 +1,16 @@
+# [1.18.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.17.0...v1.18.0) (2026-08-01)
+
+
+### Bug Fixes
+
+* **twitch:** correct playerType-spoof layer, remove broken GrandDads layer ([42250c5](https://github.com/ajstrick81/morphe-androidtv-patches/commit/42250c524ef8799d7bd370ce88cb6e42dd407f9f))
+
+
+### Features
+
+* **twitch:** add two-layer ad suppression patch (untested) ([e39ed70](https://github.com/ajstrick81/morphe-androidtv-patches/commit/e39ed706e08f226da61eb00281f2182a37137c54))
+* **twitch:** ship live ad-reduction (embed playerType + GrandDads + stitched-metadata) ([f79108f](https://github.com/ajstrick81/morphe-androidtv-patches/commit/f79108ffdce197a02a83a14a0204c6db52776223)), closes [#75](https://github.com/ajstrick81/morphe-androidtv-patches/issues/75)
+
 # [1.17.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.16.0...v1.17.0) (2026-07-31)
 
 
