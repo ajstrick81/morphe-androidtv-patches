@@ -84,6 +84,11 @@ All patches follow the same general workflow using **Morphe Manager**:
 > edge case: very aggressive fast-forward + resume can occasionally nudge the
 > playback position; it self-heals on a full playthrough and normal viewing is
 > unaffected. Please report anything else via an issue.
+>
+> 📄 **Full write-up:** see [`docs/PRIME_VIDEO_ANNOUNCEMENT.md`](docs/PRIME_VIDEO_ANNOUNCEMENT.md)
+> for how the current native (`libpvhook.so`) approach works and complete install
+> recommendations. The original Reddit announcement is archived for transparency at
+> [`docs/archive/2026-07_prime-video-reddit-post.md`](docs/archive/2026-07_prime-video-reddit-post.md).
 
 ---
 
