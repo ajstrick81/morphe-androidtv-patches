@@ -148,6 +148,19 @@ Anything else, please file an issue.
 
 ---
 
+## 🙏 Credits & influences
+
+- **Paresh Maheshwari** ([`Paresh-Maheshwari/morphe-ai`](https://github.com/Paresh-Maheshwari/morphe-ai))
+  — for his APK analysis methodology (the RECON → DECOMPILE → HUNT → WRITE →
+  BUILD+DEPLOY workflow), which shaped how targets on this app were located and
+  verified in smali before a single fingerprint was written. See
+  [`docs/PARESH_APK_ANALYSIS_METHODOLOGY.md`](PARESH_APK_ANALYSIS_METHODOLOGY.md).
+- Hoodles' Prime Video Mobile patch in particular — the FSM state intercept
+  approach — was a major conceptual influence even though the ATV architecture
+  ended up being completely different.
+
+---
+
 *Built with a growth mindset: the first wall — "the ad schedule only lives in a
 downloaded WASM bundle, you can't patch it" — turned out to be an assumption, not
 a hard constraint. Going one layer deeper, into the native runtime, is what made
