@@ -121,7 +121,7 @@ lower and more completely.
 | **Nvidia Shield / other arm64 Android TV** | ⚠️ Likely, unverified | The `.apkm` carries the arm64 slice; the native hook targets the same `libignite` import surface. Low risk to try, untested. |
 | **Google TV built-in TVs** (Sony/TCL/Hisense) | ⚠️ Varies | Prime Video is often a protected system app; use **Clone Prime Video** or a dongle (Chromecast w/ Google TV, TiVo Stream 4K) where it isn't a system app. |
 | **Non-US accounts** | ⚠️ Varies | Regional ad infrastructure and WASM bundles differ; behavior may not match. |
-| **Fire TV Stick / Fire TV** | ❌ Not supported | Different app (`com.amazon.firebat`), different framework (PyroCore), different WASM bundle. Not a maintained target. |
+| **Fire TV Stick / Fire TV** | ⚠️ Varies | Prime Video is often a protected system app; use **Clone Prime Video** or a dongle that may produce a desired result |
 
 If you try an untested combination and it works (or doesn't), please open an issue
 — that data helps everyone.
