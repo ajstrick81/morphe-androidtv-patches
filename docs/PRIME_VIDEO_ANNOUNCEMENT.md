@@ -159,6 +159,10 @@ Anything else, please file an issue.
   approach — was a major conceptual influence even though the ATV architecture
   ended up being completely different.
 
+Huge thanks to the Mod Team, and to RookieEnough, Paresh, and u/hoo-dles for
+building such a solid community around Morphe and for the reference
+implementations that helped shape the methodology here.
+
 ---
 
 *Built with a growth mindset: the first wall — "the ad schedule only lives in a
