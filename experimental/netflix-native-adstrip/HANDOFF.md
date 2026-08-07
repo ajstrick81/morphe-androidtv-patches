@@ -11,6 +11,37 @@ detail below (`PORTABILITY-ASSESSMENT.md`) remain the full architecture context;
 
 ---
 
+## 0. Session re-verify (2026-08-06, on-device 13.0.1-25028)
+
+Ran REOPENING.md **step 1** against the *current* device APK (Netflix updated 25009 → **25028**;
+pulled `split_config.armeabi_v7a.apk` off the Onn at `.211`, extracted `libnetflix.so`, 88.5 MB).
+**All seam markers survive** — architecture is unchanged by the bump:
+
+| marker | count | meaning |
+|---|---|---|
+| `HERMESATOM` | 1 | Hermes engine present |
+| `appboot_fail_nas_verify` / `appboot_key` | 2 / 5 | appboot signature door present |
+| `RSASSA` / `SPKI` | 15 / 31 | appboot pubkey verify present |
+| `getMslEncoderFactory` / `MslEncoderFormat` | 53 / 18 | MSL layer present |
+| `milo.prod.js` / `milo_update_url` / `milo_ignore_hash_errors` | 6 / 1 / 3 | milo present |
+| `libandroid_netflix` / `OpenSSL 3.2.1` | 1 / 43 | soname + crypto unchanged |
+
+**⭐ BONUS FINDING (upgrades the seam strategy):** the appboot / nrdp / milo layer is embedded as
+**plain minified JavaScript source**, NOT Hermes bytecode (HBC). Proof: the `appboot_fail_nas_verify`
+and `milo_ignore_hash_errors` strings appear *inside readable JS* — e.g. `l.declare({appboot_key:…,
+appboot_fail_nas_verify:["appboot_fail_nas_verify",!1],…})` and
+`if(fe.milo_ignore_hash_errors){…warn("Allowing insecure response…")}`. HERMESATOM=1 / "Hermes "=0
+means Hermes is the *runtime* but boot scripts are loaded as JS via `nrdp.gibbon.loadScript`.
+Consequence: **seams B and C (live-edit the appboot ad-break resolver to force its own empty return)
+are viable**, not just seam A (data scrub) — the resolver will be readable JS in the heap. This was
+the main open risk from the assessment ("if dumps are HBC, lead with seam A"); it is retired.
+
+Also surfaced: `appboot_test_response`, `appboot_drop_mt`, `appboot_ignore_retrycontrol` config
+knobs worth probing during dump analysis. **Next = REOPENING.md step 2 (build gadget APK).** Blocker:
+no armeabi-v7a frida-gadget `.so` present locally yet (only an unrelated arm64 frida-*server* on D:).
+
+---
+
 ## 1. What this was
 
 A portability experiment: *does the "native in-process ad-strip toolkit" (built from the Prime
