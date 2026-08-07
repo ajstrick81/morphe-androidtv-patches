@@ -151,6 +151,45 @@ p3, p4, Size.height). Likely-null = the **Surface** during Netflix's speculative
 Artifacts in scratchpad (nfverify/): netflix-universal.apk, nf-clone2.apk (cert-bypass+gadget),
 nf-clone-full/ (full apktool decode), clonelibs/ (extracted .so).
 
+### 2026-08-07 — Gibbon null DIAGNOSED: it's NATIVE package-identity coupling, not a fixable arg
+
+Ran the non-debuggable clone: **still SIGABRTs at nativeGibbonStartup** — so the crash is NOT a
+debuggable/CheckJNI artifact (GetObjectClass(null) is a *fatal* JNI error ART aborts on regardless of
+CheckJNI). It's a real null.
+
+Chased which arg via a throwaway bytecode probe (logged args at the caller
+`NetflixService.MoMD214(Surface, StartupParameters, Z, I)` — anchored on the unique "gibbonStartup"
+string; now deleted). Result:
+`GIBPROBE surface=Surface(name=null)/@... params=o.getBackgroundDrawable@...` — **surface and params
+are both non-null.** Combined with static proof that the other two derived args can't be null
+(`getSaveDir`/`getDataDir` return "" on null; `v4 = DetailsSupportFragment.MoMD214(v10, launchUID)`
+returns its input or a built string, never null) → **ALL FOUR Java object args to nativeGibbonStartup
+are non-null.** The `java_object == null in GetObjectClass` therefore fires INSIDE the native impl:
+libnetflix.so calls back into Java for something (a package-keyed lookup / cached class-or-method ref
+/ asset) that returns null under the renamed `com.netflix.ninja.clone` package. (Note the Surface is
+`name=null` — invalid/early — but non-null, so not the abort cause.)
+
+**Conclusion:** the clone's remaining wall is **native package-identity coupling in libnetflix.so**,
+below the Java line — not patchable by fixing an arg. Behind it still looms ESN/MSL/Widevine identity
+(login/playback bound to package). Grinding this means native RE of nativeGibbonStartup (no symbols;
+frida blocked because the gadget can't read /data/local/tmp under SELinux `untrusted_app`).
+
+Cert-bypassed clone data dir (via run-as, debuggable) has NO gibbon diskcache yet — it dies before
+fetching appboot, so there's no cached-JS shortcut.
+
+### RECOMMENDATION — switch to a rooted device/emulator (removes 3 of 4 walls)
+
+The clone route proved the CertCheck bypass works and got into Gibbon startup, but each remaining wall
+(native identity now, ESN/MSL/Widevine next) stems from the package RENAME. A **rooted** Android lets
+us install the CertCheck-bypassed build directly OVER stock `com.netflix.ninja` (no clone, no rename →
+no identity regression) and use frida-server (reads anywhere, no SELinux script-path issue) to dump
+appboot in-process. That sidesteps walls #1 (system app), #3 (native identity), and #4 (ESN/MSL).
+Needs a rooted device — the Onn `.211` isn't. Options: root the Onn, a rooted spare, or an ARM
+Android VM with Widevine. If staying non-root, the only remaining clone path is native RE of
+libnetflix.so's nativeGibbonStartup to find + satisfy the package-keyed null (high effort, more walls
+likely). SHIPPED assets that survive regardless: the "Disable Netflix CertCheck" + "Clone Netflix"
+patches (committed) — both correct and reusable on any device.
+
 ---
 
 ## 1. What this was
