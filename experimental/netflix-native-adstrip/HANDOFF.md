@@ -177,7 +177,41 @@ frida blocked because the gadget can't read /data/local/tmp under SELinux `untru
 Cert-bypassed clone data dir (via run-as, debuggable) has NO gibbon diskcache yet — it dies before
 fetching appboot, so there's no cached-JS shortcut.
 
-### RECOMMENDATION — switch to a rooted device/emulator (removes 3 of 4 walls)
+### 2026-08-07 (cont.) — NATIVE wall CRACKED: clone now RUNS past both anti-tampers
+
+Went with option 2 (native RE, non-root). Enabled frida via the gadget in **listen mode**
+(`on_load:wait` + `adb forward tcp:27042`; frida-python 17.9.1 drives it — note frida 17 removed the
+`Java`/`Module.findExportByName` globals, so scripts are native-only: get JNIEnv via
+`JNI_GetCreatedJavaVMs`, hook the shared JNI function table). Caught `GetObjectClass(null)` with a
+crash-proof `__android_log_write` backtrace:
+```
+GetObjectClass(NULL) <- libnetflix.so!0xeb0d68 <- nativeGibbonStartup+0xd4
+```
+Disassembled (r2) the helper at `0xeb0c3c` + resolved its pc-relative string literals →
+```
+getPackageManager().getPackageInfo("com.netflix.ninja", GET_SIGNATURES /*0x40*/)  -> null
+   source file literal: .../dpi/jni/RJni_SignatureCheck.cpp
+```
+**Root cause:** a SECOND, NATIVE anti-tamper (RJni_SignatureCheck, separate from the DexGuard Java
+CertCheck) hardcodes `getPackageInfo("com.netflix.ninja", GET_SIGNATURES)`. Under the renamed clone
+that's a CROSS-package query, blocked by Android 11+ package visibility → returns null → the JNI
+wrapper (0xea0978) hands back null → `GetObjectClass(null)` → SIGABRT. (Also confirmed it's a
+timing-sensitive path — frida overhead alone sometimes let it pass, which first hinted "race".)
+
+**FIX (shipped, no hooking):** CloneAppPatch now injects `<queries><package
+android:name="com.netflix.ninja"/></queries>`. That restores visibility so the query returns the
+STOCK Netflix PackageInfo — whose signature is the GENUINE Netflix cert — so the native check returns
+non-null AND passes. VERIFIED on-device: clean clone (no gadget, no frida) launches, NO crash, runs
+foreground stable at ~320MB, Widevine `GenerateKeyRequest` provisioning for `com.netflix.ninja.clone`,
+shows in the launcher app list. Both anti-tamper layers now defeated:
+DexGuard CertCheck (bytecode patch) + native RJni_SignatureCheck (`<queries>`).
+
+**NEXT:** rebuild the gadget+fix build (listen mode) and use frida on the now-RUNNING clone to dump
+the appboot bundle from the Hermes heap (REOPENING.md step 4/5): force a pre-roll, sweep for the
+ad-break schema + the empty-break guard (seam B). Open sub-question: does the clone reach login/browse
+(so appboot fully loads) or stall at DRM/network — needs a few minutes of observation / a login.
+
+### (earlier) RECOMMENDATION — switch to a rooted device/emulator (removes 3 of 4 walls)
 
 The clone route proved the CertCheck bypass works and got into Gibbon startup, but each remaining wall
 (native identity now, ESN/MSL/Widevine next) stems from the package RENAME. A **rooted** Android lets

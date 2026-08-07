@@ -49,17 +49,29 @@ val bundleGadgetPatch = resourcePatch(
         }
 
         // ── 2. Generate the gadget config next to the .so ────────────────────
-        // frida-gadget auto-loads "<soname>.config.so" from the same dir. In
-        // "script" interaction mode it runs the JS at `path` on load with no
-        // host attach required (works in a pure listen-less capture run). The
-        // script is pushed separately to /data/local/tmp (see frida/README.md);
-        // on_change=reload lets you iterate the script without reinstalling.
+        // frida-gadget auto-loads "<soname>.config.so" from the same dir.
+        //
+        // We use "listen" (not "script"): "script" mode reads its JS from a
+        // filesystem path, but on a non-root device the only writable spot the
+        // app can also READ is its own files dir — /data/local/tmp is blocked by
+        // SELinux (untrusted_app can't read shell_data_file). "listen" sidesteps
+        // that: the gadget opens a local TCP port and we drive it from the PC
+        // over `adb forward` with the frida CLI/python (no root, no on-device
+        // script file, live hot-reload of scripts).
+        //
+        // "on_load":"wait" BLOCKS the process at gadget load (Application.onCreate
+        // index 0) until a client connects — essential so hooks are installed
+        // BEFORE Netflix's native init (nativeGibbonStartup) runs.
+        //   host:   adb forward tcp:27042 tcp:27042
+        //           frida -H 127.0.0.1:27042 -n Gadget -l <script.js>
         val config = """
             {
               "interaction": {
-                "type": "script",
-                "path": "/data/local/tmp/dump_appboot.js",
-                "on_change": "reload"
+                "type": "listen",
+                "address": "127.0.0.1",
+                "port": 27042,
+                "on_port_conflict": "fail",
+                "on_load": "wait"
               }
             }
         """.trimIndent()

@@ -94,6 +94,28 @@ val cloneAppPatch = resourcePatch(
             // ── 1. Rename the package ───────────────────────────────────────
             document.documentElement.setAttribute("package", newPackageName)
 
+            // ── 1b. Grant visibility of the STOCK package ───────────────────
+            // A second, NATIVE anti-tamper (libnetflix RJni_SignatureCheck.cpp,
+            // separate from the DexGuard Java CertCheck) hardcodes
+            //   getPackageManager().getPackageInfo("com.netflix.ninja",
+            //                                       GET_SIGNATURES /*0x40*/)
+            // to read + verify the app's signing cert. Under the renamed clone
+            // that becomes a CROSS-package query, which Android 11+ package
+            // visibility blocks -> getPackageInfo returns null -> native
+            // GetObjectClass(null) -> SIGABRT ~2.5s into launch
+            // (NetflixService.nativeGibbonStartup). Declaring a <queries> entry
+            // for the original package makes it visible again: the query then
+            // returns the STOCK Netflix's PackageInfo, whose signature is the
+            // GENUINE Netflix cert, so the native check both returns non-null
+            // AND passes. (packageName is still the original here.)
+            val queries = (document.getElementsByTagName("queries").item(0) as? Element)
+                ?: document.createElement("queries").also {
+                    document.documentElement.appendChild(it)
+                }
+            queries.appendChild(document.createElement("package").apply {
+                setAttribute("android:name", packageName)
+            })
+
             // ── 2. Custom permissions ───────────────────────────────────────
             // A <permission> android:name must be device-unique. Rename each
             // declaration, keep matching <uses-permission> and any component
