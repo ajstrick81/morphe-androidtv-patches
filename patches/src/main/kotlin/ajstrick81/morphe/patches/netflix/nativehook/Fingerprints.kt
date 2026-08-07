@@ -13,6 +13,14 @@ import com.android.tools.smali.dexlib2.AccessFlags
 // Lcom/netflix/ninja/NetflixApplication; — see PORTABILITY-ASSESSMENT.md §3.
 // This is the same anchor the assessment named for LoadNativeHookPatch.
 //
+// VERIFIED against real bytecode (androguard, 2026-08-07) on Netflix
+// 13.0.1-25028: the class extends Landroid/app/Application; and defines
+// onCreate ()V with PUBLIC access — this fingerprint resolves. onCreate has
+// .registers 11 (v10 = this) and its instr 0 is already `const-string v0`, so
+// injecting `const-string v0, "gadget"` at index 0 is register-safe (v0 is a
+// scratch local the original body immediately reuses; this/v10 untouched), and
+// lands before invoke-super onCreate and Netflix's native init.
+//
 // Re-verify on every version bump: an onCreate fingerprint anchored to the
 // wrong class silently won't resolve. If it proves brittle, switch to a
 // custom predicate matching the unique Application.onCreate that calls
