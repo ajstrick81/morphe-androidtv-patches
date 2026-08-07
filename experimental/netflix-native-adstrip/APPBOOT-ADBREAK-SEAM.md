@@ -74,6 +74,28 @@ operate IN-PROCESS past the signature (that's the whole point). Delivery options
 Proof-of-kill target for the next session: hook/replace `getAdBreaks` to return `[]` during a real
 pre-roll and confirm the ad is gone on-device.
 
+## 2026-08-07 proof-of-kill attempt on getAdBreaks → NEGATIVE (wrong seam)
+
+Rewrote `MediaEventsAdBreaksModel.getAdBreaks` SOURCE in the Hermes heap to `return[]`
+(length-preserving, span 290B; `kill-getadbreaks.js`, patched the single live copy pre-playback so
+Hermes' lazy compile would pick it up). On-device with a logged-in ad-tier account: **the 15s pre-roll
+STILL PLAYED.** So `getAdBreaks` is NOT the insertion point — it's the reactive media-EVENTS model
+(`onAdBreakStart`/`occurredAdBreaks`) that records breaks as they happen for UI/telemetry; emptying it
+just blinds the UI. (Also can't rule out eager Hermes compilation, but the reactive-model reason is
+sufficient.)
+
+**Corrected seam = the ad-break HYDRATOR (scheduler).** Heap vocabulary (from the ad-context dump)
+points straight at it: `adBreakHydrator` (22), `adBreakLocationMs` (28), `canHydrate` (20),
+`isHydrated`/`hydrated`/`adBreakHydrated`, `hydrationSequenceId` (19), `unhydratedAdBreak` (9), and
+notably **`adBreakHydrationSkipped` (9)** — the app already has a skip path. This layer builds the
+scheduled breaks (incl. the pre-roll) from the server playbackContext BEFORE playback.
+
+**NEXT (precise):** dump during a live pre-roll, pull the `adBreakHydrator` / `canHydrate` /
+`unhydratedAdBreak` code, then try: force `canHydrate`→false, or drive `adBreakHydrationSkipped`, or
+empty the unhydrated-break list / scrub the server ad-break data in the playbackContext (seam A). Then
+re-run the on-device pre-roll test. Tooling ready (dump-appboot.js dumps ad-context ranges when
+`adBreak` markers appear during playback).
+
 ## Reproduce
 Clone runs past both anti-tampers (DexGuard CertCheck patch + `<queries>` for RJni_SignatureCheck),
 logged in. `nfverify/`: `nf-listen2.apk` (gadget+fix), `run-diag.py`, `dump-appboot.js`
