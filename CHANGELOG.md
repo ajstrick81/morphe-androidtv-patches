@@ -1,3 +1,10 @@
+# [1.19.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.18.1...v1.19.0) (2026-08-07)
+
+
+### Features
+
+* **paramount:** support v16.17.0 via shouldPlayAd gate; recommend v16.17 ([0f3d1ff](https://github.com/ajstrick81/morphe-androidtv-patches/commit/0f3d1ff63a755b6f732aef602c5d474d5caabaee))
+
 ## [1.18.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.18.0...v1.18.1) (2026-08-07)
 
 
