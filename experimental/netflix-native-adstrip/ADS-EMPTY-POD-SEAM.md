@@ -110,6 +110,55 @@ a && "v3"===a.manifestVersion && !a.processed && (
 NEXT: pick a seam (JS reviver vs native MSL) and build a SINGLE pre-playback proof-of-kill, verified
 against the `ads:[]/ads:[{}]` oracle. No re-patch loops.
 
+## PROOF-OF-KILL — ACHIEVED 2026-08-07 (prepareAdBreakStates seam) ✅
+
+Picked the **JS object seam** (covers both compressed pre-roll path AND uncompressed hydration
+mid-roll path — the native MSL/gunzip seam only covers the compressed path, see below).
+
+**Why native MSL was NOT used:** on-device hooks proved (a) libnetflix statically links OpenSSL
+(its own `EVP_DecryptUpdate @libnetflix+…`, 12k calls, 0 contained `adBreaks` → manifest is
+compressed at that layer); (b) `Manifest(a,b)` = `a.compressed ? JSON.parse(_uncompress(a.manifest,
+"gzip",false)) : a.manifest` — so **mid-roll hydration responses take the UNCOMPRESSED path** (already
+an object, no gunzip) → a native gunzip-output transform would miss mid-rolls. The JS object layer is
+the only convergence point for both.
+
+**The chokepoint:** `AdsState.prepareAdBreakStates(a)` (@4259343 in dump) — iterates every ad break,
+called from BOTH `adsState.rebuild()` and `createInnerWorkingPlaygraph()` right before
+`createAdsPlaygraph` builds ad segments. Runs on all paths, pre-segment-build.
+
+**The patch (single, pre-playback, length-preserving 128B, NO re-patch loop):** replace the loop body
+```
+OLD: var f=e.value;f.syncAdStates();f.state.isHydrated&&"viewable"!==f.metadata.source&&f.applyHydration(f.state.hydrationSequenceId)
+NEW: var f=e.value;f.metadata&&(f.metadata.ads.length&&(f.__adkill=f.metadata.ads.length),f.metadata.ads=[]);f.syncAdStates();/*...*/
+```
+→ empties `metadata.ads=[]` for every break so all consumers (segment build, lease, dropped-ads,
+duration) see no ads → `emptyAdBreakComplete` → content plays. The `f.__adkill=<count>` stamp is a
+self-proof: that property name exists ONLY if a break with `ads.length>0` (a real server ad) was
+emptied.
+
+**PROOF (read-only marker monitor, `nfverify/kill-observe.js`; log = `PROOF-prepareAdBreakStates-2026-08-07.log`):**
+```
+OBS7: KILLMARK=2 rawRealPods=3 ...  <<< patch emptied 2 break(s) that HAD real ads
+OBS9: KILLMARK=2 rawRealPods=3 ...
+```
+- `rawRealPods=3` = server delivered 3 real ad pods (raw-JSON `ads":[{`, data-only signature).
+- `KILLMARK=2` (baseline 1 = our own patch source; ≥2 = Hermes interned `__adkill` because we stamped a
+  real-ad break) = patch emptied genuinely-populated breaks.
+- On-screen: no ads played across many titles + many mid-roll seeks (pre-rolls AND mid-rolls gone).
+Server sent real ads → patch emptied them → nothing played. Demonstrated, not inferred.
+
+**Process lesson that made the proof possible:** "did an ad play" is a broken oracle (server empty-fills
+~2/3). The `__adkill` self-stamp + `rawRealPods` raw-JSON counter disambiguate our kill from server
+empty-fill — essential given the earlier chaos.
+
+### Remaining before shippable
+- Delivery is currently a runtime frida-heap source-patch (proof rig). Shippable form = in-process
+  native transform applied at appboot load (appboot JS is downloaded + hash-verified → patch in-process
+  past the signature; mind `milo_ignore_hash_errors`), OR bake into the clone's gadget bootstrap.
+- Ship WITHOUT the `__adkill` stamp (that was proof-only); the production edit is just
+  `f.metadata&&(f.metadata.ads=[]);` + padding.
+- Verify longevity across app restart / appboot re-download; re-confirm the OLD byte pattern per version.
+
 ## Tooling (read-only, in `nfverify/`)
 - `capture-real.js` — READ-ONLY periodic heap dumper (overwrites `real_*.bin` each cycle; pull while
   ad is on screen). Markers above.
