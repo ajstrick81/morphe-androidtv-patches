@@ -2,33 +2,34 @@
  * Paramount+ Android TV — Ad Suppression Patch
  *
  * Validated against:
- *   v16.8.0  (versionCode 520000464) — com.cbs.ott
+ *   v16.8.0  (versionCode 520000464) — com.cbs.ott  [empty-request era, see history]
  *   v16.12.0 (versionCode 520000571) — com.cbs.ott
+ *   v16.17.0 (versionCode 520000758) — com.cbs.ott  [current mechanism]
  *
- * Coverage:
- *   ✅ VOD SSAI ads  — createVodStreamRequest() returns empty zzcx →
- *                      DAI fails → bundled IMA SDK reports an
- *                      AdErrorType.LOAD/AdErrorCode.INTERNAL_ERROR failure
- *                      via the app's own onAdError() listener (unmodified
- *                      LOAD/PLAY filter already forwards it) →
- *                      ErrorCriticalEvent → nm0.c-equivalent fallback →
- *                      content plays from cbsaavideo.com without SSAI ads
- *   ✅ Pause ads     — CbsPauseWithAdsOverlay state machine
- *   ➡️ Live TV       — DAI untouched (live TV has no fallback content URL)
+ * MECHANISM (v16.17.0, on-device verified 2026-08-04):
+ *   The AVIA player's DAI resource provider
+ *   (com.paramount.android.avia.player.resource.dai.AviaDAIResourceProvider)
+ *   gates every ad pod through shouldPlayAd(AviaAdPod). Its position monitor
+ *   (AviaDAIResourceProvider$3) checks shouldPlayAd for each unwatched pod and,
+ *   when it returns false, takes the app's own native skip-the-pod path — the
+ *   ad break never starts, the DAI stream keeps playing, and content resumes
+ *   with no black screen. Forcing shouldPlayAd() -> false therefore removes
+ *   VOD pre-rolls (movies + TV) cleanly. Confirmed ad-free on titles that
+ *   previously served a 120s pre-roll; playback healthy.
  *
- * NOTE ON onAdError(): an earlier revision of this patch additionally
- * deleted the LOAD/PLAY type filter inside onAdError() (class Luk0; in
- * v16.8.0 / Lcl0; in v16.12.0), believing the empty-StreamRequest failure
- * fell outside that filter on v16.12.0. Bytecode tracing of the bundled IMA
- * SDK showed otherwise: requestStream() never throws synchronously in either
- * version, and the SDK's own async failure path (zzq.zza(Throwable)) always
- * classifies the resulting error as AdErrorType.LOAD, which the *unmodified*
- * filter already forwards to the fallback. Deleting the filter instead
- * forwarded every onAdError() call — including benign, non-fatal ad errors
- * unrelated to our induced empty request — straight into the critical-error
- * teardown path, killing otherwise-working VOD playback (spinner, then a
- * dark screen). That filter removal has been reverted; only Patches 1 and 2
- * below remain.
+ *   This SUPERSEDES the earlier empty-createVodStreamRequest approach, which
+ *   worked on v16.8.0 but on v16.17.0 kills the video entirely (v16.17 VOD is
+ *   DAI-only with no separate content stream to fall back to) and, on v16.12.0,
+ *   provoked an IMA retry storm / ANR. The empty-request and DAI-retry patches
+ *   have been removed in favour of the shouldPlayAd gate.
+ *
+ * Coverage (v16.17.0, on-device verified):
+ *   ✅ VOD ads, pre-roll AND mid-roll (movies + TV) — shouldPlayAd() gates every
+ *      pod, so both are skipped. Cosmetic seekbar markers may remain on TV
+ *      episodes but no ad plays through them.
+ *   ✅ Pause ads                     — CbsPauseWithAdsOverlay state machine
+ *   ✅ Live TV                       — preserved; streams cleanly (shouldPlayAd
+ *      is shared VOD/live but the live path is unaffected on-device)
  */
 
 package app.morphe.patches.paramount
@@ -40,41 +41,30 @@ import app.morphe.patches.shared.compat.AppCompatibilities
 @Suppress("unused")
 val paramountPatch = bytecodePatch(
     name = "Paramount+ Android TV",
-    description = "Removes VOD ads and pause ads while preserving live TV.",
+    description = "Removes VOD pre-roll ads and pause ads while preserving live TV.",
 ) {
     compatibleWith(AppCompatibilities.PARAMOUNT_TV)
 
     execute {
         // ------------------------------------------------------------------
-        // Patch 1: VOD SSAI — createVodStreamRequest (3-arg and 4-arg)
+        // Patch 1: VOD ad gate — DAIResourceProvider.shouldPlayAd(AviaAdPod)
         //
-        // Returns a valid but empty zzcx StreamRequest. No contentSourceId,
-        // videoId, or apiKey setters are called. Unchanged from v16.8.0.
-        // The bundled IMA SDK reports the resulting failure as
-        // AdErrorType.LOAD, which the app's own (unmodified) onAdError()
-        // listener already forwards to the AVIA ErrorCriticalEvent fallback.
+        // Return false for every pod so the provider's position monitor takes
+        // its native skip path instead of engaging the ad break.
         // ------------------------------------------------------------------
-        arrayOf(
-            VodStreamRequest3ArgFingerprint,
-            VodStreamRequest4ArgFingerprint,
-        ).forEach { fingerprint ->
-            fingerprint.method.addInstructions(
-                0,
-                """
-                    new-instance v0, Lcom/google/ads/interactivemedia/v3/impl/zzcx;
-                    sget-object v1, Lcom/google/ads/interactivemedia/v3/internal/zzafv;->zzd:Lcom/google/ads/interactivemedia/v3/internal/zzafv;
-                    invoke-direct {v0, v1}, Lcom/google/ads/interactivemedia/v3/impl/zzcx;-><init>(Lcom/google/ads/interactivemedia/v3/internal/zzafv;)V
-                    return-object v0
-                """.trimIndent(),
-            )
-        }
+        ShouldPlayAdFingerprint.method.addInstructions(
+            0,
+            """
+                const/4 v0, 0x0
+                return v0
+            """.trimIndent(),
+        )
 
         // ------------------------------------------------------------------
         // Patch 2: Pause ads — CbsPauseWithAdsOverlay state machine
         //
-        // Independent of IMA DAI. return-void prevents Glide image fetch,
-        // alpha fade-in, and overlay render. Overlay stays at alpha=0.
-        // Unchanged from v16.8.0.
+        // return-void prevents Glide image fetch, alpha fade-in, and overlay
+        // render. Overlay stays at alpha=0.
         // ------------------------------------------------------------------
         PauseAdOverlayFingerprint.method.addInstructions(
             0,
