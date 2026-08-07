@@ -211,6 +211,35 @@ the appboot bundle from the Hermes heap (REOPENING.md step 4/5): force a pre-rol
 ad-break schema + the empty-break guard (seam B). Open sub-question: does the clone reach login/browse
 (so appboot fully loads) or stall at DRM/network — needs a few minutes of observation / a login.
 
+### 2026-08-07 — CAPTURE PATH PROVEN OPEN: appboot JS live in the clone heap
+
+Built the gadget+fix build (listen-mode gadget + `<queries>` fix + CertCheck bypass), attached frida
+to the running clone, and scanned RW memory (native `Memory.scanSync`, results via `__android_log_write`
+tag APBSCAN). Confirmed the appboot bundle is LIVE as PLAIN JS in-process:
+```
+marker "nrdp.gibbon": 943 hits  e.g. "nrdp.gibbon.GibbonWasmComponentContext,Re=n().function Pe(e,...t){const r=Re.was..."
+marker "appboot":     232 hits  e.g. "appboot.netflix.com;nrdp-cell4.prod.ftl.netflix.com;..."
+```
+End-to-end the reopening thesis holds: clone runs past BOTH anti-tampers → appboot loads as readable
+JS in the Hermes heap → readable in-process. "Not strippable" is fully retired.
+
+Tooling that works (scratchpad nfverify/): `nf-listen2.apk` (gadget+fix, listen mode),
+`run-diag.py` (frida-python driver: attach Gadget, load script, resume), `scan-appboot.js`
+(native marker scanner). Launch recipe: `am start` MainActivity (blocks at gadget wait) →
+`adb forward tcp:27042` → `py run-diag.py <script.js> <hold_s>` → re-`am start` to foreground so
+Gibbon keeps a visible Surface.
+
+**NEXT (REOPENING.md step 4/5):**
+1. DUMP the appboot JS: scan for `nrdp.gibbon`, walk the containing rw range, dump it to the app
+   files dir (run-as-pullable) or stream over frida. Reassemble the minified appboot source.
+2. Find the AD-BREAK RESOLVER (seam B): during a real pre-roll (log in first; ad-break markers
+   `adBreak`/`interstitial`/`cuePoint` only populate with playback context — the marker scan for
+   those returned nothing pre-login). Look for the `0===t.length`/empty-break analogue.
+3. Then choose the strip: frida hook (capture) vs a shippable transform (seam A data scrub of the
+   decrypted manifest object, or seam B forcing the resolver's empty return).
+Open: the clone stalls at DRM provisioning / pre-login; needs a login (or observe whether it reaches
+browse) for ad-break context to appear.
+
 ### (earlier) RECOMMENDATION — switch to a rooted device/emulator (removes 3 of 4 walls)
 
 The clone route proved the CertCheck bypass works and got into Gibbon startup, but each remaining wall
