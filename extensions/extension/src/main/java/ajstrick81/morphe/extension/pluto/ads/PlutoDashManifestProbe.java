@@ -75,6 +75,23 @@ public final class PlutoDashManifestProbe {
     public static DashManifest stripAdPeriods(DashManifest manifest) {
         try {
             if (manifest == null) return null;
+
+            // LIVE TV guard. Only VOD is in scope: on-demand titles are STATIC DASH
+            // (manifest.dynamic == false, a fixed set of periods with a known total
+            // duration). Live/linear channels are DYNAMIC DASH — the manifest is
+            // continuously re-issued with a moving live edge and a wall-clock
+            // timeline, and re-basing period startMs there corrupts that timeline:
+            // the player can't advance past a period boundary and loops/rebuffers on
+            // the same few seconds (reported on Nvidia Shield, v1.17.0). Live ads are
+            // real broadcast time and were never removable anyway, so leave dynamic
+            // manifests completely untouched. (VOD briefly serves a dynamic startup
+            // manifest too; passing it through is harmless — the ad periods live in
+            // the static full manifest that follows.)
+            if (manifest.dynamic) {
+                Log.i(TAG, "dynamic (live) manifest -> untouched, periods=" + manifest.getPeriodCount());
+                return manifest;
+            }
+
             int n = manifest.getPeriodCount();
             List<Period> kept = new ArrayList<>();
             long cursor = 0;
