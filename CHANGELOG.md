@@ -1,3 +1,10 @@
+## [1.18.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.18.0...v1.18.1) (2026-08-07)
+
+
+### Bug Fixes
+
+* **pluto:** skip DASH period strip on live (dynamic) manifests ([#89](https://github.com/ajstrick81/morphe-androidtv-patches/issues/89)) ([7ac68f9](https://github.com/ajstrick81/morphe-androidtv-patches/commit/7ac68f99cd8c2e80c3b697b6269ad2196d3bcfd7))
+
 # [1.18.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.17.0...v1.18.0) (2026-08-01)
 
 
