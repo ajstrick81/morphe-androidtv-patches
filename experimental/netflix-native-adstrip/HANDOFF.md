@@ -114,6 +114,43 @@ turn the passive dumper into an active bypass:
 Once the clone survives boot, resume REOPENING.md step 4/5 (force a pre-roll, sweep the Hermes heap
 for the ad-break schema, find the empty-break guard = seam B target).
 
+### DexGuard CertCheck DEFEATED (Java) — new wall is a JNI null in Gibbon startup (2026-08-06)
+
+Wrote the bypass: `patches/.../netflix/misc/security/{Fingerprints.kt,DisableCertCheckPatch.kt}`
+("Disable Netflix CertCheck", default-enabled). The check is one obfuscated Runnable.run() (build:
+`Lo/setReturnTransition$5;`) that calls a verifier `MoMD214(context, "<expected SHA-256>")` and, on
+false, logs `CertCheck failed, crash!!!` then reflectively kills the process. run()'s pass-path is
+just `return`, so the patch prepends `return-void` at index 0 → whole check is a no-op. Anchored on
+the unique crash string (only method in the app that has it), so it survives DexGuard name rotation.
+
+ON-DEVICE (clone, cert-bypass + gadget): the `CertCheck failed` crash is GONE — bypass confirmed.
+The clone now boots FURTHER and dies on a different, non-tamper crash:
+```
+F libc  : Fatal signal 6 (SIGABRT) ... (com.netflix.ninja.clone)
+Abort message: 'JNI DETECTED ERROR IN APPLICATION: java_object == null
+    in call to GetObjectClass
+    from void com.netflix.ninja.NetflixService.nativeGibbonStartup(Surface, String, String, String, boolean, int, int)'
+```
+This is progress: the app reached **Gibbon startup** (where appboot loads). The abort fires ONLY
+because our gadget patch forces `debuggable=true`, which turns on ART **CheckJNI**; a null object arg
+to `nativeGibbonStartup` that stock (non-debuggable) tolerates now hard-aborts. Call site =
+`NetflixService.smali` line ~5527, args v0..v7 = (this, Surface=p1, saveDir, dataDir, v4-string,
+p3, p4, Size.height). Likely-null = the **Surface** during Netflix's speculative/preload UI startup
+(or a clone-rename-broken string). CLI disable flag confirmed = `-d "<patch name>"`.
+
+**NEXT (start here tomorrow — cheap, decisive):**
+1. Build a diagnostic clone WITHOUT the gadget (so NOT debuggable → CheckJNI off):
+   `java -jar $CLI patch -f -e "Clone Netflix" -d "Bundle frida-gadget (Netflix appboot capture)" -d "Load frida-gadget (Netflix appboot capture)" -p $MPP -o nf-clone-nodbg.apk netflix-universal.apk`
+   Install + launch. If it BOOTS/plays → the JNI null was a CheckJNI artifact, and the clone itself
+   is viable; then re-add the gadget but make it NON-debuggable and have dump_appboot.js write dumps
+   to /sdcard (world-readable) instead of app-private + run-as.
+2. If it still crashes non-debuggable → the null is a real clone-rename regression; identify which
+   arg (add a targeted hook / check getSaveDir/getDataDir/StartupParameters under the clone package).
+3. Alternative if the gadget+debuggable combo stays incompatible: root a device/emulator, install the
+   cert-bypassed build over stock (frida-server, no clone, no debuggable-forced CheckJNI).
+Artifacts in scratchpad (nfverify/): netflix-universal.apk, nf-clone2.apk (cert-bypass+gadget),
+nf-clone-full/ (full apktool decode), clonelibs/ (extracted .so).
+
 ---
 
 ## 1. What this was
