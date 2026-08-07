@@ -71,8 +71,48 @@ no signer/system collision → installs ALONGSIDE stock Netflix, debuggable + ga
 appboot bundle loads at boot/browse (before playback), so even if Widevine playback refuses inside a
 clone, `dump_appboot.js` (libc I/O taps + heap scan) can still fire during startup and yield the JS
 appboot dump. RISK: Netflix has many hardcoded package refs + per-package DRM provisioning; cloning
-may need more than a manifest rename. This is the recommended next investment; alternative is a rooted
-Netflix device / emulator where the stock package can be replaced directly.
+may need more than a manifest rename.
+
+### Clone BUILT + INSTALLED + launches — but hits DexGuard CertCheck (2026-08-06)
+
+Wrote `patches/.../netflix/misc/clone/CloneAppPatch.kt` (opt-in, default=false), modeled on the
+Pluto clone but with a critical addition: Netflix declares components with RELATIVE names
+(`android:name=".NetflixApplication"`, 16 total), so the patch **expands every relative android:name
+/ targetActivity to its fully-qualified `com.netflix.ninja.*` form BEFORE renaming `package`** — else
+`.Foo` would re-resolve against `com.netflix.ninja.clone` and ClassNotFound at launch. Also renames
+the 3 provider authorities + 11 custom permissions (and propagates renames to
+`android:permission`/read/writePermission). VERIFIED in the built APK: package=`com.netflix.ninja.clone`,
+`.NetflixApplication`→`com.netflix.ninja.NetflixApplication`, zero relative names left, authorities +
+perms uniquified. Installed ALONGSIDE stock (`adb install` Success; both packages listed).
+
+On launch the clone got FURTHER than expected: `com.netflix.ninja.MainActivity` resolved, Widevine
+`createDrmPlugin[com.netflix.ninja.clone]` ran — then the process **died ~2.5s in**. Crash cause
+(logcat): **`E Loader: CertCheck failed, crash!!!`**, and `classes4.dex` contains
+`<DexGuardCertCheckException : DexGuard App CertCheck failed !`. → the final gate is **Guardsquare
+DexGuard's application CertCheck**: an obfuscated runtime check that reads the APK signing certificate
+and deliberately crashes when it isn't Netflix's official cert (this IS the `libc94d.so`/anti-tamper
+the assessment suspected). Note libnetflix.so only leaks `StrictCertCheck` (strings packed); the
+crashing check lives DEX-side in classes4.dex (DexGuard), likely native-reinforced.
+
+**Stock Netflix restored and untouched; the clone is a separate package** — safe to leave installed
+or `adb uninstall com.netflix.ninja.clone`.
+
+### NEXT — defeat DexGuard CertCheck (the gadget is already injected in the clone)
+
+The frida-gadget loads at Application.onCreate BEFORE the CertCheck fires, so the elegant path is to
+turn the passive dumper into an active bypass:
+1. Hook the signature retrieval — `PackageManager.getPackageInfo(..., GET_SIGNATURES/GET_SIGNING_CERTIFICATES)`
+   and `SigningInfo.getApkContentsSigners()/getSigningCertificateHistory()` — to return Netflix's
+   ORIGINAL cert. Stock signing cert SHA (from dumpsys, capture during bypass work):
+   `36:38:63:59:6E:A9:92:41:EB:71:B1:A9:85:55:3A:A6:04:DE:3E:A3:C5:F0:C5:46:74:23:90:E6:82:16:4E:6B`.
+2. If DexGuard reads the cert natively / straight from META-INF (not via PackageManager) — likely,
+   given it's DexGuard — API hooking won't suffice; then locate the CertCheck method in classes4.dex
+   (search the `DexGuardCertCheckException` reference back to its thrower) and either patch it to a
+   no-op via a bytecode patch, or hook it in-process with the gadget.
+3. Fallback: rooted device/emulator (replace stock package; frida-server) sidesteps CertCheck via a
+   matching-signature or root-level bypass.
+Once the clone survives boot, resume REOPENING.md step 4/5 (force a pre-roll, sweep the Hermes heap
+for the ad-break schema, find the empty-break guard = seam B target).
 
 ---
 
