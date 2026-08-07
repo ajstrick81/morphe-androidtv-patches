@@ -30,7 +30,48 @@ does **not** cover them. Pause ads are a client-rendered overlay driven by a Gra
   (requirements: `isAdsUser` + fastProperty `enablePauseAds` + feature gate).
 - Capabilities also expose `pinotPauseAdBoxshot` entity (EPISODE/MOVIE) — the boxshot render.
 
-## NEXT (this session): find the consumption chokepoint + one clean patch
+## ✅ PAUSE-AD KILL — ACHIEVED 2026-08-07 (z() displayAd chokepoint)
+
+The render gate `L` was the wrong layer (patching it did nothing — pause ads run through a
+**redux-saga**, not the React selector). Real chokepoint = the ad-opportunity fetcher generator
+`z()` (`R=mark(z)`, dump @146768 in apbad_0xc9d80000):
+```js
+c=I.sent;                                   // GraphQL pinotPausedPlaybackPage response
+f=null==(e=getDataFragment(c))?void 0:e.displayAd;   // f = the ad payload
+if(f){ /* build {opportunityToken,url,adEvents...} */ } else return;   // no displayAd -> return undefined
+// consumer j(): z() -> if(!(e=l.sent)){bail}  -> reads e.opportunityToken/e.url -> presents overlay
+```
+**Patch (single-shot, pre-pause, length-preserving, NO loop):** turn the ternary value
+`e.displayAd` into `void 0`:
+```
+void 0:e.displayAd   ->   void 0:void 0        (11 bytes each; unique anchor, count=1)
+```
+→ `f` is always undefined → `z()` returns undefined → saga `j()` bails → **no pause-ad overlay.**
+Tool: `nfverify/kill-pausead2.js` (polls only until it applies ONCE, then stops — discipline honored).
+
+**On-device (2026-08-07, logged-in clone):** pause ad overlay showed pre-patch, and was GONE after the
+patch on the same title/session. Applied once, no re-patch loop, no crash, playback stable.
+
+### Verified same session (user-reported on-device)
+- Pause-ad overlay: **GONE** (confirmed — mechanism + before/after). ✅
+- Resume: starts **exactly** where left off → patch does not corrupt playback state. ✅
+- Pre-rolls / mid-roll (FF) ads: **none observed** across several titles/seeks — ENCOURAGING but
+  NOT proof this run: the manifest pre/mid-roll kill (`prepareAdBreakStates`, ADS-EMPTY-POD-SEAM.md)
+  was NOT loaded this session; only the pause patch was. So "no pre/mid-roll" here is most likely the
+  server's ~2/3 empty-fill (broken oracle). Pre/mid-roll IS separately PROVEN (KILLMARK) but via its
+  own patch run. Confirm together with the data oracle.
+
+## NEXT: brute-force testing (with the DATA oracle) + combine both kills
+- Apply BOTH patches in one session (prepareAdBreakStates + pause z()) and brute-force many titles /
+  many mid-roll seeks / many pauses.
+- Measure against DATA, not the screen: for pre/mid-roll use `__adkill`/`rawRealPods`; for pause add
+  a read-only stamp (log when `z()` saw a real `displayAd` we voided) so "server sent an ad → we
+  suppressed it" is demonstrated.
+- Watch for: any `tvq-pb-*` playback errors, resume-position regressions, longevity across restarts.
+- Then: shippable delivery (in-process native transform at appboot load, past the hash check — mind
+  `milo_ignore_hash_errors`), dropping the proof stamps.
+
+## (superseded) earlier NEXT: find the consumption chokepoint + one clean patch
 Study the dump for where the pause-page result is turned into "show ad" (the `te`/`A` assignment, the
 `onPauseAdLoaded` trigger, or the data-rewrite query result), apply ONE pre-pause source patch that
 forces the no-ad branch (e.g. treat as `PinotPlaymodePauseNoAdPage` / no `adOpportunity`), verify the
