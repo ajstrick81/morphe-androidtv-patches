@@ -37,8 +37,42 @@ are viable**, not just seam A (data scrub) — the resolver will be readable JS 
 the main open risk from the assessment ("if dumps are HBC, lead with seam A"); it is retired.
 
 Also surfaced: `appboot_test_response`, `appboot_drop_mt`, `appboot_ignore_retrycontrol` config
-knobs worth probing during dump analysis. **Next = REOPENING.md step 2 (build gadget APK).** Blocker:
-no armeabi-v7a frida-gadget `.so` present locally yet (only an unrelated arm64 frida-*server* on D:).
+knobs worth probing during dump analysis.
+
+### Step 2 DONE — gadget capture APK built & verified (2026-08-06)
+
+- Downloaded `frida-gadget-17.9.1-android-arm` (ELF32 ARM), staged at
+  `patches/src/main/resources/netflix/native/armeabi-v7a/libgadget.so` (16 MB; **gitignored** via
+  `patches/src/main/resources/netflix/native/**/*.so`). Both gadget patches now list + enable in the
+  CLI. Merged base+armv7a → universal, patched → `nf-gadget.apk`. VERIFIED in the output APK:
+  `lib/armeabi-v7a/libgadget.so` + `libgadget.config.so`, `System.loadLibrary("gadget")` in
+  classes3.dex (absent in original), manifest `debuggable="true"` + `extractNativeLibs="true"`,
+  Morphe-signed. The build path is reproducible.
+
+### Step 3 BLOCKED — Netflix is a PREINSTALLED SYSTEM APP on the Onn (can't replace on non-root)
+
+On-device proof (`.211`): installed Netflix is Play-signed `bcfa260e`, `firstInstallTime=2008-12-31`
+(epoch → system image), and appears under `pm list packages -s`. Consequences:
+- In-place update of the Morphe-signed gadget build → `INSTALL_FAILED_UPDATE_INCOMPATIBLE`
+  (signatures differ). Expected.
+- `pm uninstall -k` only removed the **25028 update**, reverting to the **system-image base
+  12.1.1-23010**; the retained data still carries the old signer so the re-signed install still fails.
+- Full `adb uninstall` → **`DELETE_FAILED_INTERNAL_ERROR`** — a system app can't be removed without
+  root. So the gadget APK **cannot be installed over the stock package** on this non-rooted device.
+  This is the same wall as [[vix-onn-tv-keystore-mismatch]], but harder (system app, not just key
+  mismatch). **Device was restored**: reinstalled the original Play-signed 25028 splits via
+  `adb install-multiple` → Success, back to 25028/`bcfa260e`, login data preserved.
+
+### Unblock path = CLONE the package (next step)
+
+The gadget build only fails because it collides with the stock package identity. A **package-rename
+clone** (à la the repo's existing `CloneAppPatch` for Pluto/Peacock/PV) gives it a NEW package name →
+no signer/system collision → installs ALONGSIDE stock Netflix, debuggable + gadget-injected. The
+appboot bundle loads at boot/browse (before playback), so even if Widevine playback refuses inside a
+clone, `dump_appboot.js` (libc I/O taps + heap scan) can still fire during startup and yield the JS
+appboot dump. RISK: Netflix has many hardcoded package refs + per-package DRM provisioning; cloning
+may need more than a manifest rename. This is the recommended next investment; alternative is a rooted
+Netflix device / emulator where the stock package can be replaced directly.
 
 ---
 

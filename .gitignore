@@ -131,3 +131,6 @@ node_modules/
 # Ignore IDEA files
 .idea/
 local.properties
+
+# Netflix frida-gadget capture binary (large, ABI-specific, not ours to redistribute)
+patches/src/main/resources/netflix/native/**/*.so
