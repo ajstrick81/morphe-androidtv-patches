@@ -63,13 +63,52 @@ what Netflix's server returns 2/3 of the time**, so the client's own no-ad path 
 - **Persistent 4s re-patch loop was corrupting the app** (writing JS source mid-load) → the
   intermittent `tvq-pb-101`. Rule: apply any patch **once, pre-playback**; never hammer live memory.
 
-## The one hard problem left (well-defined)
+## The reviver / manifest-processing seam — LOCATED 2026-08-07 (offsets in hydrator-dump/big1.bin)
 
-The `ads[]→[]` transform must hit the JSON **before `JSON.parse`** — post-parse heap edits do
-nothing, and MSL encryption blocks a network-layer MITM (unlike PV). Config says the manifest is
-parsed with a **reviver** (`transformationMethod:"reviver"`). NEXT: locate the manifest reviver /
-MSL-decrypt→parse boundary in the heap (the module that receives the decrypted manifest string and
-calls `JSON.parse(text, reviver)`), and apply the transform there — once per playback, reliably.
+Decoded the manifest transform chain from the dump. Two precise seams, both found:
+
+**Walker — `reviveObject` (`ha`, @77423) + recursive `ka`:**
+```js
+ha=function(a,b){ null!==a && "object"===typeof a && ka(a,b,void 0,"") }
+ka=function(a,b,d,f){                 // a=value, b=reviver, d=parent, f=key
+  if(Array.isArray(a)) a.forEach(function(v,i){ v=ka(v,b,a,i); void 0!==v?a[i]=v:delete a[i] });
+  else if(object)      for(var k in a){ n=ka(a[k],b,a,k); void 0!==n?a[k]=n:delete a[k] }
+  return b.call(d, f, a)              // calls reviver(key,value) per node, this=parent
+}
+```
+Recurses the ENTIRE manifest object → **does visit `adverts→adBreaks[]→ads`**.
+
+**Reviver — `manifestV2V3Reviver` (`la`, @78725):**
+```js
+la=function(a,b){ return ja.reduce(function(b,d){return d.call(this,a,b)}.bind(this), b) }
+```
+`ja` = list of `createDuplicatingReviver` (`ba`, @77785) field-renamers (audioTracks↔audio_tracks,
+cdnList↔cdnlist, …). NO ad logic — passes `ads` through untouched. Exported in module `a(0)` at
+@70215 (`reviveObject`), @70571 (`createDuplicatingReviver`), @70627 (`manifestV2V3Reviver`).
+
+**Chokepoint — processor `b(a,b)` (@~2578970):**
+```js
+a && "v3"===a.manifestVersion && !a.processed && (
+  b.reviveObjectStart=nrdp.mono(),
+  "reviver"===u.transformationMethod ? reviveObject(a, manifestV2V3Reviver) : ... )
+```
+`a` = already-PARSED manifest object; runs ONCE (`!a.processed`), before ad consumption; bracketed by
+`mslParseStart/End` → `reviveObjectStart/End`.
+
+### Two delivery seams (both located)
+1. **JS reviver seam (post-parse object):** the reviver gets `(key,value)` per node. Force it to return
+   `[]` when `key==="ads"` → empties every ad pod (server-no-ad shape), once per manifest, pre-consumption.
+   Injection point = `la=function(a,b){…}` @78725. (Byte-patch length constraints TBD — the body is
+   `la=function(a,b){return ja.reduce(function(b,d){return d.call(this,a,b)}.bind(this),b)}`; an
+   in-place `"ads"===a` guard doesn't fit without displacing bytes — needs a code-cave or the reduce
+   seed swap. Design pending.)
+2. **Native MSL seam (pre-parse text):** `mslParseStart` precedes reviveObject → the raw decrypted
+   manifest JSON text exists at the native MSL-decrypt boundary in libnetflix (frida-17 native-friendly).
+   Apply the `ads:[{}]→ads:[]` TEXT transform there. True transport-layer seam, below the JS line,
+   analogue of the PV MITM rig. Locating the exact libnetflix decrypt→JSON.parse call is the next native step.
+
+NEXT: pick a seam (JS reviver vs native MSL) and build a SINGLE pre-playback proof-of-kill, verified
+against the `ads:[]/ads:[{}]` oracle. No re-patch loops.
 
 ## Tooling (read-only, in `nfverify/`)
 - `capture-real.js` — READ-ONLY periodic heap dumper (overwrites `real_*.bin` each cycle; pull while
