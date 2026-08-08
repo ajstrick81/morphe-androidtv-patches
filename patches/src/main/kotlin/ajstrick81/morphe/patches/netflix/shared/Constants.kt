@@ -19,6 +19,11 @@ object Constants {
         name = "Netflix Android TV",
         packageName = "com.netflix.ninja",
         appIconColor = 0xE50914,
-        targets = listOf(AppTarget("13.0.1-25028-armv7a"))
+        // Must equal the APK's ACTUAL versionName so Morphe Manager recognizes
+        // the download as Recommended (not "Unsupported — proceed anyway"). The
+        // armeabi-v7a build on APKMirror reports versionName "13.0.1 build 25028"
+        // (versionCode 25028); a normalized "13.0.1-25028-armv7a" string does NOT
+        // match and trips the version-mismatch warning.
+        targets = listOf(AppTarget("13.0.1 build 25028"))
     )
 }
