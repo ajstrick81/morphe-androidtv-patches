@@ -121,8 +121,23 @@ add `ExoPlaybackException`; Netflix: `tvq-pb`). A clean run has **zero** matches
   the known aggressive-seek edge case in the README).
 - If you want a positive ad-kill signal, instrument `libpvhook` to log a marker
   and set `ORACLE_RE` to it — same pattern as Netflix's `KILLMARK`.
-- Confirm your device's home row 0 is a resumable title before trusting
-  `RESUME_KEYS`; if not, switch `primevideo.env` to a deep link.
+- **PV has no reliable blind-resume entry.** Its home focus isn't a guaranteed
+  resumable tile, so `RESUME_KEYS="DPAD_CENTER DPAD_CENTER"` will often not start
+  playback (the harness then backs out cleanly — verified). Use **attach mode**:
+  start any title playing by hand, then run
+  ```bash
+  ATTACH=1 bash experimental/autotest/app-autotest.sh primevideo 4
+  ```
+  Attach mode skips launch/resume, confirms the app is foreground and actually
+  `PLAYING`, then runs the seek/pause stress + error scan on your title.
+
+## Attach mode (apps without a safe blind-resume)
+
+`ATTACH=1` is the escape hatch for any app where you can't deterministically reach
+playback without seeing the screen. You provide the playback (start a title on the
+remote); the harness provides the bounded, guarded stress + monitoring. It never
+navigates to pick content — it only drives in-player keys once it has confirmed a
+real `PLAYING` session in the target package. Works with any profile.
 
 ---
 

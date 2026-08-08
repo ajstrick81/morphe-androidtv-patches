@@ -46,6 +46,11 @@ PF="$HERE/profiles/$PROFILE.env"
 
 ACT="${ACT:-}"
 LAUNCH="${LAUNCH:-monkey}"
+# ATTACH=1 (env or profile): skip launch+resume and attach to a title the user
+# has ALREADY started playing. For apps whose home screen has no reliable
+# blind-resume entry (e.g. Prime Video), start playback by hand, then run:
+#   ATTACH=1 bash app-autotest.sh <profile> [cycles]
+ATTACH="${ATTACH:-0}"
 RESUME_KEYS="${RESUME_KEYS:-DPAD_CENTER DPAD_CENTER}"
 ARMED_RE="${ARMED_RE:-}"
 ORACLE_RE="${ORACLE_RE:-}"
@@ -60,7 +65,11 @@ guard(){ case "$(FG)" in *"$PKG"*) return 0;; *) lg "  ABORT: $PKG not foregroun
 errcount(){ adb logcat -d 2>/dev/null | grep -icE "$ERROR_RE"; }
 launch(){
   if [ "$LAUNCH" = "monkey" ]; then
-    adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
+    # Android TV apps register under LEANBACK_LAUNCHER, phone apps under LAUNCHER.
+    # Pass both categories so monkey finds the launch activity either way (a TV
+    # app like Prime Video has no LAUNCHER entry, so LAUNCHER-only launches nothing
+    # and the foreground-guard then correctly aborts).
+    adb shell monkey -p "$PKG" -c android.intent.category.LEANBACK_LAUNCHER -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
   else
     if [ -n "$ACT" ]; then adb shell am start -n "$ACT" -a android.intent.action.VIEW -d "$LAUNCH" >/dev/null 2>&1
     else adb shell am start -a android.intent.action.VIEW -d "$LAUNCH" "$PKG" >/dev/null 2>&1; fi
@@ -80,22 +89,31 @@ oracle_dump(){ # print non-baseline oracle lines (if an oracle is configured)
 lg "################ AUTOTEST [$PROFILE] pkg=$PKG cycles=$CYCLES ################"
 adb get-state >/dev/null 2>&1 || { lg "no adb device — run 'adb connect <ip>:5555' first"; exit 1; }
 
-lg "=== launch + confirm armed ==="
-adb shell am force-stop "$PKG" >/dev/null 2>&1
-adb logcat -c >/dev/null 2>&1
-launch
-sleep 22
-if wait_armed; then lg "patches armed: ${ARMED_RE:+YES}${ARMED_RE:-'(no arm signal configured — skipping check)'}"
-else lg "patches armed: NO ($ARMED_RE not seen) — aborting"; exit 1; fi
+if [ "$ATTACH" = "1" ]; then
+  lg "=== ATTACH mode: using the title you already started ==="
+  adb logcat -c >/dev/null 2>&1
+  guard || { lg "target app is not foreground — start playback in $PKG first"; exit 1; }
+  S=""; n=0; while [ $n -lt 10 ] && [ -z "$S" ]; do S=$(POS); [ -z "$S" ] && sleep 3; n=$((n+1)); done
+  if [ -z "$S" ]; then lg "no active playback found in $PKG — start a title playing, then re-run"; exit 0; fi
+  lg "attached, playing: $S"
+else
+  lg "=== launch + confirm armed ==="
+  adb shell am force-stop "$PKG" >/dev/null 2>&1
+  adb logcat -c >/dev/null 2>&1
+  launch
+  sleep 22
+  if wait_armed; then lg "patches armed: ${ARMED_RE:+YES}${ARMED_RE:-'(no arm signal configured — skipping check)'}"
+  else lg "patches armed: NO ($ARMED_RE not seen) — aborting"; exit 1; fi
 
-guard || exit 1
-lg "=== controlled resume (keys: $RESUME_KEYS) ==="
-first=1
-for kk in $RESUME_KEYS; do [ $first -eq 1 ] && first=0 || sleep 4; K "$kk"; done
-sleep 12
-S=$(POS)
-if [ -z "$S" ]; then lg "no playback started — backing out"; guard && K BACK; sleep 2; exit 0; fi
-lg "playing: $S"
+  guard || exit 1
+  lg "=== controlled resume (keys: $RESUME_KEYS) ==="
+  first=1
+  for kk in $RESUME_KEYS; do [ $first -eq 1 ] && first=0 || sleep 4; K "$kk"; done
+  sleep 12
+  S=$(POS)
+  if [ -z "$S" ]; then lg "no playback started — backing out (try ATTACH=1 for apps without a blind-resume entry)"; guard && K BACK; sleep 2; exit 0; fi
+  lg "playing: $S"
+fi
 
 for c in $(seq 1 "$CYCLES"); do
   guard || break
