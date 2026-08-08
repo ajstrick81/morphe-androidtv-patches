@@ -42,18 +42,39 @@ function patchFP(rs){ if(fpDone||!FP_ENABLED)return; if(FP_NEW.length!==FP_ANCH.
   for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
     try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){Memory.protect(h[j].address,FP_NEW.length,'rw-');h[j].address.writeByteArray(bytesOf(FP_NEW));fpDone=true;L('PATCH FP: blank ip/ipv6/mac/ssid @'+h[j].address);}}catch(e){}}
 }
+// ---------- (GAID) advertising-ID (GAID) minimization (OPT-IN; default OFF) ----------
+// nrdp.device.getSystemValue("advertisingIdDetails", function(e){
+//   var t=!!e&&"advertisingId"in e, a=(null==e?void 0:e.advertisingId)||"",
+//       o="true"===...limitAdTracking, i=o?"":a;
+//   logEvent("AdvertisingIdCollectionEvent","netflix",{advertisingId:i,...}) })
+// We overwrite the property read `e.advertisingId` (15 bytes) with `void 0` (pad to
+// 15) so a="" -> i="" and the actual GAID is never reported in the collection event.
+// Length-preserving; keeps advertisingIdSupported/limitAdTracking booleans truthful.
+// Folded under the "Minimize Network Fingerprint" opt-in (flips GAID_ENABLED true).
+var GAID_ENABLED=false;
+var GAID_ANCH='null==e?void 0:e.advertisingId)';
+var GAID_OFF=15;                 // offset of 'e.advertisingId' within anchor ("null==e?void 0:")
+var GAID_OLD='e.advertisingId';
+var GAID_NEW='void 0         ';  // 15 chars: 'void 0' + 9 spaces
+var gaidDone=false;
+function patchGAID(rs){ if(gaidDone||!GAID_ENABLED)return; if(GAID_NEW.length!==GAID_OLD.length){L('GAID length mismatch — ABORT');gaidDone=true;return;}
+  var p=pat(GAID_ANCH);
+  for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
+    try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(GAID_OFF);var cur=null;try{cur=t.readCString(GAID_OLD.length);}catch(e){}if(cur!==GAID_OLD)continue;Memory.protect(t,GAID_NEW.length,'rw-');t.writeByteArray(bytesOf(GAID_NEW));gaidDone=true;L('PATCH GAID: e.advertisingId->void0 @'+t);}}catch(e){}}
+}
 var tries=0;
 function apply(){ tries++; var rs=Process.enumerateRanges('rw-');
   var loaded=false,gp=pat('nrdp.gibbon');
   for(var i=0;i<rs.length&&!loaded;i++){if(rs[i].size>128*1024*1024)continue;try{if(Memory.scanSync(rs[i].base,rs[i].size,gp).length)loaded=true;}catch(e){}}
-  if(loaded){patchA(rs);patchB(rs);patchFP(rs);}
+  if(loaded){patchA(rs);patchB(rs);patchFP(rs);patchGAID(rs);}
   // Keep polling until applied. prepareAdBreakStates (A) can load LATER than the
   // pause module (B) — sometimes only once the ad code is exercised — so we must
   // NOT give up early or a real ad slips through. WRITE-ONCE (aDone/bDone/fpDone
   // guards) — not a re-patch loop. FP is only required when enabled.
   var fpOk=(!FP_ENABLED||fpDone);
-  if(aDone&&bDone&&fpOk){ L('apply DONE: A='+aDone+' B='+bDone+' FP='+(FP_ENABLED?fpDone:'off')+' tries='+tries); return; }
-  if(tries%15===0) L('apply waiting: A='+aDone+' B='+bDone+' FP='+(FP_ENABLED?fpDone:'off')+' tries='+tries);
+  var gaidOk=(!GAID_ENABLED||gaidDone);
+  if(aDone&&bDone&&fpOk&&gaidOk){ L('apply DONE: A='+aDone+' B='+bDone+' FP='+(FP_ENABLED?fpDone:'off')+' GAID='+(GAID_ENABLED?gaidDone:'off')+' tries='+tries); return; }
+  if(tries%15===0) L('apply waiting: A='+aDone+' B='+bDone+' FP='+(FP_ENABLED?fpDone:'off')+' GAID='+(GAID_ENABLED?gaidDone:'off')+' tries='+tries);
   if(tries<3600) setTimeout(apply, 2000);   // up to ~2h of find-and-apply polling
 }
 

@@ -30,9 +30,10 @@ import ajstrick81.morphe.patches.netflix.shared.Constants
 val minimizeNetworkFingerprintPatch = resourcePatch(
     name = "Minimize Network Fingerprint",
     description = "Blanks the local IP / MAC / Wi-Fi SSID the Netflix app reports about your " +
-        "network (keeps interface name/type). Reduces network fingerprinting. Does NOT stop the " +
-        "server-side \"I'm traveling\"/household check (that's driven by your public IP — use a " +
-        "VPN for that). Opt-in / experimental; test on-device.",
+        "network (keeps interface name/type) and stops the app from reporting your advertising " +
+        "ID (GAID) in its ad-collection telemetry. Reduces network + ad fingerprinting. Does NOT " +
+        "stop the server-side \"I'm traveling\"/household check (that's driven by your public IP " +
+        "— use a VPN for that). Opt-in / experimental; test on-device.",
     default = false,
 ) {
     compatibleWith(Constants.COMPATIBILITY)
@@ -42,11 +43,17 @@ val minimizeNetworkFingerprintPatch = resourcePatch(
 
     execute {
         val script = get("lib/armeabi-v7a/libgadget.script.so")
-        val text = script.readText()
+        var text = script.readText()
         require(text.contains("FP_ENABLED=false")) {
             "minimizeNetworkFingerprintPatch: FP_ENABLED flag not found in bundled script — " +
                 "killads.js/BundleGadgetPatch out of sync."
         }
-        script.writeText(text.replaceFirst("FP_ENABLED=false", "FP_ENABLED=true"))
+        require(text.contains("GAID_ENABLED=false")) {
+            "minimizeNetworkFingerprintPatch: GAID_ENABLED flag not found in bundled script — " +
+                "killads.js/BundleGadgetPatch out of sync."
+        }
+        text = text.replaceFirst("FP_ENABLED=false", "FP_ENABLED=true")
+        text = text.replaceFirst("GAID_ENABLED=false", "GAID_ENABLED=true")
+        script.writeText(text)
     }
 }
