@@ -27,17 +27,33 @@ function patchB(rs){ if(bDone)return; var p=pat(B_ANCHOR);
   for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
     try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(7);var cur=null;try{cur=t.readCString(B_OLD.length);}catch(e){}if(cur!==B_OLD)continue;Memory.protect(t,B_NEW.length,'rw-');t.writeByteArray(bytesOf(B_NEW));bDone=true;L('PATCH B: pause z() displayAd->void0 @'+t);}}catch(e){}}
 }
+// ---------- (FP) local network fingerprint minimization (OPT-IN; default OFF) ----------
+// Blanks ip/ipv6/mac/ssid in the c() interface map that feeds the nrdp device signal
+// (u.ifList). ONLY changes what is REPORTED to Netflix, not the device's actual
+// networking (keeps ifname/type). Does NOT stop the server-side "traveling" prompt
+// (that's driven by your public IP). The "Minimize Network Fingerprint" opt-in Morphe
+// patch flips FP_ENABLED to true in this bundled script.
+var FP_ENABLED=false;
+var FP_ANCH='ip:e.ipAddress,ipv6:i(e),mac:e.macAddress,name:e.ifname,ssid:e.ssid';
+var FP_NEW ='ip:""         ,ipv6:[]  ,mac:""          ,name:e.ifname,ssid:""    ';
+var fpDone=false;
+function patchFP(rs){ if(fpDone||!FP_ENABLED)return; if(FP_NEW.length!==FP_ANCH.length){L('FP length mismatch — ABORT');fpDone=true;return;}
+  var p=pat(FP_ANCH);
+  for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
+    try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){Memory.protect(h[j].address,FP_NEW.length,'rw-');h[j].address.writeByteArray(bytesOf(FP_NEW));fpDone=true;L('PATCH FP: blank ip/ipv6/mac/ssid @'+h[j].address);}}catch(e){}}
+}
 var tries=0;
 function apply(){ tries++; var rs=Process.enumerateRanges('rw-');
   var loaded=false,gp=pat('nrdp.gibbon');
   for(var i=0;i<rs.length&&!loaded;i++){if(rs[i].size>128*1024*1024)continue;try{if(Memory.scanSync(rs[i].base,rs[i].size,gp).length)loaded=true;}catch(e){}}
-  if(loaded){patchA(rs);patchB(rs);}
-  // Keep polling until BOTH applied. prepareAdBreakStates (A) can load LATER than
-  // the pause module (B) — sometimes only once the ad code is exercised — so we
-  // must NOT give up early or a real ad slips through. This is a find-and-apply
-  // poll, still WRITE-ONCE (aDone/bDone guards) — not a re-patch loop.
-  if(aDone&&bDone){ L('apply DONE: A='+aDone+' B='+bDone+' tries='+tries); return; }
-  if(tries%15===0) L('apply waiting: A='+aDone+' B='+bDone+' tries='+tries);
+  if(loaded){patchA(rs);patchB(rs);patchFP(rs);}
+  // Keep polling until applied. prepareAdBreakStates (A) can load LATER than the
+  // pause module (B) — sometimes only once the ad code is exercised — so we must
+  // NOT give up early or a real ad slips through. WRITE-ONCE (aDone/bDone/fpDone
+  // guards) — not a re-patch loop. FP is only required when enabled.
+  var fpOk=(!FP_ENABLED||fpDone);
+  if(aDone&&bDone&&fpOk){ L('apply DONE: A='+aDone+' B='+bDone+' FP='+(FP_ENABLED?fpDone:'off')+' tries='+tries); return; }
+  if(tries%15===0) L('apply waiting: A='+aDone+' B='+bDone+' FP='+(FP_ENABLED?fpDone:'off')+' tries='+tries);
   if(tries<3600) setTimeout(apply, 2000);   // up to ~2h of find-and-apply polling
 }
 
