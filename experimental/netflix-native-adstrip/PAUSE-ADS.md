@@ -61,7 +61,30 @@ patch on the same title/session. Applied once, no re-patch loop, no crash, playb
   server's ~2/3 empty-fill (broken oracle). Pre/mid-roll IS separately PROVEN (KILLMARK) but via its
   own patch run. Confirm together with the data oracle.
 
-## NEXT: brute-force testing (with the DATA oracle) + combine both kills
+## ✅✅ COMBINED PROOF — BOTH kills, one session, data-oracle-verified (2026-08-07)
+
+Ran `nfverify/combined-kill.js` (both patches single-shot + read-only oracle) on the logged-in clone;
+brute-forced many titles / mid-roll seeks / pauses. Log: `PROOF-combined-both-kills-2026-08-07.log`.
+Oracle proof (baseline KILLMARK=1 = patch source; ≥2 = a REAL server ad break stamped+emptied):
+```
+OBS24-35: KILLMARK=2                 <- mid-roll real-ad break emptied (uncompressed hydration object)
+OBS34-35: rawRealPods=1              <- raw compressed-path real pod (pre-roll) present
+OBS25/29/30/31/34/36: rawDisplayAd=1..2  <- server delivered pause ads
+```
+User on-screen, same session: **"No pre rolls, no mid rolls firing, and no ads on pause."**
+→ server delivered all three ad types (pre-roll raw pod, mid-roll object, pause displayAd) and NONE
+played. Both kills demonstrated against DATA, not just screen. `rawRealPods=0` most cycles is expected
+(mid-rolls arrive as parsed objects, no raw text → proven via KILLMARK=2).
+
+## NEXT: make it SHIPPABLE (both proven; delivery is the remaining work)
+- Both kills are frida proof-rigs (runtime heap patches, re-applied each launch). Shippable = one
+  in-process native transform applied at appboot load (past the hash check; mind
+  `milo_ignore_hash_errors`), or baked into the clone bootstrap. Drop the `__adkill` proof stamp for
+  production (edit becomes just `f.metadata&&(f.metadata.ads=[]);`).
+- Re-confirm both OLD byte patterns per Netflix version bump; verify longevity across app restart /
+  appboot re-download.
+
+## (done) brute-force testing (with the DATA oracle) + combine both kills
 - Apply BOTH patches in one session (prepareAdBreakStates + pause z()) and brute-force many titles /
   many mid-roll seeks / many pauses.
 - Measure against DATA, not the screen: for pre/mid-roll use `__adkill`/`rawRealPods`; for pause add
