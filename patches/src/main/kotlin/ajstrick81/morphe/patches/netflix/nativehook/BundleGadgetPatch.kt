@@ -48,30 +48,32 @@ val bundleGadgetPatch = resourcePatch(
             writeBytes(soBytes)
         }
 
-        // ── 2. Generate the gadget config next to the .so ────────────────────
-        // frida-gadget auto-loads "<soname>.config.so" from the same dir.
-        //
-        // We use "listen" (not "script"): "script" mode reads its JS from a
-        // filesystem path, but on a non-root device the only writable spot the
-        // app can also READ is its own files dir — /data/local/tmp is blocked by
-        // SELinux (untrusted_app can't read shell_data_file). "listen" sidesteps
-        // that: the gadget opens a local TCP port and we drive it from the PC
-        // over `adb forward` with the frida CLI/python (no root, no on-device
-        // script file, live hot-reload of scripts).
-        //
-        // "on_load":"wait" BLOCKS the process at gadget load (Application.onCreate
-        // index 0) until a client connects — essential so hooks are installed
-        // BEFORE Netflix's native init (nativeGibbonStartup) runs.
-        //   host:   adb forward tcp:27042 tcp:27042
-        //           frida -H 127.0.0.1:27042 -n Gadget -l <script.js>
+        // ── 2a. Bundle the ad-kill script INSIDE the apk (next to the .so) ───
+        // SHIPPABLE (self-contained): the gadget runs the script itself at load —
+        // no PC, no frida-CLI. "script" mode normally can't read /data/local/tmp
+        // (SELinux blocks untrusted_app from shell_data_file), so we place the
+        // script in the app's OWN lib dir (named .so so extractNativeLibs
+        // extracts it) and reference it by a RELATIVE path, which frida resolves
+        // next to the gadget library — a location the app can always read.
+        val scriptBytes = object {}.javaClass.getResourceAsStream("/netflix/native/killads.js")
+            ?.use { it.readBytes() }
+            ?: error("bundleGadgetPatch: /netflix/native/killads.js not found on the patch classpath")
+        get("lib/$abi/libgadget.script.so").apply {
+            parentFile?.mkdirs()
+            writeBytes(scriptBytes)
+        }
+
+        // ── 2b. Gadget config: run the bundled script at load ────────────────
+        // frida-gadget auto-loads "<soname>.config.so" from the same dir; here it
+        // runs the bundled killads script (relative path -> resolved beside
+        // libgadget.so in the extracted lib dir, which is app-readable). No
+        // on_load:"wait", so the app launches NORMALLY and self-applies the kills.
         val config = """
             {
               "interaction": {
-                "type": "listen",
-                "address": "127.0.0.1",
-                "port": 27042,
-                "on_port_conflict": "fail",
-                "on_load": "wait"
+                "type": "script",
+                "path": "libgadget.script.so",
+                "on_change": "reload"
               }
             }
         """.trimIndent()
@@ -86,10 +88,12 @@ val bundleGadgetPatch = resourcePatch(
                     as? org.w3c.dom.Element ?: return@use
             // base.apk ships extractNativeLibs="false"; injected libs that
             // aren't page-aligned fail to mmap → force extraction to sidestep.
+            // Also required so the bundled killads script (libgadget.script.so)
+            // is extracted to the app-readable lib dir for the gadget to load.
             application.setAttribute("android:extractNativeLibs", "true")
-            // debuggable=true makes the dumps in the app's private files dir
-            // pullable via `run-as` without root (see frida/README.md Step 4).
-            application.setAttribute("android:debuggable", "true")
+            // NOTE: shippable build is NOT debuggable — the ad-kill script
+            // self-applies via the gadget and logs proof through liblog
+            // (adb logcat, tags KILL/OBS), so run-as is not needed.
         }
     }
 }

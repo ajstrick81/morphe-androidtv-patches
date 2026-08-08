@@ -1,0 +1,63 @@
+'use strict';
+// Netflix ad-kill (self-contained, single-shot each, NO re-patch loop) + read-only monitor.
+//  (A) manifest pre/mid-roll: AdsState.prepareAdBreakStates -> stamp __adkill, empty metadata.ads=[]
+//  (B) pause overlay: z() saga -> force f=e.displayAd to void 0 -> no ad opportunity
+//  MONITOR (read-only): KILLMARK(__adkill)/rawRealPods = manifest ad kills; rawDisplayAd = server
+//  pause ad delivered; BOOKMARK = distinct resume positions seen (confirms resume/bookmark intact).
+var logw = new NativeFunction(Module.findGlobalExportByName('__android_log_write'),
+  'int', ['int', 'pointer', 'pointer']);
+var TAG = Memory.allocUtf8String('KILL');
+function L(m){ logw(6, TAG, Memory.allocUtf8String(m)); }
+function pat(s){ return s.split('').map(function(c){return ('0'+c.charCodeAt(0).toString(16)).slice(-2);}).join(' '); }
+function bytesOf(s){ var b=[]; for (var i=0;i<s.length;i++) b.push(s.charCodeAt(i)); return b; }
+
+// ---------- (A) manifest patch ----------
+var A_OLD='var f=e.value;f.syncAdStates();f.state.isHydrated&&"viewable"!==f.metadata.source&&f.applyHydration(f.state.hydrationSequenceId)';
+var A_NEW='var f=e.value;f.metadata&&(f.metadata.ads.length&&(f.__adkill=f.metadata.ads.length),f.metadata.ads=[]);f.syncAdStates();/*...*/';
+var aDone=false;
+function patchA(rs){ if(aDone)return; if(A_NEW.length!==A_OLD.length){L('A length mismatch — ABORT');aDone=true;return;}
+  var p=pat(A_OLD);
+  for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
+    try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){Memory.protect(h[j].address,A_NEW.length,'rw-');h[j].address.writeByteArray(bytesOf(A_NEW));aDone=true;L('PATCH A: prepareAdBreakStates @'+h[j].address);}}catch(e){}}
+}
+// ---------- (B) pause patch ----------
+var B_ANCHOR='void 0:e.displayAd',B_OLD='e.displayAd',B_NEW='void 0     ';
+var bDone=false;
+function patchB(rs){ if(bDone)return; var p=pat(B_ANCHOR);
+  for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
+    try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(7);var cur=null;try{cur=t.readCString(B_OLD.length);}catch(e){}if(cur!==B_OLD)continue;Memory.protect(t,B_NEW.length,'rw-');t.writeByteArray(bytesOf(B_NEW));bDone=true;L('PATCH B: pause z() displayAd->void0 @'+t);}}catch(e){}}
+}
+var tries=0;
+function apply(){ tries++; var rs=Process.enumerateRanges('rw-');
+  var loaded=false,gp=pat('nrdp.gibbon');
+  for(var i=0;i<rs.length&&!loaded;i++){if(rs[i].size>128*1024*1024)continue;try{if(Memory.scanSync(rs[i].base,rs[i].size,gp).length)loaded=true;}catch(e){}}
+  if(loaded){patchA(rs);patchB(rs);}
+  // Keep polling until BOTH applied. prepareAdBreakStates (A) can load LATER than
+  // the pause module (B) — sometimes only once the ad code is exercised — so we
+  // must NOT give up early or a real ad slips through. This is a find-and-apply
+  // poll, still WRITE-ONCE (aDone/bDone guards) — not a re-patch loop.
+  if(aDone&&bDone){ L('apply DONE: A='+aDone+' B='+bDone+' tries='+tries); return; }
+  if(tries%15===0) L('apply waiting: A='+aDone+' B='+bDone+' tries='+tries);
+  if(tries<3600) setTimeout(apply, 2000);   // up to ~2h of find-and-apply polling
+}
+
+// ---------- monitor (read-only) ----------
+var KILLMARK=pat('__adkill'),REALPOD=pat('ads":[{'),DISPAD=pat('displayAd":{'),BM=pat('"bookmark":');
+function readNumAfter(addr,skip){ try{var s=addr.add(skip).readCString(14);var m=/^([0-9]{1,12})/.exec(s);return m?parseInt(m[1],10):-1;}catch(e){return -1;} }
+var cyc=0;
+function observe(){ cyc++;
+  var rs=Process.enumerateRanges('rw-');var kill=0,real=0,disp=0;var bset={};
+  for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>64*1024*1024||r.size<256)continue;
+    try{ kill+=Memory.scanSync(r.base,r.size,KILLMARK).length; real+=Memory.scanSync(r.base,r.size,REALPOD).length; disp+=Memory.scanSync(r.base,r.size,DISPAD).length;
+      var bh=Memory.scanSync(r.base,r.size,BM); for(var k=0;k<bh.length&&k<40;k++){var v=readNumAfter(bh[k].address,11);if(v>0)bset[v]=1;}
+    }catch(e){}
+  }
+  var bks=Object.keys(bset).map(Number).sort(function(a,b){return b-a}).slice(0,6);
+  var tag=(kill>1?'  <<<MANIFEST-KILL':'')+(disp>0?'  <<<server-pauseAd(x'+disp+')':'')+(real>0?'  <<<rawRealPod(x'+real+')':'');
+  L('OBS'+cyc+': KILLMARK='+kill+' rawRealPods='+real+' rawDisplayAd='+disp+' bookmarks='+JSON.stringify(bks)+tag);
+  if(cyc<560) setTimeout(observe,3000);   // ~28 min coverage
+}
+
+L('killads ready (A manifest + B pause, single-shot; ad+resume monitor)');
+setTimeout(apply,5000);
+setTimeout(observe,9000);
