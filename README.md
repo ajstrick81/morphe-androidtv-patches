@@ -18,6 +18,7 @@ I'm just like you — I enjoy watching TV and movies without being bored and ann
 |-----|---------|--------|---------------|------|
 | 🟢 Disney+ | `com.disney.disneyplus` | Working | `26.12.1+rc1-2026.07.15` | 7/21/26 |
 | 🟢 Prime Video | `com.amazon.amazonvideo.livingroom` | Working — native in-app ad strip (movies + TV shows), no DNS required | `6.23.23+v15.5.0.70-armv7a` | 7/30/26 |
+| 🟢 Netflix | `com.netflix.ninja` | Working — native in-app ad strip (pre-roll, mid-roll, pause-screen ad), no DNS required. Installs as a **side-by-side clone**; keep stock Netflix installed | `13.0.1 build 25028` | 8/8/26 |
 | 🟢 HBO Max | `com.wbd.hbomax` | Working | `v7.7.0.78` | 7/18/26 |
 | 🟢 Peacock | `com.peacocktv.peacockandroid` | Working — no DNS required | `v7.6.100` | 7/16/26 |
 | 🟢 Tubi | `com.tubitv` | Working | `v10.28.5000` | 7/20/26 |
@@ -84,6 +85,34 @@ All patches follow the same general workflow using **Morphe Manager**:
 > edge case: very aggressive fast-forward + resume can occasionally nudge the
 > playback position; it self-heals on a full playthrough and normal viewing is
 > unaffected. Please report anything else via an issue.
+
+---
+
+### 🍿 Netflix
+
+> 🟢 **Working — no DNS filter needed.** Pre-rolls, mid-rolls, **and** the
+> full-screen pause-screen ad are removed **in-app** by an in-process script that
+> the app runs itself at launch (no PC, no root, no frida server). Verified
+> on-device: Netflix's servers still deliver real ad breaks and none of them play.
+>
+> 🔐 **Two apps, on purpose — keep BOTH installed.** Netflix on a TV is a
+> preinstalled, Netflix-signed **system app** that can't be replaced or uninstalled
+> without root, so the patch installs as a **separate clone**
+> (`com.netflix.ninja.clone`) next to it. The clone passes Netflix's built-in
+> tamper check by reading the **stock** app's genuine signature — so **stock
+> Netflix must stay installed and enabled** (you just never open it; letting it
+> auto-update is fine). Log into the **clone** and use that. Don't disable or
+> uninstall stock Netflix, or the clone won't start.
+
+1. Open the **[Netflix (Android TV) listing on APKMirror](https://www.apkmirror.com/apk/netflix-inc/netflix-android-tv/)** (publisher **Netflix, Inc.**, package `com.netflix.ninja`) and select version **`13.0.1 build 25028`**
+2. ⚠️ **Netflix is the exception to the "download the .apkm bundle" rule above.** This listing has **no App Bundle** — download the single **`armeabi-v7a`** APK (APKMirror may name the file differently, but the variant row is labeled `armeabi-v7a`). Match **`13.0.1 build 25028`**; Morphe Manager will show it as **Recommended**.
+3. Select the `.apk` in Morphe Manager
+4. Apply the patch — leave **Clone Netflix** and the **Remove Netflix ads** patches enabled (both on by default). Optionally enable **Minimize Network Fingerprint** for the privacy pass (blanks local IP/MAC/SSID + advertising ID).
+5. Install the result **without uninstalling stock Netflix**, then open the new **Netflix clone** app and sign in.
+
+> ⚠️ **Not a subscription bypass.** You need a valid, paid Netflix account and you
+> log in normally. This only removes ads and trims device telemetry inside an app
+> you're already entitled to use.
 
 ---
 
