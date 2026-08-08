@@ -5,31 +5,24 @@ import app.morphe.patcher.patch.bytecodePatch
 import ajstrick81.morphe.patches.netflix.shared.Constants
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DEX-side half of the non-root capture: load libgadget.so at startup so the
-// frida-gadget script (dump_appboot.js) is armed before the nrdp runtime
-// fetches/caches the appboot UI bundle.
+// THE AD REMOVER (loader half). DEX-side: load libgadget.so at startup so the
+// bundled ad-kill script (killads.js, placed by bundleGadgetPatch) is armed as
+// early as possible — before the nrdp runtime schedules any ad break.
 //
-// Unlike the Prime Video native-hook (which calls an extension's
-// NativeHookLoader.load() for fail-loud logging), the gadget only needs the
-// library on the linker path — so we inline System.loadLibrary("gadget"). No
-// extension DEX is required for capture. The gadget's own config
-// (libgadget.config.so, written by bundleGadgetPatch) drives what runs.
+// The gadget only needs the library on the linker path, so we inline
+// System.loadLibrary("gadget"); its config (libgadget.config.so) points it at
+// the bundled script in script mode. No extension DEX required.
 //
-// Injected at index 0 of Application.onCreate so the gadget loads as early as
-// possible in-process.
-//
-// SCAFFOLD — not registered in the build. To activate:
-//   1. Confirm NetflixApplicationOnCreateFingerprint's definingClass (Fingerprints.kt).
-//   2. Drop the armeabi-v7a frida-gadget at the path bundleGadgetPatch documents.
-//   3. Register bundleGadgetPatch + loadGadgetPatch, gate both on Constants.COMPATIBILITY.
-// This is CAPTURE tooling, not the ad-strip itself — remove it from any shipping
-// build once the appboot schema is in hand and the seam-A transform is written.
+// Injected at index 0 of Application.onCreate so it loads as early as possible.
+// Companion to bundleGadgetPatch (dependsOn), which stages the .so + script +
+// config first. Default ON.
 // ─────────────────────────────────────────────────────────────────────────────
 @Suppress("unused")
 val loadGadgetPatch = bytecodePatch(
-    name = "Load frida-gadget (Netflix appboot capture)",
-    description = "Loads libgadget.so at startup to capture the appboot UI bundle " +
-        "in-process on a non-rooted device (post-MSL, post-signature).",
+    name = "Remove Netflix ads (loader)",
+    description = "Arms the ad remover: injects the startup call that loads the in-process " +
+        "ad-kill engine (bundled by the companion patch) as early as possible, so ads are " +
+        "emptied before playback. Requires the bundle-engine patch. Default ON.",
 ) {
     compatibleWith(Constants.COMPATIBILITY)
 

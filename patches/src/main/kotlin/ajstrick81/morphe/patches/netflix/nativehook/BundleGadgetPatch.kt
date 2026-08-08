@@ -4,31 +4,34 @@ import app.morphe.patcher.patch.resourcePatch
 import ajstrick81.morphe.patches.netflix.shared.Constants
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Bundles frida-gadget into com.netflix.ninja so we can capture the appboot UI
-// bundle in-process on a NON-rooted Onn (no frida-server needed — the gadget
-// runs inside Netflix's own process). Acquisition tooling for the reopened
-// seam-A/B work; see experimental/netflix-native-adstrip/REOPENING.md and
-// frida/README.md.
+// THE AD REMOVER (delivery half). Bundles a frida-gadget into com.netflix.ninja
+// running in SCRIPT mode against the bundled ad-kill script (killads.js) — the
+// gadget runs inside Netflix's own process at launch, so the ad kills apply with
+// no PC, no root, and no frida server. (The same gadget primitive was originally
+// stood up for non-root appboot capture; it now ships as the ad-strip delivery.)
 //
-// Writes three things into the decoded APK:
+// Writes into the decoded APK:
 //   1. lib/armeabi-v7a/libgadget.so         — the frida-gadget binary (supplied)
-//   2. lib/armeabi-v7a/libgadget.config.so  — gadget config (generated here)
-//   3. manifest flips: extractNativeLibs=true, debuggable=true
+//   2. lib/armeabi-v7a/libgadget.script.so  — the ad-kill script (killads.js)
+//   3. lib/armeabi-v7a/libgadget.config.so  — gadget config (run the script at load)
+//   4. manifest flip: extractNativeLibs=true (so the libs land in an app-readable dir)
 //
 // The gadget binary is NOT checked into the repo (large, ABI-specific, and not
 // ours to redistribute). Drop the armeabi-v7a frida-gadget, renamed to
 // libgadget.so, at:
 //   patches/src/main/resources/netflix/native/armeabi-v7a/libgadget.so
 //
-// SCAFFOLD — not registered in the build. Companion to loadGadgetPatch, which
-// injects the System.loadLibrary("gadget") call and dependsOn() this so the
-// .so + config are in place first.
+// Companion to loadGadgetPatch, which injects the System.loadLibrary("gadget")
+// call and dependsOn() this so the .so + script + config are in place first.
+// Default ON.
 // ─────────────────────────────────────────────────────────────────────────────
 @Suppress("unused")
 val bundleGadgetPatch = resourcePatch(
-    name = "Bundle frida-gadget (Netflix appboot capture)",
-    description = "Packages libgadget.so + its config into com.netflix.ninja for " +
-        "in-process, non-root capture of the appboot UI bundle (post-MSL, post-signature).",
+    name = "Remove Netflix ads (bundle engine)",
+    description = "Bundles the in-process ad-kill script (killads.js) and its loader into the " +
+        "app. This is the ad remover: at launch the app runs the script itself (script mode — no " +
+        "PC, no root, no frida server) and empties Netflix's ad breaks (pre-roll, mid-roll) and " +
+        "the pause-screen ad overlay. Pairs with the loader patch. Default ON.",
 ) {
     compatibleWith(Constants.COMPATIBILITY)
 

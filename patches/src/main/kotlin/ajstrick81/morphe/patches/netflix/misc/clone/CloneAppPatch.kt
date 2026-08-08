@@ -40,12 +40,14 @@ private const val CLONE_SUFFIX = "clone"
 // Intent actions and <queries> package targets are left untouched: they are not
 // device-unique and are matched by literal string on both ends.
 //
-// ⚠️ CAPTURE-ONLY / EXPERIMENTAL. This exists to get the frida-gadget appboot
-// capture (bundleGadgetPatch/loadGadgetPatch) installable alongside stock
-// Netflix. Netflix ties ESN/MSL identity and Widevine provisioning to the
-// package name, so the clone may fail login/playback; that's acceptable for the
-// capture goal because the appboot JS bundle loads at boot/browse, before
-// playback. NOT a shipping ad-strip. Opt-in (default = false).
+// REQUIRED on TV boxes: Netflix ships preinstalled + Play-signed, so a
+// Morphe-signed build can't replace it. This installs the patched app as a
+// SEPARATE package (com.netflix.ninja.clone) alongside untouched stock. The
+// clone reads STOCK's genuine signature via the injected <queries> entry to
+// satisfy the native RJni_SignatureCheck anti-tamper (§1b), so stock must stay
+// installed + enabled (it may auto-update freely — the clone keys off the
+// signature, not the version). Verified on-device: the clone logs in, plays,
+// and self-applies the ad kills. Default ON for this Android-TV target.
 //
 // Runs in finalize {} so the rename happens after all other patches, at manifest
 // write time.
@@ -53,12 +55,13 @@ private const val CLONE_SUFFIX = "clone"
 @Suppress("unused")
 val cloneAppPatch = resourcePatch(
     name = "Clone Netflix",
-    description = "Installs the patched Netflix as a separate app alongside the stock one, " +
-        "instead of replacing it. Required on devices where Netflix is a preinstalled system " +
-        "app that can't be uninstalled (Onn, Fire TV, most Android TV boxes). The clone gets its " +
-        "own package (suffix .$CLONE_SUFFIX). EXPERIMENTAL capture tooling — Netflix binds " +
-        "ESN/MSL/Widevine to the package name, so the clone may not log in or play. Opt-in.",
-    default = false,
+    description = "Installs the patched Netflix as a separate app alongside the stock one " +
+        "(package suffix .$CLONE_SUFFIX), instead of replacing it. Required on devices where " +
+        "Netflix is a preinstalled system app that can't be uninstalled (Onn, Fire TV, most " +
+        "Android TV boxes). Keep the stock Netflix installed + enabled — the clone borrows its " +
+        "signature to pass Netflix's native tamper check (stock auto-updating is fine). You just " +
+        "launch the clone instead. Recommended: leave ON.",
+    default = true,
 ) {
     compatibleWith(Constants.COMPATIBILITY)
 
