@@ -1,3 +1,10 @@
+## [1.21.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.21.0...v1.21.1) (2026-08-08)
+
+
+### Bug Fixes
+
+* **netflix:** ship the frida-gadget binary in the patch bundle ([b8e456d](https://github.com/ajstrick81/morphe-androidtv-patches/commit/b8e456d6659451cb64df655f76e5ef6985b92594))
+
 # [1.21.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.20.0...v1.21.0) (2026-08-08)
 
 

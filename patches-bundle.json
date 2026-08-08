@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-08-08T23:04:37",
-  "description": "# [1.21.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.20.0...v1.21.0) (2026-08-08)\n\n\n### Bug Fixes\n\n* **netflix:** match AppTarget to real versionName + README install section ([53db8f6](https://github.com/ajstrick81/morphe-androidtv-patches/commit/53db8f62f9bebee71e4136b777b1e61549ed0c4a))\n\n\n### Features\n\n* **netflix:** default-on Clone, clearer ad-remover patch names ([d2f3d37](https://github.com/ajstrick81/morphe-androidtv-patches/commit/d2f3d375039a13673bc5267305f08ef0bfe31d2f))",
-  "download_url": "https://github.com/ajstrick81/morphe-androidtv-patches/releases/download/v1.21.0/patches-1.21.0.mpp",
+  "created_at": "2026-08-08T23:27:55",
+  "description": "## [1.21.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.21.0...v1.21.1) (2026-08-08)\n\n\n### Bug Fixes\n\n* **netflix:** ship the frida-gadget binary in the patch bundle ([b8e456d](https://github.com/ajstrick81/morphe-androidtv-patches/commit/b8e456d6659451cb64df655f76e5ef6985b92594))",
+  "download_url": "https://github.com/ajstrick81/morphe-androidtv-patches/releases/download/v1.21.1/patches-1.21.1.mpp",
   "signature_download_url": "",
-  "version": "1.21.0"
+  "version": "1.21.1"
 }
