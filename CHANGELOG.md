@@ -1,3 +1,15 @@
+# [1.21.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.20.0...v1.21.0) (2026-08-08)
+
+
+### Bug Fixes
+
+* **netflix:** match AppTarget to real versionName + README install section ([53db8f6](https://github.com/ajstrick81/morphe-androidtv-patches/commit/53db8f62f9bebee71e4136b777b1e61549ed0c4a))
+
+
+### Features
+
+* **netflix:** default-on Clone, clearer ad-remover patch names ([d2f3d37](https://github.com/ajstrick81/morphe-androidtv-patches/commit/d2f3d375039a13673bc5267305f08ef0bfe31d2f))
+
 # [1.20.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.19.0...v1.20.0) (2026-08-08)
 
 
