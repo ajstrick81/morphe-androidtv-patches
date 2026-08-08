@@ -131,6 +131,24 @@ add `ExoPlaybackException`; Netflix: `tvq-pb`). A clean run has **zero** matches
   Attach mode skips launch/resume, confirms the app is foreground and actually
   `PLAYING`, then runs the seek/pause stress + error scan on your title.
 
+### ⚠️ Prime Video oracle limitation (measured on-device)
+
+PV's native MPB player is **opaque to the generic oracles**:
+- `media_session` reports `state=PLAYING(3)` with **`position=0` that never
+  advances**, and the `PlaybackState` line intermittently disappears while video
+  is still playing — so both position-probe and state-probe can miss a live PV.
+- Video renders on a **BLAST `SurfaceView`** layer, so the app's `gfxinfo`
+  framestats stay near-zero (they count the UI view tree, not the video surface),
+  and `SurfaceFlinger --latency` is hard to key by the changing layer name.
+
+Practical consequence: **this harness can launch PV and guard it safely, but it
+cannot reliably confirm PV playback from outside the app.** For real PV
+validation, add a **self-stamp**: log a marker from `libpvhook` when it strips an
+ad (mirroring Netflix's `KILLMARK`) and point `ORACLE_RE` at it. Then even a
+position-less player is testable, because the signal comes from your patch, not
+from Android's media plumbing. This is the same lesson as the broken-oracle note:
+prefer a signal the patch emits over one you infer.
+
 ## Attach mode (apps without a safe blind-resume)
 
 `ATTACH=1` is the escape hatch for any app where you can't deterministically reach

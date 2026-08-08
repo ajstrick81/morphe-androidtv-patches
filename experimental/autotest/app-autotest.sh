@@ -59,7 +59,19 @@ ERROR_RE="${ERROR_RE:-FATAL|ANR in $PKG|SIGABRT|SIGSEGV|has died}"
 
 K(){ adb shell input keyevent "KEYCODE_$1" >/dev/null 2>&1; }
 FG(){ adb shell dumpsys activity activities 2>/dev/null | grep -oE 'topResumedActivity=ActivityRecord\{[a-f0-9]+ u0 [^ }]+' | grep -oE '[^ ]+$' | head -1; }
-POS(){ adb shell dumpsys media_session 2>/dev/null | grep -oE 'state=[A-Z]+\([0-9]\), position=[0-9]+' | grep -vE 'position=0$' | head -1; }
+# Playback probe. Default "position": require an ADVANCING media_session position
+# (Netflix). "state": some native players (Prime Video's MPB engine) publish a
+# MediaSession state but keep position pinned at 0 — so gate on the PKG-scoped
+# state=PLAYING/PAUSED instead of position. Set PLAYBACK_PROBE=state per profile.
+PLAYBACK_PROBE="${PLAYBACK_PROBE:-position}"
+POS(){
+  if [ "$PLAYBACK_PROBE" = "state" ]; then
+    adb shell dumpsys media_session 2>/dev/null | grep -A1 "package=$PKG" | grep -oE 'state=[A-Z]+\([0-9]\), position=[0-9]+' | head -1
+  else
+    adb shell dumpsys media_session 2>/dev/null | grep -oE 'state=[A-Z]+\([0-9]\), position=[0-9]+' | grep -vE 'position=0$' | head -1
+  fi
+}
+ISPLAY(){ POS | grep -q 'PLAYING'; }
 lg(){ echo "$(date +%H:%M:%S) $*"; }
 guard(){ case "$(FG)" in *"$PKG"*) return 0;; *) lg "  ABORT: $PKG not foreground (fg=$(FG)) — refusing input"; return 1;; esac; }
 errcount(){ adb logcat -d 2>/dev/null | grep -icE "$ERROR_RE"; }
@@ -93,9 +105,9 @@ if [ "$ATTACH" = "1" ]; then
   lg "=== ATTACH mode: using the title you already started ==="
   adb logcat -c >/dev/null 2>&1
   guard || { lg "target app is not foreground — start playback in $PKG first"; exit 1; }
-  S=""; n=0; while [ $n -lt 10 ] && [ -z "$S" ]; do S=$(POS); [ -z "$S" ] && sleep 3; n=$((n+1)); done
-  if [ -z "$S" ]; then lg "no active playback found in $PKG — start a title playing, then re-run"; exit 0; fi
-  lg "attached, playing: $S"
+  n=0; while [ $n -lt 10 ] && ! ISPLAY; do sleep 3; n=$((n+1)); done
+  if ! ISPLAY; then cur=$(POS); lg "no active PLAYING session in $PKG (state: ${cur:-none}) — start a title playing, then re-run"; exit 0; fi
+  S=$(POS); lg "attached, playing: $S"
 else
   lg "=== launch + confirm armed ==="
   adb shell am force-stop "$PKG" >/dev/null 2>&1
