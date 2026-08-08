@@ -1,0 +1,46 @@
+# Netflix combined kill PROOF (pre/mid-roll + pause) — 2026-08-07
+# Build: com.netflix.ninja.clone (Morphe clone, logged in). Both patches applied single-shot:
+#   PATCH A prepareAdBreakStates @0xb4e8fe73 (metadata.ads=[]+__adkill stamp)
+#   PATCH B pause z() displayAd->void0 @0xa8363b5c
+# Oracle: KILLMARK baseline=1 (patch src); >=2 = stamped a REAL server ad break we emptied.
+#         rawDisplayAd>0 = server delivered a pause ad (raw JSON untouched by our object patch).
+# User on-screen (same session): No pre-rolls, no mid-rolls firing, no ads on pause.
+# NOTE rawRealPods=0 is expected: mid-rolls arrive via UNCOMPRESSED hydration (parsed object,
+#      no raw ads":[{ text) -> proven via KILLMARK=2, per ADS-EMPTY-POD-SEAM.md.
+# ---- oracle samples (KILLMARK=2 and/or rawDisplayAd>0 = server delivered ads, none played) ----
+OBS2: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS3: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS4: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS5: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS6: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS7: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS8: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS9: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS10: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS11: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS12: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS13: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS14: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS15: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS16: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS17: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS18: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS19: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS20: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS21: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS22: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS23: KILLMARK=1 rawRealPods=0 rawEmptyPods=1 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)
+OBS24: KILLMARK=2 rawRealPods=0 rawEmptyPods=4 rawDisplayAd=0  <<< PROOF manifest: emptied 2 real-ad break(s)
+OBS25: KILLMARK=2 rawRealPods=0 rawEmptyPods=4 rawDisplayAd=2  <<< PROOF manifest: emptied 2 real-ad break(s)  <<< server sent pause displayAd (x2)
+OBS26: KILLMARK=2 rawRealPods=0 rawEmptyPods=1 rawDisplayAd=0  <<< PROOF manifest: emptied 2 real-ad break(s)
+OBS27: KILLMARK=2 rawRealPods=0 rawEmptyPods=1 rawDisplayAd=0  <<< PROOF manifest: emptied 2 real-ad break(s)
+OBS28: KILLMARK=2 rawRealPods=0 rawEmptyPods=1 rawDisplayAd=0  <<< PROOF manifest: emptied 2 real-ad break(s)
+OBS29: KILLMARK=2 rawRealPods=0 rawEmptyPods=1 rawDisplayAd=2  <<< PROOF manifest: emptied 2 real-ad break(s)  <<< server sent pause displayAd (x2)
+OBS30: KILLMARK=2 rawRealPods=0 rawEmptyPods=1 rawDisplayAd=1  <<< PROOF manifest: emptied 2 real-ad break(s)  <<< server sent pause displayAd (x1)
+OBS31: KILLMARK=2 rawRealPods=0 rawEmptyPods=1 rawDisplayAd=1  <<< PROOF manifest: emptied 2 real-ad break(s)  <<< server sent pause displayAd (x1)
+OBS32: KILLMARK=2 rawRealPods=0 rawEmptyPods=2 rawDisplayAd=0  <<< PROOF manifest: emptied 2 real-ad break(s)
+OBS33: KILLMARK=2 rawRealPods=0 rawEmptyPods=1 rawDisplayAd=0  <<< PROOF manifest: emptied 2 real-ad break(s)
+OBS34: KILLMARK=2 rawRealPods=1 rawEmptyPods=0 rawDisplayAd=1  <<< PROOF manifest: emptied 2 real-ad break(s)  <<< server sent pause displayAd (x1)
+OBS35: KILLMARK=2 rawRealPods=1 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 2 real-ad break(s)
+OBS36: KILLMARK=2 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=1  <<< PROOF manifest: emptied 2 real-ad break(s)  <<< server sent pause displayAd (x1)
+OBS37: KILLMARK=1 rawRealPods=0 rawEmptyPods=0 rawDisplayAd=0  <<< PROOF manifest: emptied 1 real-ad break(s)

@@ -1,0 +1,23 @@
+--------- beginning of main
+08-07 15:24:30.570 29487 29543 E KILL    : OBS4: KILLMARK=1 rawRealPods=0 rawEmptyPods=0  <<<<< PROOF: patch emptied 1 break(s) that HAD real ads
+08-07 15:24:38.666 29487 29543 E KILL    : OBS5: KILLMARK=1 rawRealPods=0 rawEmptyPods=1  <<<<< PROOF: patch emptied 1 break(s) that HAD real ads
+08-07 15:24:46.123 29487 29543 E KILL    : OBS6: KILLMARK=1 rawRealPods=0 rawEmptyPods=1  <<<<< PROOF: patch emptied 1 break(s) that HAD real ads
+08-07 15:24:53.346 29487 29543 E KILL    : OBS7: KILLMARK=2 rawRealPods=3 rawEmptyPods=0  <<<<< PROOF: patch emptied 2 break(s) that HAD real ads
+08-07 15:25:00.899 29487 29543 E KILL    : OBS8: KILLMARK=1 rawRealPods=1 rawEmptyPods=0  <<<<< PROOF: patch emptied 1 break(s) that HAD real ads
+08-07 15:25:08.763 29487 29543 E KILL    : OBS9: KILLMARK=2 rawRealPods=3 rawEmptyPods=0  <<<<< PROOF: patch emptied 2 break(s) that HAD real ads
+08-07 15:25:16.668 29487 29543 E KILL    : OBS10: KILLMARK=2 rawRealPods=0 rawEmptyPods=0  <<<<< PROOF: patch emptied 2 break(s) that HAD real ads
+08-07 15:25:24.413 29487 29543 E KILL    : OBS11: KILLMARK=2 rawRealPods=0 rawEmptyPods=0  <<<<< PROOF: patch emptied 2 break(s) that HAD real ads
+08-07 15:25:31.960 29487 29543 E KILL    : OBS12: KILLMARK=1 rawRealPods=0 rawEmptyPods=0  <<<<< PROOF: patch emptied 1 break(s) that HAD real ads
+08-07 15:25:39.402 29487 29543 E KILL    : OBS13: KILLMARK=1 rawRealPods=0 rawEmptyPods=0  <<<<< PROOF: patch emptied 1 break(s) that HAD real ads
+08-07 15:25:47.043 29487 29543 E KILL    : OBS14: KILLMARK=1 rawRealPods=0 rawEmptyPods=0  <<<<< PROOF: patch emptied 1 break(s) that HAD real ads
+08-07 15:25:54.861 29487 29543 E KILL    : OBS15: KILLMARK=1 rawRealPods=0 rawEmptyPods=0  <<<<< PROOF: patch emptied 1 break(s) that HAD real ads
+08-07 15:26:02.264 29487 29543 E KILL    : OBS16: KILLMARK=1 rawRealPods=0 rawEmptyPods=0  <<<<< PROOF: patch emptied 1 break(s) that HAD real ads
+08-07 15:26:10.028 29487 29543 E KILL    : OBS17: KILLMARK=1 rawRealPods=0 rawEmptyPods=0  <<<<< PROOF: patch emptied 1 break(s) that HAD real ads
+08-07 15:26:17.643 29487 29543 E KILL    : OBS18: KILLMARK=1 rawRealPods=0 rawEmptyPods=0  <<<<< PROOF: patch emptied 1 break(s) that HAD real ads
+08-07 15:26:24.867 29487 29543 E KILL    : OBS19: KILLMARK=0 rawRealPods=0 rawEmptyPods=0
+08-07 15:26:32.302 29487 29543 E KILL    : OBS20: KILLMARK=1 rawRealPods=0 rawEmptyPods=0  <<<<< PROOF: patch emptied 1 break(s) that HAD real ads
+08-07 15:26:39.697 29487 29543 E KILL    : OBS21: KILLMARK=1 rawRealPods=0 rawEmptyPods=0  <<<<< PROOF: patch emptied 1 break(s) that HAD real ads
+08-07 15:26:47.186 29487 29543 E KILL    : OBS22: KILLMARK=1 rawRealPods=0 rawEmptyPods=0  <<<<< PROOF: patch emptied 1 break(s) that HAD real ads
+08-07 15:26:54.806 29487 29543 E KILL    : OBS23: KILLMARK=1 rawRealPods=0 rawEmptyPods=0  <<<<< PROOF: patch emptied 1 break(s) that HAD real ads
+08-07 15:27:02.465 29487 29543 E KILL    : OBS24: KILLMARK=1 rawRealPods=0 rawEmptyPods=0  <<<<< PROOF: patch emptied 1 break(s) that HAD real ads
+08-07 15:27:09.913 29487 29543 E KILL    : OBS25: KILLMARK=1 rawRealPods=0 rawEmptyPods=0  <<<<< PROOF: patch emptied 1 break(s) that HAD real ads
