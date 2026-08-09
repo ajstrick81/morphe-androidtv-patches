@@ -33,6 +33,22 @@ Modifications:
   Referenced as prior art for Android-side Twitch ad mitigation
   Source: https://github.com/crackededed/Xtra
 
+- Nikflix (YidirK/Nikflix), GPL-3.0
+  Reference for the Netflix household / "you're traveling" enforcement
+  mechanism. Nikflix (a browser extension) documents that Netflix delivers
+  the household restriction via the CLCSInterstitialPlaybackAndPostPlayback
+  interstitial. That pointer led us to the corresponding machinery in the
+  Netflix Android TV appboot bundle.
+  Source: https://github.com/YidirK/Nikflix
+  Modifications / independence: our "Suppress Household Prompt" patch shares
+  NO source code with Nikflix. It is an independent implementation for a
+  different target (the com.netflix.ninja Android TV app, not web) using a
+  different mechanism (an in-process appboot-heap byte edit of the native
+  app's redux state, forcing the misdetection saga's
+  setAccountSharingFlags({isActiveMisdetectionSession:true}) dispatch to
+  false), located by grepping our own on-device heap dumps. Nikflix is
+  credited for identifying the household-enforcement seam, not for code.
+
 Modifications:
 - Twitch techniques independently re-derived via dex disassembly of the
   official Twitch Android APK v30.2.2, not copied from source code
