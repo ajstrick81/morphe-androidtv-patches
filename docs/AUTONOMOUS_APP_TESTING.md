@@ -141,13 +141,27 @@ PV's native MPB player is **opaque to the generic oracles**:
   framestats stay near-zero (they count the UI view tree, not the video surface),
   and `SurfaceFlinger --latency` is hard to key by the changing layer name.
 
-Practical consequence: **this harness can launch PV and guard it safely, but it
-cannot reliably confirm PV playback from outside the app.** For real PV
-validation, add a **self-stamp**: log a marker from `libpvhook` when it strips an
-ad (mirroring Netflix's `KILLMARK`) and point `ORACLE_RE` at it. Then even a
-position-less player is testable, because the signal comes from your patch, not
-from Android's media plumbing. This is the same lesson as the broken-oracle note:
-prefer a signal the patch emits over one you infer.
+Practical consequence: the generic media_session/gfxinfo oracles can't confirm PV
+playback from outside the app. **The fix (implemented): a `libpvhook` self-stamp.**
+The hook now logs a stable marker whenever it removes an ad, so the oracle comes
+from the patch itself — not Android's media plumbing — exactly like Netflix's
+`KILLMARK`. `primevideo.env` wires it up:
+
+| Marker (logcat tag `PVNativeHook`) | Meaning |
+|---|---|
+| `PVKILL path=movie blanked=x/y n=…` | x Remote ad items blanked in a movie `intraTitlePlaylist` |
+| `PVKILL path=tv ads=x n=…` | x ads emptied from the TV regolith ad-decision response |
+| `PVOBS movieBlanked=N tvEmptied=M` | periodic running total since load (baseline `0 0`) |
+
+So `ARMED_RE="pvhook loaded"` proves the strip `.so` is in the app, and any
+`PVKILL` line (or a non-zero `PVOBS`) proves an ad was actually removed under
+stress. This is the same lesson as the broken-oracle note: prefer a signal the
+patch emits over one you infer.
+
+> The marker lives in `experimental/primevideo-libignite-native/jni/hooks.cpp`
+> and is compiled into `patches/src/main/resources/native/armeabi-v7a/libpvhook.so`.
+> It takes effect once you **rebuild + reinstall the PV patch** with the updated
+> `.so` (logging-only — the strip logic is unchanged).
 
 ## Attach mode (apps without a safe blind-resume)
 

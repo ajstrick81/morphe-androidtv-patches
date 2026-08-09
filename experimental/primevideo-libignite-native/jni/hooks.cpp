@@ -64,6 +64,13 @@ std::atomic<uint64_t> g_modified{0};
 std::atomic<uint64_t> g_remote_blanked{0};
 std::atomic<uint64_t> g_max_n{0};
 
+// Self-stamp oracle counters. Emit a stable, greppable marker whenever the hook
+// actually removes ads, plus a periodic summary — so an autotest can validate PV
+// ad removal from logcat (PV's MediaSession is unreliable; see
+// docs/AUTONOMOUS_APP_TESTING.md). Autotest ORACLE_RE matches "PVKILL"/"PVOBS".
+std::atomic<uint64_t> g_pvkill_movie{0};  // Remote ad items blanked (movies, PATH 1)
+std::atomic<uint64_t> g_pvkill_tv{0};     // ad entries emptied (TV regolith, PATH 2)
+
 // Per-entry-point counters — tells us which copy door carries the PRS buffer.
 std::atomic<uint64_t> g_n_memcpy{0};
 std::atomic<uint64_t> g_n_memmove{0};
@@ -192,6 +199,8 @@ void maybe_empty_regolith(void* vbuf, size_t n) {
     if (c < 40)
         LOGI("[rego] emptied playlist (~%d ad(s), interior %zu bytes blanked) n=%zu",
              ads, close - open - 1, n);
+    g_pvkill_tv.fetch_add(static_cast<uint64_t>(ads), std::memory_order_relaxed);
+    LOGI("PVKILL path=tv ads=%d n=%zu", ads, n);   // self-stamp (oracle)
 }
 #else
 inline void maybe_empty_regolith(void*, size_t) {}
@@ -240,6 +249,8 @@ void maybe_strip(const void* src, size_t n, const void* caller) {
         g_remote_blanked.fetch_add(static_cast<uint64_t>(r.remote_items), std::memory_order_relaxed);
         LOGI("blanked %d/%d Remote item(s) in complete array (n=%zu)",
              r.remote_items, r.total_items, n);
+        g_pvkill_movie.fetch_add(static_cast<uint64_t>(r.remote_items), std::memory_order_relaxed);
+        LOGI("PVKILL path=movie blanked=%d/%d n=%zu", r.remote_items, r.total_items, n);  // self-stamp (oracle)
         log_caller("COMPLETE", caller, n, r.remote_items);
     } else {
         LOGI("marker found, array complete, 0 Remote items (n=%zu total=%d)", n, r.total_items);
@@ -346,6 +357,10 @@ void* worker_thread(void*) {
              (unsigned long long)g_trunc_remotes.load(std::memory_order_relaxed),
              (unsigned long long)g_modified.load(std::memory_order_relaxed),
              (unsigned long long)g_remote_blanked.load(std::memory_order_relaxed));
+        // Self-stamp summary (oracle): total ads removed since load, both paths.
+        LOGI("PVOBS movieBlanked=%llu tvEmptied=%llu",
+             (unsigned long long)g_pvkill_movie.load(std::memory_order_relaxed),
+             (unsigned long long)g_pvkill_tv.load(std::memory_order_relaxed));
     }
     return nullptr;
 }
