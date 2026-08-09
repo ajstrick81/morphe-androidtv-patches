@@ -1,3 +1,10 @@
+# [1.23.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.22.0...v1.23.0) (2026-08-09)
+
+
+### Features
+
+* **netflix:** opt-in "Suppress Household Prompt" patch ([b99726f](https://github.com/ajstrick81/morphe-androidtv-patches/commit/b99726f37054970ac9071b2fbdb5e4ea2d6612bf))
+
 # [1.22.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.21.1...v1.22.0) (2026-08-09)
 
 
