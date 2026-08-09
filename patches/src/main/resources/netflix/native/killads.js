@@ -62,19 +62,45 @@ function patchGAID(rs){ if(gaidDone||!GAID_ENABLED)return; if(GAID_NEW.length!==
   for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
     try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(GAID_OFF);var cur=null;try{cur=t.readCString(GAID_OLD.length);}catch(e){}if(cur!==GAID_OLD)continue;Memory.protect(t,GAID_NEW.length,'rw-');t.writeByteArray(bytesOf(GAID_NEW));gaidDone=true;L('PATCH GAID: e.advertisingId->void0 @'+t);}}catch(e){}}
 }
+// ---------- (HH) household / "traveling" misdetection prompt suppression (OPT-IN; default OFF) ----------
+// The account-sharing redux-saga stores the server's misdetection challenge, then
+// dispatches  put(setAccountSharingFlags({isActiveMisdetectionSession:!0}))  to ACTIVATE
+// the household challenge session. Traced downstream: misdetectionAvailable =
+// ("ready"===status) && isActiveMisdetectionSession, and the challenge-action callback
+// guards on the same flag (p&&…) — so this ONE flag is the operative gate, set true in
+// exactly one place. Forcing the dispatched value !0 -> !1 (one byte) means the app
+// still RECEIVES the challenge but never ACTIVATES the session -> the full-screen
+// household/"you're traveling" prompt is not shown.
+// HONEST SCOPE: this only suppresses the CLIENT-side prompt; it changes nothing the
+// Netflix servers see (household detection is public-IP driven, server-side). Its own
+// opt-in Morphe patch flips HH_ENABLED to true.
+// CREDIT: household-enforcement seam identified with reference to Nikflix
+// (github.com/YidirK/Nikflix, GPL-3.0). No code shared — independent native-app
+// implementation, different mechanism. See NOTICE.
+var HH_ENABLED=false;
+var HH_ANCH='setAccountSharingFlags)({isActiveMisdetectionSession:!0';
+var HH_OFF=HH_ANCH.length-1;   // offset of the final '0' in '!0'
+var HH_OLD='0',HH_NEW='1';
+var hhDone=false;
+function patchHH(rs){ if(hhDone||!HH_ENABLED)return;
+  var p=pat(HH_ANCH);
+  for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
+    try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(HH_OFF);var cur=null;try{cur=t.readCString(1);}catch(e){}if(cur!==HH_OLD)continue;Memory.protect(t,1,'rw-');t.writeByteArray(bytesOf(HH_NEW));hhDone=true;L('PATCH HH: isActiveMisdetectionSession !0->!1 @'+t);}}catch(e){}}
+}
 var tries=0;
 function apply(){ tries++; var rs=Process.enumerateRanges('rw-');
   var loaded=false,gp=pat('nrdp.gibbon');
   for(var i=0;i<rs.length&&!loaded;i++){if(rs[i].size>128*1024*1024)continue;try{if(Memory.scanSync(rs[i].base,rs[i].size,gp).length)loaded=true;}catch(e){}}
-  if(loaded){patchA(rs);patchB(rs);patchFP(rs);patchGAID(rs);}
+  if(loaded){patchA(rs);patchB(rs);patchFP(rs);patchGAID(rs);patchHH(rs);}
   // Keep polling until applied. prepareAdBreakStates (A) can load LATER than the
   // pause module (B) — sometimes only once the ad code is exercised — so we must
   // NOT give up early or a real ad slips through. WRITE-ONCE (aDone/bDone/fpDone
   // guards) — not a re-patch loop. FP is only required when enabled.
   var fpOk=(!FP_ENABLED||fpDone);
   var gaidOk=(!GAID_ENABLED||gaidDone);
-  if(aDone&&bDone&&fpOk&&gaidOk){ L('apply DONE: A='+aDone+' B='+bDone+' FP='+(FP_ENABLED?fpDone:'off')+' GAID='+(GAID_ENABLED?gaidDone:'off')+' tries='+tries); return; }
-  if(tries%15===0) L('apply waiting: A='+aDone+' B='+bDone+' FP='+(FP_ENABLED?fpDone:'off')+' GAID='+(GAID_ENABLED?gaidDone:'off')+' tries='+tries);
+  var hhOk=(!HH_ENABLED||hhDone);
+  if(aDone&&bDone&&fpOk&&gaidOk&&hhOk){ L('apply DONE: A='+aDone+' B='+bDone+' FP='+(FP_ENABLED?fpDone:'off')+' GAID='+(GAID_ENABLED?gaidDone:'off')+' HH='+(HH_ENABLED?hhDone:'off')+' tries='+tries); return; }
+  if(tries%15===0) L('apply waiting: A='+aDone+' B='+bDone+' FP='+(FP_ENABLED?fpDone:'off')+' GAID='+(GAID_ENABLED?gaidDone:'off')+' HH='+(HH_ENABLED?hhDone:'off')+' tries='+tries);
   if(tries<3600) setTimeout(apply, 2000);   // up to ~2h of find-and-apply polling
 }
 
