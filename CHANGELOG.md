@@ -1,3 +1,17 @@
+# [1.22.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.21.1...v1.22.0) (2026-08-09)
+
+
+### Bug Fixes
+
+* **testing:** TV LEANBACK launch + ATTACH mode for apps without blind-resume ([925745e](https://github.com/ajstrick81/morphe-androidtv-patches/commit/925745ef067c315d1bd10e49b25d0b72ba61a925))
+
+
+### Features
+
+* **primevideo:** libpvhook self-stamp marker for autonomous testing ([776a566](https://github.com/ajstrick81/morphe-androidtv-patches/commit/776a5660bf12e55bf0f7871366a89538190eb785))
+* **testing:** generalized profile-driven autonomous app tester ([2112f81](https://github.com/ajstrick81/morphe-androidtv-patches/commit/2112f8135d336744c50a706c12c2389829a91430))
+* **testing:** state-probe mode + document PV MediaSession opacity ([2e96e83](https://github.com/ajstrick81/morphe-androidtv-patches/commit/2e96e83361c44af1ad57cb59a4bd0e9f52d28615))
+
 ## [1.21.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.21.0...v1.21.1) (2026-08-08)
 
 
