@@ -1,5 +1,6 @@
 package ajstrick81.morphe.extension.twitchatv.ads;
 
+import android.util.Base64;
 import android.util.Log;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -12,9 +13,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -36,21 +35,40 @@ import java.util.Map;
  *   ...
  * </pre>
  * Content segments are {@code #EXTINF:2.000,live}. So the discriminator is the
- * EXTINF title: {@code live} = content (keep), anything else = ad (drop). We drop
- * ad segments plus their per-segment tags and the ad-only dateranges
- * (twitch-stitched-ad / twitch-ad-quartile / twitch-trigger / non-live
- * twitch-stream-source), while preserving the playlist headers. During a pre/mid
- * roll the whole current window is ad, so the scrubbed playlist has no segments;
- * hls.js keeps polling this live playlist and resumes when real content segments
- * return — i.e. the ad video is never played (at worst a brief wait instead).
+ * EXTINF title: {@code live} = content, anything else = ad.
+ *
+ * BLANKING, not stripping. An earlier version removed ad segments outright, but a
+ * pre/mid-roll's whole window is ad, so that left an EMPTY live playlist — hls.js
+ * never advances the ad timeline, the ad never completes server-side, and Twitch
+ * serves it endlessly (a stuck-ad loop, not just a gap). Instead we keep the
+ * playlist intact (segments AND the quartile/trigger dateranges, so the ad's
+ * beacons fire and it completes) and only rewrite each ad segment's URI to a
+ * sentinel we serve a ~2s black+silent TS for ({@link BlankSegment}). The
+ * timeline advances (black plays for the ad duration), the ad completes, and
+ * content resumes — the ad video is never shown.
  *
  * The playlist token URL needs no auth (a plain GET works — verified), so we
- * re-fetch it ourselves, scrub, and return it. Fails open: any error returns the
- * original client's response so playback is never broken by this hook.
+ * re-fetch it ourselves, rewrite, and return it. Fails open: any error returns
+ * the original client's response so playback is never broken by this hook.
  */
 public final class TwitchAtvWebViewHelper {
 
     private static final String TAG = "MORPHE-TW-ATV-WV";
+
+    /** Sentinel host that ad segment URIs are rewritten to; we serve black TS for it. */
+    private static final String BLANK_HOST = "morphe.invalid";
+    private static final String BLANK_SENTINEL = "https://" + BLANK_HOST + "/b.ts?i=";
+
+    private static volatile byte[] blankTs;
+
+    private static byte[] blankTsBytes() {
+        byte[] b = blankTs;
+        if (b == null) {
+            b = Base64.decode(BlankSegment.TS_BASE64, Base64.DEFAULT);
+            blankTs = b;
+        }
+        return b;
+    }
 
     /** Only the video-weaver media playlists carry stitched ads. */
     private static boolean isWeaverPlaylist(String url) {
@@ -73,6 +91,9 @@ public final class TwitchAtvWebViewHelper {
         public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
             try {
                 String url = request.getUrl().toString();
+                if (url.contains(BLANK_HOST)) {
+                    return blankTsResponse();
+                }
                 if (isWeaverPlaylist(url)) {
                     WebResourceResponse scrubbed = scrubPlaylist(url);
                     if (scrubbed != null) return scrubbed;
@@ -120,90 +141,61 @@ public final class TwitchAtvWebViewHelper {
 
     private static WebResourceResponse scrubPlaylist(String url) throws Exception {
         String body = httpGet(url);
-        if (body == null || !body.contains("twitch-stitched-ad")) {
-            // No ad this poll — return content unchanged (still serve it so the
-            // WebView doesn't double-fetch), but only if we actually got it.
-            if (body == null) return null;
+        if (body == null) return null; // couldn't fetch — let the WebView load it
+        if (!body.contains("twitch-stitched-ad")) {
+            // No ad this poll — serve the content unchanged (single fetch).
             return m3u8Response(body);
         }
-        String scrubbed = stripAdSegments(body);
-        Log.i(TAG, "scrubbed stitched-ad from weaver playlist");
-        return m3u8Response(scrubbed);
+        String rewritten = blankAdSegments(body);
+        Log.i(TAG, "blanked stitched-ad segments in weaver playlist");
+        return m3u8Response(rewritten);
     }
 
     /**
-     * Removes ad segments (EXTINF title != "live") plus their per-segment tags,
-     * and the ad-only dateranges, while preserving the playlist headers.
+     * Keeps the playlist intact (headers, dateranges, per-segment tags) but
+     * rewrites each ad segment's URI (the URI following an #EXTINF whose title is
+     * not "live") to a per-segment sentinel we serve a black TS for. This keeps
+     * the timeline advancing so the ad completes server-side and content resumes.
      */
-    static String stripAdSegments(String playlist) {
+    static String blankAdSegments(String playlist) {
         String[] lines = playlist.split("\n", -1);
         StringBuilder out = new StringBuilder(playlist.length());
-        List<String> pending = new ArrayList<>();
-        boolean seenSegment = false;
+        boolean prevExtinfIsAd = false;
 
         for (String line : lines) {
             String t = line.trim();
-            boolean isSegmentTag = t.startsWith("#EXTINF")
-                    || t.startsWith("#EXT-X-DISCONTINUITY")
-                    || t.startsWith("#EXT-X-PROGRAM-DATE-TIME")
-                    || t.startsWith("#EXT-X-BYTERANGE")
-                    || t.startsWith("#EXT-X-KEY")
-                    || (t.startsWith("#EXT-X-DATERANGE") && isAdDaterange(t));
-
-            if (!seenSegment && !t.startsWith("#EXTINF")) {
-                // Header region: keep headers, drop ad-only dateranges, buffer the
-                // per-segment tags that belong to the upcoming first segment.
-                if (t.startsWith("#EXT-X-DATERANGE") && isAdDaterange(t)) continue;
-                if (t.startsWith("#EXT-X-DISCONTINUITY") || t.startsWith("#EXT-X-PROGRAM-DATE-TIME")) {
-                    pending.add(line);
-                } else {
-                    out.append(line).append('\n');
-                }
-                continue;
-            }
-            seenSegment = true;
-
-            if (t.isEmpty() || t.startsWith("#")) {
-                // Per-segment tag: drop ad-only dateranges outright, else buffer.
-                if (t.startsWith("#EXT-X-DATERANGE") && isAdDaterange(t)) continue;
-                pending.add(line);
-                continue;
-            }
-
-            // A URI line — decide the whole pending block by its EXTINF title.
-            if (pendingIsAd(pending)) {
-                pending.clear(); // drop ad segment + its tags
-            } else {
-                for (String p : pending) out.append(p).append('\n');
-                out.append(line).append('\n');
-                pending.clear();
-            }
-        }
-        for (String p : pending) out.append(p).append('\n');
-        return out.toString();
-    }
-
-    private static boolean isAdDaterange(String line) {
-        if (line.contains("CLASS=\"twitch-stitched-ad\"")) return true;
-        if (line.contains("CLASS=\"twitch-ad-quartile\"")) return true;
-        if (line.contains("CLASS=\"twitch-trigger\"")) return true;
-        // twitch-stream-source is content when it points at "live"
-        if (line.contains("CLASS=\"twitch-stream-source\"")) {
-            return !line.contains("STREAM-SOURCE=\"live\"");
-        }
-        return false;
-    }
-
-    private static boolean pendingIsAd(List<String> pending) {
-        for (String p : pending) {
-            String t = p.trim();
             if (t.startsWith("#EXTINF")) {
                 int comma = t.indexOf(',');
                 String title = comma >= 0 ? t.substring(comma + 1).trim() : "";
-                return !title.equals("live");
+                prevExtinfIsAd = !title.equals("live");
+                out.append(line).append('\n');
+            } else if (!t.isEmpty() && !t.startsWith("#")) {
+                // URI line.
+                if (prevExtinfIsAd) {
+                    // Deterministic per-segment sentinel (stable across polls so
+                    // hls.js treats the same ad segment consistently).
+                    out.append(BLANK_SENTINEL)
+                       .append(Integer.toHexString(t.hashCode()))
+                       .append('\n');
+                } else {
+                    out.append(line).append('\n');
+                }
+                prevExtinfIsAd = false;
+            } else {
+                out.append(line).append('\n');
             }
         }
-        return false; // no EXTINF in the block (e.g. trailing tags) — keep
+        return out.toString();
+    }
+
+    private static WebResourceResponse blankTsResponse() {
+        Map<String, String> headers = new HashMap<>();
+        headers.put("Access-Control-Allow-Origin", "*");
+        headers.put("Access-Control-Allow-Headers", "*");
+        headers.put("Cache-Control", "no-cache");
+        return new WebResourceResponse(
+                "video/mp2t", null, 200, "OK", headers,
+                new ByteArrayInputStream(blankTsBytes()));
     }
 
     private static WebResourceResponse m3u8Response(String body) {
