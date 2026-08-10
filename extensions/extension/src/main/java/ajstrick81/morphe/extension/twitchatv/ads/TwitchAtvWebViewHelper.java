@@ -80,6 +80,47 @@ public final class TwitchAtvWebViewHelper {
         return new WrappedClient(original);
     }
 
+    /**
+     * Injects a small, idempotent stall-recovery monitor into the player page.
+     * Substituting black segments for ads can leave hls.js briefly buffering; if
+     * it stalls long enough it fatal-errors ("Oh bummer") instead of resuming.
+     * This watches the &lt;video&gt; and, only when it is genuinely stuck (time not
+     * advancing while not paused), nudges it (seek toward the buffered edge +
+     * play) so it recovers before hitting the fatal buffer-stall — the same idea
+     * as TwitchAdSolutions' PlayerBufferingFix, kept minimal and player-agnostic.
+     * No-op during normal playback (time advances → never nudges).
+     */
+    private static void injectPlaybackFix(WebView view) {
+        if (view == null) return;
+        try {
+            view.evaluateJavascript(PLAYBACK_FIX_JS, null);
+        } catch (Throwable t) {
+            Log.e(TAG, "playback-fix injection failed", t);
+        }
+    }
+
+    private static final String PLAYBACK_FIX_JS =
+        "(function(){try{"
+        + "if(window.__morphePlaybackFix)return;window.__morphePlaybackFix=true;"
+        + "var last=-1,same=0;"
+        + "setInterval(function(){try{"
+        + "var v=document.querySelector('video');"
+        + "if(!v||v.paused||v.ended||v.seeking){same=0;return;}"
+        + "var t=v.currentTime;"
+        + "if(Math.abs(t-last)<0.02){"
+        + "  same++;"
+        + "  if(same>=2){"
+        + "    try{var b=v.buffered;if(b&&b.length){var e=b.end(b.length-1);"
+        + "      if(e>t+0.1){v.currentTime=Math.min(e-0.05,t+0.5);}else{v.currentTime=t+0.05;}"
+        + "    }else{v.currentTime=t+0.05;}}catch(e){}"
+        + "    try{var p=v.play();if(p&&p.catch)p.catch(function(){});}catch(e){}"
+        + "    same=0;"
+        + "  }"
+        + "}else{same=0;}"
+        + "last=t;"
+        + "}catch(e){}},700);"
+        + "}catch(e){}})();";
+
     private static final class WrappedClient extends WebViewClient {
         private final WebViewClient original;
 
@@ -108,11 +149,13 @@ public final class TwitchAtvWebViewHelper {
         @Override
         public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
             original.onPageStarted(view, url, favicon);
+            injectPlaybackFix(view);
         }
 
         @Override
         public void onPageFinished(WebView view, String url) {
             original.onPageFinished(view, url);
+            injectPlaybackFix(view);
         }
 
         @Override
