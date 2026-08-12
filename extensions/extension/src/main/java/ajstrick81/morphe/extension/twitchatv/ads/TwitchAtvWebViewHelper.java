@@ -15,6 +15,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Twitch Android TV (Starshot / laserarray WebView) — HLS ad-segment scrubber.
@@ -61,6 +62,12 @@ public final class TwitchAtvWebViewHelper {
 
     private static volatile byte[] blankTs;
 
+    /** 90 kHz ticks per second — MPEG-TS timestamp unit. */
+    private static final long TS_HZ = 90000L;
+
+    /** Cache of PTS-shifted blank copies, keyed by offset ticks (bounded). */
+    private static final Map<Long, byte[]> shiftCache = new ConcurrentHashMap<>();
+
     private static byte[] blankTsBytes() {
         byte[] b = blankTs;
         if (b == null) {
@@ -68,6 +75,29 @@ public final class TwitchAtvWebViewHelper {
             blankTs = b;
         }
         return b;
+    }
+
+    /** Blank TS with all timestamps shifted forward by {@code ticks} (cached). */
+    private static byte[] shiftedBlank(long ticks) {
+        if (ticks == 0) return blankTsBytes();
+        byte[] c = shiftCache.get(ticks);
+        if (c != null) return c;
+        byte[] s = BlankSegment.shift(blankTsBytes(), ticks);
+        if (shiftCache.size() < 512) shiftCache.put(ticks, s);
+        return s;
+    }
+
+    /** Parses the {@code o=<ticks>} PTS offset from a blank sentinel URL. */
+    private static long parseOffset(String url) {
+        int k = url.indexOf("o=");
+        if (k < 0) return 0;
+        long v = 0;
+        for (int e = k + 2; e < url.length(); e++) {
+            char ch = url.charAt(e);
+            if (ch < '0' || ch > '9') break;
+            v = v * 10 + (ch - '0');
+        }
+        return v;
     }
 
     /** Only the video-weaver media playlists carry stitched ads. */
@@ -133,7 +163,7 @@ public final class TwitchAtvWebViewHelper {
             try {
                 String url = request.getUrl().toString();
                 if (url.contains(BLANK_HOST)) {
-                    return blankTsResponse();
+                    return blankTsResponse(url);
                 }
                 if (isWeaverPlaylist(url)) {
                     WebResourceResponse scrubbed = scrubPlaylist(url);
@@ -204,24 +234,43 @@ public final class TwitchAtvWebViewHelper {
         String[] lines = playlist.split("\n", -1);
         StringBuilder out = new StringBuilder(playlist.length());
         boolean prevExtinfIsAd = false;
+        double curDur = 0;      // duration (s) of the pending #EXTINF
+        long adTicks = 0;       // cumulative PTS offset (90 kHz) since the ad run began
 
         for (String line : lines) {
             String t = line.trim();
-            if (t.startsWith("#EXTINF")) {
+            if (t.startsWith("#EXT-X-DISCONTINUITY")) {
+                // Break boundary — Twitch stitches the pod as one continuous
+                // timeline after this tag, so restart the blank timeline here.
+                adTicks = 0;
+                out.append(line).append('\n');
+            } else if (t.startsWith("#EXTINF")) {
+                int colon = t.indexOf(':');
                 int comma = t.indexOf(',');
                 String title = comma >= 0 ? t.substring(comma + 1).trim() : "";
                 prevExtinfIsAd = !title.equals("live");
+                curDur = 0;
+                if (colon >= 0 && comma > colon) {
+                    try {
+                        curDur = Double.parseDouble(t.substring(colon + 1, comma).trim());
+                    } catch (NumberFormatException ignored) { }
+                }
                 out.append(line).append('\n');
             } else if (!t.isEmpty() && !t.startsWith("#")) {
                 // URI line.
                 if (prevExtinfIsAd) {
-                    // Deterministic per-segment sentinel (stable across polls so
-                    // hls.js treats the same ad segment consistently).
+                    // Per-segment sentinel: hash keeps distinct segments distinct;
+                    // o=<ticks> is the segment's start on the pod timeline, so each
+                    // served blank is PTS-shifted to continue from the previous one
+                    // (monotonic → hls.js plays the pod through without a resume stall).
                     out.append(BLANK_SENTINEL)
                        .append(Integer.toHexString(t.hashCode()))
+                       .append("&o=").append(adTicks)
                        .append('\n');
+                    adTicks += Math.round(curDur * TS_HZ);
                 } else {
                     out.append(line).append('\n');
+                    adTicks = 0; // content segment ends the ad run
                 }
                 prevExtinfIsAd = false;
             } else {
@@ -231,14 +280,14 @@ public final class TwitchAtvWebViewHelper {
         return out.toString();
     }
 
-    private static WebResourceResponse blankTsResponse() {
+    private static WebResourceResponse blankTsResponse(String url) {
         Map<String, String> headers = new HashMap<>();
         headers.put("Access-Control-Allow-Origin", "*");
         headers.put("Access-Control-Allow-Headers", "*");
         headers.put("Cache-Control", "no-cache");
         return new WebResourceResponse(
                 "video/mp2t", null, 200, "OK", headers,
-                new ByteArrayInputStream(blankTsBytes()));
+                new ByteArrayInputStream(shiftedBlank(parseOffset(url))));
     }
 
     private static WebResourceResponse m3u8Response(String body) {
