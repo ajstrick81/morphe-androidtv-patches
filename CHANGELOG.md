@@ -1,3 +1,10 @@
+# [1.25.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.24.0...v1.25.0) (2026-08-12)
+
+
+### Features
+
+* **twitch-atv:** block ads on the Twitch Android-TV app (Starshot WebView) ([#101](https://github.com/ajstrick81/morphe-androidtv-patches/issues/101)) ([4ff8030](https://github.com/ajstrick81/morphe-androidtv-patches/commit/4ff80309a60d5513545301b96c888b4fce9cb725)), closes [#EXT-X-DISCONTINUITY](https://github.com/ajstrick81/morphe-androidtv-patches/issues/EXT-X-DISCONTINUITY) [#EXTINF](https://github.com/ajstrick81/morphe-androidtv-patches/issues/EXTINF) [#EXT-X-DISCONTINUITY](https://github.com/ajstrick81/morphe-androidtv-patches/issues/EXT-X-DISCONTINUITY)
+
 # [1.24.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.23.0...v1.24.0) (2026-08-09)
 
 
