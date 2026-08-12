@@ -183,3 +183,54 @@ SSAI is the whole game.
 
 > Build reactively: confirm each seam against a captured request before
 > implementing. This doc is the map, not the territory.
+
+---
+
+## The ATV (Starshot) app: nothing to statically analyze
+
+A separate static teardown of the **Android-TV** apkm (`tv.twitch.android.app`
+v13.0.0.2, the Fire TV / Celadon build — *not* the mobile app the rest of this doc
+is reconstructed from) established, with high confidence, that **the ATV app
+contains no ad-delivery code in the APK at all — in any layer, obfuscated or not.**
+Recorded here so nobody repeats the dig.
+
+Three layers, ad logic in none of them:
+
+| Layer | Contents | Ad code? |
+|-------|----------|----------|
+| `classes.dex` (~2.3 MB, single dex) | Thin WebView shell `tv.twitch.starshot64.app.StarshotActivity` (loads `file:///android_asset/laserarray/index.html`), Sentry, androidx.leanback TV UI | No |
+| Bundled `assets/laserarray/**` JS (Next.js app) | Browse / navigation / recommendations UI. `@twitch` packages are all presentation-only: `core-ui`, `core-ui-fonts`, `core-ui-glyphs`, `core-ui-tokens`, `core-ui-utils`, `pure-color`, `twilight-intl` | No |
+| Runtime-loaded player | hls.js + SSAI/SureStream + ad handling, **fetched from Twitch's network at runtime** into the WebView | **Yes — only observable live** |
+
+### How this was proven (method, for reproducibility)
+- **Thin dex:** a 2.3 MB dex inside a 57 MB `base.apk` is the tell. Its strings show
+  only the Starshot WebView shell + Sentry + leanback — the app boots a WebView to
+  `laserarray/index.html`.
+- **Bundle is UI-only:** a term probe over the bundled `.js`
+  (`ttvnw`, `.m3u8`, `hls`, `video-weaver`, `twitch-stitched-ad`, `surestream`,
+  `edge.ads.twitch`, `PlaybackAccessToken`, `#EXT`, `DISCONTINUITY`, `midroll`, …)
+  returned **all zeros**. Only host references were `spade.twitch.tv` (analytics),
+  `www.twitch.tv`, `localhost.tv.twitch.tv` (WebView bridge loopback).
+- **Not obfuscated (ruled out explicitly):** `_0x…` obfuscator identifiers = 0, and
+  Twitch **ships the `.js.map` source maps** with `sourcesContent` present (893
+  original TypeScript sources). Searching the *original source text* for the same
+  ad/player literals also returned zero, and no `player`/`hls`/`ads`/`stream`
+  module exists in the source tree. Minification/obfuscation is therefore not a
+  factor — the code simply isn't bundled.
+
+### Consequence for the patch
+The native `WebViewClient.shouldInterceptRequest` hook in
+`TwitchAtvWebViewHelper` is not merely *a* convenient seam — it is the **only**
+static seam. The player and its `*.playlist.ttvnw.net` weaver playlists arrive
+over the network at runtime, so there is no dex or bundled-JS ad code to patch;
+intercepting the live playlist is the earliest touchable point. This retroactively
+validates the whole ATV patch architecture.
+
+### The only way to see the ATV app's real ad delivery
+Runtime observation, not static analysis. The lowest-effort probe reuses machinery
+the patch already has: the WebView JS-injection seam (cf. `PLAYBACK_FIX_JS`). A
+small, off-by-default diagnostic shim that wraps `fetch`/`XHR` and logs each URL
+during a stream would reveal, in one on-device session, whether ATV midrolls ride
+SSAI (weaver playlist) or fire a client-side `edge.ads.twitch.tv` request — the one
+open question the mobile-app map above cannot answer for the ATV target. Observation
+only; no behavior change.
