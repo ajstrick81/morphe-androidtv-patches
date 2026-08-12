@@ -51,6 +51,29 @@ import java.util.concurrent.ConcurrentHashMap;
  * The playlist token URL needs no auth (a plain GET works — verified), so we
  * re-fetch it ourselves, rewrite, and return it. Fails open: any error returns
  * the original client's response so playback is never broken by this hook.
+ *
+ * <h2>Fallback plan (read this if the scrubber goes blind after a Twitch update)</h2>
+ * This seam rests on two on-device-verified assumptions. Both are load-bearing;
+ * if either stops holding, the symptom is "ads are back" with no crash (we fail
+ * open), so check these first:
+ * <ol>
+ *   <li><b>The weaver fetch is visible to {@link WebViewClient#shouldInterceptRequest}
+ *       ({@code fromServiceWorker=false}).</b> If a Twitch build moves that fetch
+ *       behind the service worker (or into native code / a WebSocket), this
+ *       override never sees it and {@link #scrubPlaylist} is never called.</li>
+ *   <li><b>The playlist token URL is fetchable by us with a plain, unauthenticated
+ *       GET.</b> {@link #httpGet} re-requests the playlist ourselves; if Twitch
+ *       starts requiring auth/headers/cookies on it, that GET returns non-200 and
+ *       we fall through to the untouched original.</li>
+ * </ol>
+ * The mapped fallback for either break is a <b>local MITM proxy with a device-trusted
+ * CA</b> (cf. Spotilol's proxy mode): terminate the app's TLS in-process, rewrite the
+ * playlist <i>response body in-flight</i> instead of re-fetching it, and sit below the
+ * WebView layer so service-worker / native / WebSocket traffic is still reachable. That
+ * removes both assumptions above (no second fetch, no dependence on WebView visibility)
+ * at the cost of a bigger component and an Android-TV CA-trust step. Do NOT pre-build it
+ * — wait until an update actually moves the traffic, capture the new request on-device,
+ * and build the proxy to match what really changed rather than guessing.
  */
 public final class TwitchAtvWebViewHelper {
 
