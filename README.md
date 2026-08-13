@@ -177,7 +177,7 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 ### 🦚 Peacock
 
-1. Open the **[Peacock TV (Android TV) listing on APKMirror](https://www.apkmirror.com/apk/peacock-tv-llc/peacock-tv-android-tv/)** and select version **`7.6.100`**
+1. Open the **[Peacock TV (Android TV) 7.6.100 release on APKMirror](https://www.apkmirror.com/apk/peacock-tv-llc/peacock-tv-android-tv/peacock-tv-stream-tv-movies-android-tv-7-6-100-release/)** directly (this is version **`7.6.100`** — use this link rather than searching, which can land on the similarly-named `7.6.10`)
 2. Download the `.apkm` file
 3. Select it in Morphe Manager
 4. Apply the patch
