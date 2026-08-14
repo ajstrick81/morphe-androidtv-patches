@@ -100,6 +100,14 @@ All patches follow the same general workflow using **Morphe Manager**:
 > the app runs itself at launch (no PC, no root, no frida server). Verified
 > on-device: Netflix's servers still deliver real ad breaks and none of them play.
 >
+> ℹ️ **Netflix's ad logic is downloaded JavaScript, not baked into the APK.** That
+> means Netflix can change how ads are delivered server-side at any time, with no
+> app update — so an ad can occasionally reappear until the in-app strip is
+> re-pointed at the new delivery path. The strip already covers several such paths
+> (dynamic server-side insertion **and** the legacy manifest model) and is kept
+> updated to match. If you ever see an ad, first make sure you're on the latest
+> patch; if it persists, please open an issue.
+>
 > 🔐 **Two apps, on purpose — keep BOTH installed.** Netflix on a TV is a
 > preinstalled, Netflix-signed **system app** that can't be replaced or uninstalled
 > without root, so the patch installs as a **separate clone**
