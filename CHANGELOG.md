@@ -1,3 +1,10 @@
+## [1.26.2](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.26.1...v1.26.2) (2026-08-14)
+
+
+### Bug Fixes
+
+* **twitchatv:** strip client-side ad-pod tags so the "Ad 1 of 3" break is gone ([9e77b17](https://github.com/ajstrick81/morphe-androidtv-patches/commit/9e77b17898766c0693aa8cc4ba926718211942e6)), closes [#EXT-X-DATERANGE](https://github.com/ajstrick81/morphe-androidtv-patches/issues/EXT-X-DATERANGE) [#EXT-X-DATERANGE](https://github.com/ajstrick81/morphe-androidtv-patches/issues/EXT-X-DATERANGE) [#75](https://github.com/ajstrick81/morphe-androidtv-patches/issues/75)
+
 ## [1.26.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.26.0...v1.26.1) (2026-08-14)
 
 
