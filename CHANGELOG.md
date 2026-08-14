@@ -1,3 +1,10 @@
+## [1.26.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.26.0...v1.26.1) (2026-08-14)
+
+
+### Bug Fixes
+
+* **netflix:** re-anchor legacy ad-strip to _syncAdsLength (metadata.ads path) ([#105](https://github.com/ajstrick81/morphe-androidtv-patches/issues/105)) ([0bb8497](https://github.com/ajstrick81/morphe-androidtv-patches/commit/0bb84973dbd4813de0f81a80c40c9e11cd49eb9b))
+
 # [1.26.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.25.0...v1.26.0) (2026-08-14)
 
 
