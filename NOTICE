@@ -34,20 +34,29 @@ Modifications:
   Source: https://github.com/crackededed/Xtra
 
 - Nikflix (YidirK/Nikflix), GPL-3.0
-  Reference for the Netflix household / "you're traveling" enforcement
+  Author: YidirK (github.com/YidirK)
+  API-block mechanism contributor: Buckibarnes17 (github.com/Buckibarnes17),
+  credited in the Nikflix v2.0.1 release notes for the GraphQL API-block
+  approach.
+  Reference for the Netflix ad-interstitial / household enforcement
   mechanism. Nikflix (a browser extension) documents that Netflix delivers
-  the household restriction via the CLCSInterstitialPlaybackAndPostPlayback
-  interstitial. That pointer led us to the corresponding machinery in the
-  Netflix Android TV appboot bundle.
+  the playback ad interstitial via the CLCSInterstitialPlaybackAndPostPlayback
+  GraphQL operation, neutralised by returning an empty response. That pointer
+  led us to the corresponding machinery in the Netflix Android TV appboot
+  bundle, where we confirmed the same CLCS interstitial family
+  (clcsInterstitialPlaybackAndPostPlayback for ads, and the sibling
+  clcsInterstitialProfileGate that carries the household / "This is my
+  account" ownership screen).
   Source: https://github.com/YidirK/Nikflix
-  Modifications / independence: our "Suppress Household Prompt" patch shares
-  NO source code with Nikflix. It is an independent implementation for a
-  different target (the com.netflix.ninja Android TV app, not web) using a
-  different mechanism (an in-process appboot-heap byte edit of the native
-  app's redux state, forcing the misdetection saga's
-  setAccountSharingFlags({isActiveMisdetectionSession:true}) dispatch to
-  false), located by grepping our own on-device heap dumps. Nikflix is
-  credited for identifying the household-enforcement seam, not for code.
+  Modifications / independence: our Netflix patches share NO source code with
+  Nikflix. They are an independent implementation for a different target
+  (the com.netflix.ninja Android TV app, not web): rather than overriding
+  window.fetch / XMLHttpRequest in a browser (impossible on the native app,
+  which has no DOM and ships the request over MSL, not plaintext HTTPS), we
+  apply an in-process appboot-heap byte edit inside the app's own JS VM,
+  located by grepping our own on-device heap dumps. YidirK and Buckibarnes17
+  are credited for identifying the CLCS interstitial enforcement seam and the
+  neutralise-the-operation approach, not for code.
 
 Modifications:
 - Twitch techniques independently re-derived via dex disassembly of the
