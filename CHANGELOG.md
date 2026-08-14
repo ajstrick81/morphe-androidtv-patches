@@ -1,3 +1,10 @@
+# [1.26.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.25.0...v1.26.0) (2026-08-14)
+
+
+### Features
+
+* **netflix:** rebuild ad-strip for dynamic ad insertion + household prompt ([#103](https://github.com/ajstrick81/morphe-androidtv-patches/issues/103)) ([2b8f2db](https://github.com/ajstrick81/morphe-androidtv-patches/commit/2b8f2dbdfe7e29e7354300378e9e5893d4cbfd95))
+
 # [1.25.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.24.0...v1.25.0) (2026-08-12)
 
 
