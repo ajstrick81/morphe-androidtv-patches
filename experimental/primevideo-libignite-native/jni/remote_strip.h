@@ -46,6 +46,12 @@ struct RemoteStripResult {
     // element (cut mid-body) is NEVER touched — that is the black-screen invariant.
     bool trunc_modified = false;
     int trunc_remote_blanked = 0;
+
+    // Count of Remote elements deliberately LEFT IN PLACE because they resolve via
+    // getVideoAds (PV_SKIP_GVA_REMOTES). These are handled by the geometry-safe
+    // PATH 2 (empty the resolved response) instead of structural blanking here,
+    // which desynced the player timeline (issue #14 restart). See hooks.cpp.
+    int gva_skipped = 0;
 };
 
 // Cheap pre-check used to gate the hot path before the full scan: does the

@@ -244,6 +244,9 @@ void maybe_strip(const void* src, size_t n, const void* caller) {
     }
     g_complete.fetch_add(1, std::memory_order_relaxed);
 
+    if (r.gva_skipped > 0)
+        LOGI("PVSKIP path=movie gvaRemotesLeftForPath2=%d n=%zu", r.gva_skipped, n);
+
     if (r.modified) {
         g_modified.fetch_add(1, std::memory_order_relaxed);
         g_remote_blanked.fetch_add(static_cast<uint64_t>(r.remote_items), std::memory_order_relaxed);

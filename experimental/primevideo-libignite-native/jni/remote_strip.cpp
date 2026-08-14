@@ -1,6 +1,17 @@
 #include "remote_strip.h"
 
 #include <cstring>
+#include <string.h>   // memmem (bionic)
+
+// ISSUE #14 RESTART FIX toggle. When 1, Remote ad items that resolve via
+// getVideoAds are LEFT IN PLACE (not blanked) so the app resolves them and the
+// geometry-safe PATH 2 (maybe_empty_regolith) empties the resolved response —
+// the app's designed clean empty-break path — instead of PATH 1 structurally
+// removing them, which leaves PeriodTailor a ~ad-length gap it fills with
+// non-existent media -> content resets to start (see hooks.cpp / memory notes).
+#ifndef PV_SKIP_GVA_REMOTES
+#define PV_SKIP_GVA_REMOTES 0
+#endif
 
 namespace pvfilter {
 
@@ -216,16 +227,28 @@ RemoteStripResult strip_remote_items(char* buf, size_t len, bool blank_truncated
     }
     if (remote_count == 0) return result;
 
+    int blanked_count = 0;
     for (size_t k = 0; k < pr.elem_count; ++k) {
         const Elem& el = pr.elems[k];
         if (!el.is_remote) continue;
+#if PV_SKIP_GVA_REMOTES
+        // getVideoAds-resolved Remote: leave in place for PATH 2 to empty the
+        // resolved response (geometry-safe). Removing it here desyncs PeriodTailor.
+        if (memmem(buf + el.start, el.end - el.start, "getVideoAds", 11) != nullptr) {
+            ++result.gva_skipped;
+            continue;
+        }
+#endif
         bool prev_comma = (k > 0 && pr.elems[k - 1].has_comma);
         size_t prev_pos = (k > 0) ? pr.elems[k - 1].comma_pos : 0;
         if (apply) blank_elem(buf, el, prev_comma, prev_pos);
+        ++blanked_count;
     }
 
-    result.modified = true;
-    result.remote_items = remote_count;
+    if (blanked_count > 0) {
+        result.modified = true;
+        result.remote_items = blanked_count;
+    }
     return result;
 }
 
