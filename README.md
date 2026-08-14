@@ -18,7 +18,7 @@ I'm just like you — I enjoy watching TV and movies without being bored and ann
 |-----|---------|--------|---------------|------|
 | 🟢 Disney+ | `com.disney.disneyplus` | Working | `26.12.1+rc1-2026.07.15` | 7/21/26 |
 | 🟢 Prime Video | `com.amazon.amazonvideo.livingroom` | Working — native in-app ad strip (movies + TV shows), no DNS required | `6.23.23+v15.5.0.70-armv7a` | 7/30/26 |
-| 🟢 Netflix | `com.netflix.ninja` | Working — native in-app ad strip (pre-roll, mid-roll, pause-screen ad), no DNS required. Installs as a **side-by-side clone**; keep stock Netflix installed | `13.0.1 build 25028` | 8/8/26 |
+| 🟢 Netflix | `com.netflix.ninja` | Working — native in-app ad strip (pre-roll, mid-roll, pause-screen ad), no DNS required. Installs as a **side-by-side clone**; keep stock Netflix installed | `13.0.1 build 25028` | 8/14/26 |
 | 🟢 HBO Max | `com.wbd.hbomax` | Working | `v7.7.0.78` | 7/18/26 |
 | 🟢 Peacock | `com.peacocktv.peacockandroid` | Working — no DNS required | `v7.6.100` | 7/16/26 |
 | 🟢 Tubi | `com.tubitv` | Working | `v10.28.5000` | 7/20/26 |
