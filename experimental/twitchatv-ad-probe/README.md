@@ -122,6 +122,68 @@ dump, so the runtime `fetch`/XHR observation *is* the equivalent capability.
   signal-level seams in `docs/twitch-ad-delivery-map.md` (strip the trigger / empty
   the decision response).
 
+## `adprobe-webview-tap.js` — the ADPROBE front-end for Twitch
+
+This is the Twitch port of **ADPROBE** (`experimental/netflix-adprobe/adprobe-jsvm-tap.js`),
+following its four reusable ideas exactly:
+
+1. **Swappable `{k,w,b}` keyword table** — retarget by editing the table, not the logic.
+2. **Residency classification (code vs data)** — is the ad discriminator live *code*
+   (patchable in-process) or only *data*?
+3. **Seam-lock** — collapse many consumers to the single upstream source.
+4. **Live-capture discipline** — sample during a real break; `w:0` count keys confirm
+   "0 ad segments" after a patch.
+
+### Why it's a new *front-end*, not a copy
+ADPROBE's original front-end is a **Frida `rw-` heap scan of the app's own process**,
+because Netflix/PV run their JS VM (QuickJS) inside that process. **Twitch ATV doesn't** —
+the player (hls.js) runs in the system WebView's **Chromium renderer**, a separate sandboxed
+process loaded from the network (proven: the APK ships no player/ad code). A Frida scan of the
+Twitch app process would scan the empty shell. So this is a fifth ADPROBE front-end — an
+**in-page WebView tap**, injected via the same `evaluateJavascript` seam as `PLAYBACK_FIX_JS`.
+It runs *inside* the V8 VM and reads live objects + fetched bodies directly, so it needs no
+memory scanning.
+
+### What its residency step will (almost certainly) conclude
+In-page JS can't read the cross-origin hls.js bundle *source*, but it can read the *data* the
+player fetched (m3u8 bodies) and *live object* state. So for Twitch the ad discriminators
+(`twitch-stitched-ad`, EXTINF title, `DATERANGE CLASS`) show up as **`playlist-data`
+residency** — which is ADPROBE independently re-deriving *why the seam must be the network
+request layer* (`shouldInterceptRequest`), exactly where the shipping scrubber lives. That's
+the same move that proved Netflix's old anchor dead: residency tells you which layer is
+patchable.
+
+### The decisive extra target
+The table includes `X-TV-TWITCH-AD`, `X-TTV-MAF-AD`, and `edge.ads.twitch.tv`. If any of these
+ever appear in an ATV body, the tap prints `MORPHE-ADPROBE SEAM: client-side ad source present`
+— i.e. a second ad source the playlist scrubber cannot see. That is the seam-lock payoff.
+
+### Run it
+Inject the same way as the URL probe (add to `onPageFinished`, or paste via a debug hook):
+
+```java
+// after injectPlaybackFix(view):
+view.evaluateJavascript(/* contents of adprobe-webview-tap.js */, null);
+```
+
+Then, during a stream (ideally across an ad break):
+
+```
+adb logcat | grep MORPHE-ADPROBE
+```
+
+You'll see per-pass `counts=` / `residency=` lines every 15 s, plus context dumps for the
+non-count keys. Or drive passes on demand:
+
+```java
+webView.evaluateJavascript("window.__morpheAdprobe.pass()", cb);   // one pass, returns JSON
+webView.evaluateJavascript("window.__morpheAdprobe.dump()", cb);   // last hits
+```
+
+`adprobe-webview-tap.js` **supersedes** `fetch-xhr-probe.js` for analysis — it captures response
+*bodies* and classifies residency, where the URL shim only logged request URLs. Keep the URL
+shim for a quick "what hosts does it hit" pass; use the ADPROBE tap for the real seam work.
+
 ## Notes / caveats
 
 - WebView mirrors `console.*` to logcat by default; if a build's `WebChromeClient`
