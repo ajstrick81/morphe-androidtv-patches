@@ -25,7 +25,7 @@ I'm just like you — I enjoy watching TV and movies without being bored and ann
 | 🟢 ViX | `com.univision.prendetv` | Working | `v4.47.2_tv` | 7/11/26 |
 | 🟢 Pluto TV | `tv.pluto.android` | Working — VOD ad breaks removed (video, markers, beacons); LIVE TV ads are broadcast time and remain | `5.66.0-leanback` | 7/3/26 |
 | 🟢 Paramount+ | `com.cbs.ott` | Working — VOD ads removed (movies + TV shows, pre-roll + mid-roll); pause ads removed; live TV preserved | `v16.17.0` | 8/4/26 |
-| 🔴 Twitch | `tv.twitch.android.app` | Under Development — untested | `30.2.2` | — |
+| 🟢 Twitch | `tv.twitch.android.app` | Working — **Android TV "Starshot" build only**. Removes the on-screen ad-pod overlay/countdown ("Ad · 1 of 3") and blanks stitched (SSAI) ad video on live streams. A brief black gap can remain during a break; a VPN set to Albania is fully ad-free — see notes | `13.0.0.2` | 8/14/26 |
 | 🔴 Fox One | **Under Development** | — |
 | 🔴 MLB TV | **Under Development** | — |
 
@@ -200,6 +200,31 @@ All patches follow the same general workflow using **Morphe Manager**:
 > the stock Peacock first (a normal in-place install is cleaner). The
 > **Disable auto-updates** patch is on by default and stops the Play Store from
 > silently replacing the patched build.
+
+---
+
+### 💜 Twitch
+
+> 🟢 **Working — Android TV "Starshot" build only (`13.0.0.2`).** Twitch live ads
+> are **server-side stitched (SSAI)** into the same stream as the content, and the
+> TV app runs Twitch's web player inside a WebView. This patch intercepts the live
+> HLS playlist and both **(a)** strips the client-side ad-pod tags that drive the
+> on-screen **"Ad · 1 of 3"** countdown/overlay and **(b)** blanks the stitched ad
+> video. Real ad breaks no longer play as an ad. Because the ad occupies real
+> **live** stream time, a brief **black gap** can remain during a break — the ad
+> video is gone, but that slice of live time still has to pass. DNS filters do
+> **not** help here.
+>
+> 💡 **Want zero ads and no black gap?** Point a VPN at **Albania** — Twitch serves
+> that region genuinely ad-free playlists (no ad is stitched at all). Verified
+> first-hand with **NordVPN → Albania**; pair it with the patch and you're fully
+> covered.
+
+1. Open the **[Twitch: Live Streaming (Android TV) 13.0.0.2 release on APKMirror](https://www.apkmirror.com/apk/twitch-interactive-inc/twitch-android-tv/twitch-live-streaming-android-tv-13-0-0-2-release/)** (version **`13.0.0.2`**)
+2. ⚠️ Use this **Android TV** listing and the exact **`13.0.0.2`** "Starshot" build — not the phone or Fire TV build (the patch targets this TV build specifically)
+3. Download the `.apkm` file
+4. Select it in Morphe Manager
+5. Apply the patch
 
 ---
 
