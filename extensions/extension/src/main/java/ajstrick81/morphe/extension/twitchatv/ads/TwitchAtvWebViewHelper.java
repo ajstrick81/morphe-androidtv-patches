@@ -225,10 +225,32 @@ public final class TwitchAtvWebViewHelper {
     }
 
     /**
-     * Keeps the playlist intact (headers, dateranges, per-segment tags) but
-     * rewrites each ad segment's URI (the URI following an #EXTINF whose title is
-     * not "live") to a per-segment sentinel we serve a black TS for. This keeps
-     * the timeline advancing so the ad completes server-side and content resumes.
+     * True for the client-side ad-pod {@code #EXT-X-DATERANGE} lines — the ones
+     * carrying {@code X-TV-TWITCH-AD-*} / {@code X-TTV-MAF-AD-*} attributes, or the
+     * {@code CLASS="twitch-stitched-ad"} marker. On-device diagnosis (2026-08-14)
+     * showed a real ATV preroll ships a full client-side pod inline in the weaver
+     * playlist (ROLL-TYPE, POD-LENGTH, CREATIVE-ID, RADS-TOKEN, ad-decision URL,
+     * verification/tracking beacons). We already blank the stitched VIDEO segments,
+     * but Twitch's in-WebView ad coordinator still reads these tags and runs the
+     * "Ad · 1 of 3" pod overlay/gate — so ads still "play" (a black wait). Stripping
+     * these metadata lines removes the signal the coordinator acts on. The benign
+     * dateranges ({@code twitch-stream-source}, {@code twitch-trigger},
+     * {@code twitch-session}, {@code timestamp}) are left untouched.
+     */
+    private static boolean isAdDaterange(String trimmed) {
+        return trimmed.startsWith("#EXT-X-DATERANGE")
+            && (trimmed.contains("X-TV-TWITCH-AD")
+                || trimmed.contains("X-TTV-MAF-AD")
+                || trimmed.contains("twitch-stitched-ad"));
+    }
+
+    /**
+     * Keeps the playlist intact (headers, benign dateranges, per-segment tags) but
+     * (a) rewrites each ad segment's URI (the URI following an #EXTINF whose title is
+     * not "live") to a per-segment sentinel we serve a black TS for — keeping the
+     * timeline advancing so the ad completes server-side and content resumes — and
+     * (b) strips the client-side ad-pod dateranges ({@link #isAdDaterange}) so the
+     * WebView's ad coordinator has no {@code X-TV-TWITCH-AD-*} pod to gate on.
      */
     static String blankAdSegments(String playlist) {
         String[] lines = playlist.split("\n", -1);
@@ -239,6 +261,10 @@ public final class TwitchAtvWebViewHelper {
 
         for (String line : lines) {
             String t = line.trim();
+            if (isAdDaterange(t)) {
+                // Drop the client-side ad-pod signal entirely (see isAdDaterange).
+                continue;
+            }
             if (t.startsWith("#EXT-X-DISCONTINUITY")) {
                 // Break boundary — Twitch stitches the pod as one continuous
                 // timeline after this tag, so restart the blank timeline here.
