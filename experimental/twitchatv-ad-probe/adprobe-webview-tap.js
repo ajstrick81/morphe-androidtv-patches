@@ -57,6 +57,49 @@
       if (!/#EXTM3U|#EXT-X|twitch-stitched-ad|X-TV-TWITCH-AD|adBreaks|surestream/i.test(text)) return;
       BODIES.push({ url: String(url).slice(0, 200), text: text });
       if (BODIES.length > MAXB) BODIES.shift();
+      try { analyzePlaylist(url, text); } catch (e) {}
+    }
+
+    // Per-playlist structured diagnosis, logged the moment a media playlist arrives (right timing
+    // for a live ad break). This directly tests the concrete "why are ads still playing?"
+    // hypotheses in HANDOFF.md (H1–H6) — one line answers most of them:
+    //   * weaverPredicate — replicates the SHIPPING TwitchAtvWebViewHelper.isWeaverPlaylist()
+    //     check. If a body carries stitched-ad markers but weaverPredicate=false, the scrubber
+    //     NEVER RAN on it (host/format drift) => ads play. (hypothesis H2)
+    //   * extinfAd vs extinfLive — the blankAdSegments discriminator. If stitched>0 but extinfAd=0,
+    //     the ad segments are no longer titled non-"live" => mis-classified. (H3)
+    //   * parts — LL-HLS #EXT-X-PART partial segments; the scrubber rewrites full-segment URIs, so
+    //     ad content delivered as PARTS slips through. (H5)
+    //   * clientTags — X-TV-TWITCH-AD / edge marker inside a playlist => client-side pod. (H1)
+    function analyzePlaylist(url, t) {
+      var u = String(url);
+      if (!/\.m3u8|#EXTM3U|#EXT-X/i.test(t) && !/\.m3u8/i.test(u)) return;
+      // shipping predicate, verbatim, to catch host/format drift:
+      var weaverPredicate = (u.indexOf('.playlist.ttvnw.net/') >= 0) && (u.indexOf('/playlist/') >= 0);
+      var host = (u.match(/https?:\/\/([^\/]+)/) || [,''])[1];
+      function count(re) { var m = t.match(re); return m ? m.length : 0; }
+      var stitched   = count(/twitch-stitched-ad/g);
+      var extinfLive = count(/#EXTINF:[0-9.]+,live/g);
+      var extinfAll  = count(/#EXTINF:/g);
+      var extinfAd   = Math.max(0, extinfAll - extinfLive);   // non-"live" titled segments
+      var parts      = count(/#EXT-X-PART[:\s]/g);
+      var daterange  = count(/#EXT-X-DATERANGE/g);
+      var clientTags = count(/X-TV-TWITCH-AD|X-TTV-MAF-AD|edge\.ads\.twitch/g);
+      console.log(TAG + ' PL host=' + host +
+        ' weaverPredicate=' + weaverPredicate +
+        ' stitchedAd=' + stitched +
+        ' extinfLive=' + extinfLive + ' extinfAd=' + extinfAd +
+        ' parts=' + parts + ' daterange=' + daterange + ' clientTags=' + clientTags +
+        ' url=' + u.slice(0, 140));
+      // Loud verdicts the moment a mismatch appears during a break:
+      if (stitched > 0 && !weaverPredicate)
+        console.log(TAG + ' !!! H2: stitched-ad present but weaverPredicate=FALSE — scrubber never ran on this host (' + host + ')');
+      if (stitched > 0 && extinfAd === 0)
+        console.log(TAG + ' !!! H3: stitched-ad present but no non-"live" EXTINF — discriminator drift');
+      if (parts > 0 && stitched > 0)
+        console.log(TAG + ' !!! H5: LL-HLS PARTS present alongside stitched-ad — partial-segment ads may bypass full-URI blanking');
+      if (clientTags > 0)
+        console.log(TAG + ' !!! H1: client-side ad tags in a playlist — path the scrubber cannot see');
     }
 
     function corpus() {
