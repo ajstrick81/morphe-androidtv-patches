@@ -1,3 +1,10 @@
+## [1.26.3](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.26.2...v1.26.3) (2026-08-14)
+
+
+### Bug Fixes
+
+* **primevideo:** stop native ad-strip causing the mid-roll/resume restart ([#14](https://github.com/ajstrick81/morphe-androidtv-patches/issues/14)) ([0e7a4fe](https://github.com/ajstrick81/morphe-androidtv-patches/commit/0e7a4fe5922065244f932665d15dadd96175d880))
+
 ## [1.26.2](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.26.1...v1.26.2) (2026-08-14)
 
 
