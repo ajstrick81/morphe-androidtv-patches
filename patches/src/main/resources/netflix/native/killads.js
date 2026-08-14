@@ -58,6 +58,25 @@ function patchDAI(rs){ if(daiDone)return; var p=pat(DAI_ANCHOR);
   for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
     try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(DAI_OFF);var cur=null;try{cur=t.readCString(1);}catch(e){}if(cur!==DAI_EXP)continue;Memory.protect(t,1,'rw-');t.writeByteArray([0x3d]);daiDone=true;L('PATCH DAI: applyDaiPrefetch 0!==->0=== (bypass DAI ad stitch) @'+t);}}catch(e){}}
 }
+// ---------- (A2) legacy metadata.ads presentation gate (2026-08-14 re-anchor) ----------
+// Netflix moved the legacy pre/mid-roll off the compiled-away prepareAdBreakStates hydration
+// reducer (which killed patch-A's source anchor -> A=false) but the ad DATA still lands in each
+// StatefulAdBreak's `metadata.ads`. The single source-resident gate that turns that data into
+// PRESENTABLE ad objects is `_syncAdsLength` (the `ads` getter delegates to it):
+//   {..e=this._statefulAdBreak;e.syncAdStates();
+//    var f=null!==(b=null===(a=e.metadata.ads)||void 0===a?void 0:a.length)&&void 0!==b?b:0;
+//    this._ads.length=f;for(a=0;a<f;a++)(c=this._ads)[a]||(c[a]=new n.AseAd(e,a,this.config));..}
+// Flipping the read `e.metadata.ads` -> `e.metadata.axs` (nonexistent prop) makes a=undefined ->
+// f=0 -> _ads emptied -> zero AseAd objects instantiated for EVERY break, whatever manifest path
+// populated metadata.ads. Length-preserving (3 bytes), verify-before-write. Covers the leaky
+// legacy titles that bypass adverts.adBreaks (ADV) entirely.
+var A2_ANCHOR='e.metadata.ads)||void 0===a?void 0:a.length)&&void 0!==b?b:0;this._ads.length';
+var A2_OFF=11, A2_EXP='ads';   // 'ads' at index 11 of the anchor (e.metadata.[ads])
+var a2Done=false;
+function patchA2(rs){ if(a2Done)return; var p=pat(A2_ANCHOR);
+  for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
+    try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(A2_OFF);var cur=null;try{cur=t.readCString(3);}catch(e){}if(cur!==A2_EXP)continue;Memory.protect(t,3,'rw-');t.writeByteArray([0x61,0x78,0x73]);a2Done=true;L('PATCH A2: _syncAdsLength metadata.ads->axs (empty legacy ad pods) @'+t);}}catch(e){}}
+}
 // ---------- (B) pause patch ----------
 var B_ANCHOR='void 0:e.displayAd',B_OLD='e.displayAd',B_NEW='void 0     ';
 var bDone=false;
@@ -191,15 +210,15 @@ var tries=0;
 function apply(){ tries++; var rs=Process.enumerateRanges('rw-');
   var loaded=false,gp=pat('nrdp.gibbon');
   for(var i=0;i<rs.length&&!loaded;i++){if(rs[i].size>128*1024*1024)continue;try{if(Memory.scanSync(rs[i].base,rs[i].size,gp).length)loaded=true;}catch(e){}}
-  if(loaded){patchA(rs);patchADV(rs);patchDAI(rs);patchB(rs);patchFP(rs);patchGAID(rs);patchHH(rs);neuterMhuRenders(rs);}
+  if(loaded){patchA(rs);patchA2(rs);patchADV(rs);patchDAI(rs);patchB(rs);patchFP(rs);patchGAID(rs);patchHH(rs);neuterMhuRenders(rs);}
   // Keep polling until applied. The ad-insertion source (ADV/DAI) and prepareAdBreakStates (A)
   // can load LATER than the pause module (B) — sometimes only once playback is exercised — so we
   // must NOT give up early. WRITE-ONCE per patch (done guards) — not a re-patch loop.
   var fpOk=(!FP_ENABLED||fpDone);
   var gaidOk=(!GAID_ENABLED||gaidDone);
   var hhOk=(!HH_ENABLED||hhDone);
-  if(aDone&&bDone&&fpOk&&gaidOk&&hhOk){ L('apply DONE: A='+aDone+' ADV='+advDone+' DAI='+daiDone+' B='+bDone+' FP='+(FP_ENABLED?fpDone:'off')+' GAID='+(GAID_ENABLED?gaidDone:'off')+' HH='+(HH_ENABLED?hhDone:'off')+' tries='+tries); return; }
-  if(tries%15===0) L('apply waiting: A='+aDone+' ADV='+advDone+' DAI='+daiDone+' B='+bDone+' HH='+(HH_ENABLED?hhDone:'off')+' tries='+tries);
+  if((aDone||a2Done)&&bDone&&fpOk&&gaidOk&&hhOk){ L('apply DONE: A='+aDone+' A2='+a2Done+' ADV='+advDone+' DAI='+daiDone+' B='+bDone+' FP='+(FP_ENABLED?fpDone:'off')+' GAID='+(GAID_ENABLED?gaidDone:'off')+' HH='+(HH_ENABLED?hhDone:'off')+' tries='+tries); return; }
+  if(tries%15===0) L('apply waiting: A='+aDone+' A2='+a2Done+' ADV='+advDone+' DAI='+daiDone+' B='+bDone+' HH='+(HH_ENABLED?hhDone:'off')+' tries='+tries);
   if(tries<3600) setTimeout(apply, 2000);   // up to ~2h of find-and-apply polling
 }
 
