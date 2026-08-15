@@ -140,6 +140,63 @@ Prompt" opt-in). Keep the heap-scan `patchHH`/MHU as a fallback. Re-verify per a
 
 ---
 
+## 4b. RE PROGRESS — eval entrypoint FOUND (2026-08-14 session 2)
+
+Static RE on `libnetflix.so` (armeabi-v7a, 88MB, extracted to `/tmp/nfverify/re/`) + one
+on-device dynamic probe. **Gating unknown is essentially solved.**
+
+**Engine = V8** (not Hermes — the old HANDOFF "HERMESATOM=1" was a red herring; 794 `V8`
+strings, 0 hermes). So the entrypoint is V8-shaped, not `evaluateJavaScript`.
+
+**The seam, in Netflix's own embedded JS** (`.so` file offset `0x3fd7c60`):
+```js
+nrdp.gibbon.loadScript = function(d,n){ return d.format="uint8array",
+  nrdp.gibbon.load(d, function(o){
+    (o.statusCode>=200||o.statusCode<300) && nrdp.gibbon.eval(o.data, d.url),  // <- compile boundary
+    delete o.data, n&&n(o) }) }
+```
+`loadScript` fetches (hash-checked in `load`/milo) then calls **`nrdp.gibbon.eval(script,
+fileNameOrOptions)`** — post-hash, pre-compile. Perfect hook point.
+
+**`eval` is a native binding on `Gibbon2Bridge`.** Method descriptor (in `.data.rel.ro`) at
+preferred-base **vaddr `0x3e12588`**:
+```
+0x3e12588: "eval"           (name @ 0x7ae9a4)
+0x3e1258c: "Gibbon2Bridge"  (class @ 0x8a41cd)
+0x3e12590: 0x2              (arg count)
+0x3e12594: -> 0x3e12558     (arg table: "script", "fileNameOrOptions")
+0x3e125a0: CALLBACK 0xecd92c   <- first callback after the descriptor = the eval method impl
+```
+
+**Dynamic confirmation (on-device, EVALPROBE):** hooked the candidate callbacks; only
+`0xecd92c` (635 calls during appboot — once per module eval) and `0x137625c` (5 calls, the
+`script` arg accessor) fired. **`0xecd92c` = the `eval` method callback.** Observed runtime
+module base `0xb3bb1000` (ASLR — recompute each run: `Process.findModuleByName('libnetflix.so').base`).
+
+**Addressing:** first LOAD segment has `vaddr == file offset`; exec seg `vaddr = off+0x1000`;
+data segs `+0x2000` / `+0x3000`. Runtime addr = `module.base + preferred_vaddr`
+(mind the ARM Thumb bit; attach fell back to `addr.or(1)` cleanly).
+
+### What's left (small, next session)
+1. **Locate the source arg offset.** `FunctionCallbackInfo` layout for this V8 build is
+   unknown (the naive `length_` @ +8 read returned garbage). `EVALPROBE2` (written, NOT yet
+   built/run — was in the working tree, since reverted) walks `r0`→implicit/values pointers,
+   untags each candidate v8 arg, and scans object offsets for readable appboot JS to find
+   exactly where the `script` string bytes live in `nrdp.gibbon.eval`'s frame.
+2. **Convert the hook to a rewrite.** In the `0xecd92c` onEnter, scan the `script` buffer for
+   the household anchors (the 4 in §1) and apply the same length-preserving flips **before**
+   the call proceeds → V8 compiles the already-patched source → race gone. Keep it narrow
+   (household only) per the Nikflix dual-use caution.
+3. Verify on a real misdetected state (cold launch): prompt gone, browse previews intact,
+   ads still clean, no boot regression.
+
+### Tooling notes
+- `libnetflix.so`: fully stripped (0 dynsyms). `nm`/`readelf`/`objdump`/`strings`/`r2` on host;
+  `capstone`/`pyelftools` NOT installed (used raw `struct`+`re` pointer scans in python instead).
+- Static-analysis scripts were ad-hoc python one-liners over the mmap'd `.so`; the pointer-table
+  walk (find data-seg pointers to a string vaddr, then read the `{name,class,flags,argtable}`
+  descriptor + adjacent CALLBACK entries) is the reusable technique.
+
 ## 5. Process note — the stale-`.mpp` trap (cost us a wrong diagnosis)
 
 `semantic-release` bumps the version on every shipped fix, so the built artifact name
