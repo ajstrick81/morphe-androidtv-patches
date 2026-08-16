@@ -1,3 +1,10 @@
+# [1.27.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.26.3...v1.27.0) (2026-08-16)
+
+
+### Features
+
+* **paramount:** replace live sports commercial breaks with slate ([#91](https://github.com/ajstrick81/morphe-androidtv-patches/issues/91)) ([#114](https://github.com/ajstrick81/morphe-androidtv-patches/issues/114)) ([40b28ec](https://github.com/ajstrick81/morphe-androidtv-patches/commit/40b28ec23319aa612bcc878c02147b5084bfb471))
+
 ## [1.26.3](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.26.2...v1.26.3) (2026-08-14)
 
 
