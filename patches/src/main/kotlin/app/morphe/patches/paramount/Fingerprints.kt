@@ -39,3 +39,25 @@ internal object PauseAdOverlayFingerprint : Fingerprint(
         method.definingClass.endsWith("CbsPauseWithAdsOverlay;")
     },
 )
+
+// ---------------------------------------------------------------------------
+// Patch 3: LIVE ad slate — AviaNetworkInterceptor.intercept(Chain)
+//
+// The AVIA player's okhttp NETWORK interceptor. The live DAI stream (manifest
+// + every segment) flows through intercept(). Live sports ads are Google DAI
+// "pod serving" — separately-addressable ad segments at
+// dai.google.com/linear/pods/v1/... that 302-redirect to googlevideo ad media.
+// We rewrite each ad-pod request to the SAME pod's "slate" rendition
+// (/<pod>/<slot>/<adIdx>/<hash>/ -> /<pod>/slate/0/<hash>/), which is Paramount's
+// own server-served "Commercial in Progress" branded card — a real segment on
+// the live timeline. Matched by okhttp interface method name + AVIA class.
+// okhttp3 is not renamed in this app, so Lokhttp3/* types are used directly.
+// ---------------------------------------------------------------------------
+
+internal object AviaNetworkInterceptorFingerprint : Fingerprint(
+    returnType = "Lokhttp3/Response;",
+    custom = { method, _ ->
+        method.name == "intercept" &&
+            method.definingClass.endsWith("/network/AviaNetworkInterceptor;")
+    },
+)
