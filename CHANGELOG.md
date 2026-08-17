@@ -1,3 +1,10 @@
+# [1.28.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.27.0...v1.28.0) (2026-08-17)
+
+
+### Features
+
+* **disney:** opt-in Suppress Household Prompt patch ([3abbba5](https://github.com/ajstrick81/morphe-androidtv-patches/commit/3abbba57422a196612d14418992102c52b143f85))
+
 # [1.27.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.26.3...v1.27.0) (2026-08-16)
 
 
