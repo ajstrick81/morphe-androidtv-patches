@@ -112,3 +112,51 @@ internal object PauseAdStartedFingerprint : Fingerprint(
                 "Lcom/disneystreaming/nve/player/mel/MediaXPauseSession;"
     },
 )
+
+// ---------------------------------------------------------------------------
+// Out-of-household ("Verify Household Network") decision — OPT-IN suppression.
+//
+// The household prompt is a startup-flow gate in
+// com.bamtechmedia.dominguez.accountsharing. On v26.12.1 the app resolves the
+// device's household status through ONE authoritative suspend predicate:
+//
+//   Lv8/x;->y(Lv81/c;)Ljava/lang/Object;   (returns a boxed Boolean)
+//       ≈  (firstCheck && !secondCheck)  →  "device is OUT of household"
+//
+// Every household/verify routing site funnels through this single method:
+//   - Lzy/c1; (startup destination resolver) — two sites: true → returns the
+//     OutOfHouseholdBlock destination (Lzy/h0;->c) instead of continuing to home.
+//   - Ln00/d; — true → navigates to the "verifyDevice" route.
+//   - Lo1/t; — same boolean gate.
+// (Lkf/b; is y()'s own coroutine continuation, not a distinct caller.)
+//
+// Forcing y() to return Boolean.FALSE makes every caller see an in-household
+// device, so none of the block/verify screens are ever routed to and the app
+// proceeds to home exactly as it does for a normal in-household device. This is
+// behaviour-neutral for users who are already in-household (they already get
+// false here); it only changes the out-of-household path.
+//
+// ⚠️ OBFUSCATION-PINNED: Lv8/x; and the method name "y" are R8-minified names,
+// exact for v26.12.1+rc1-2026.07.15 (versionCode 1784077450). They WILL drift on
+// app updates — re-resolve against a fresh decompile and re-pin on each version
+// bump (the patch fails loud if the fingerprint no longer resolves). The stable
+// anchors to re-locate it from: the singleton whose toString() is
+// "OutOfHouseholdBlock" (Lkh/t;/Lzy/h0;), the "verifyDevice" nav string in the
+// n00/d caller, and the router constructor's kept param-name strings
+// ("sessionStateRepository", "completeProfileStateProvider",
+// "huluLinkEligibleProfilesRepository", "sessionConfig").
+//
+// HONEST SCOPE: this suppresses only the CLIENT-side prompt/routing. Disney's
+// out-of-household detection is server/IP-driven; if the server also refuses to
+// serve the stream to an out-of-household device, hiding the prompt will not by
+// itself restore playback. Verified reachable in bytecode; effect must be
+// confirmed by a user actually in a flagged out-of-household state.
+// ---------------------------------------------------------------------------
+
+internal object OutOfHouseholdCheckFingerprint : Fingerprint(
+    returnType = "Ljava/lang/Object;",
+    custom = { method, _ ->
+        method.name == "y" &&
+            method.definingClass == "Lv8/x;"
+    },
+)
