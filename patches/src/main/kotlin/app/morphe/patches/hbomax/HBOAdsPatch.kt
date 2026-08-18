@@ -96,17 +96,27 @@ val hboAdsPatch = bytecodePatch(
 
         // ─────────────────────────────────────────────────────────────────────
         // Patch 5: GenerateLiveTimelineEntriesForAdBreakKt.generateLiveTimelineEntriesForAdBreak()
-        // return-void at entry suppresses all AdBreakEntry/AdEntry construction.
-        // The caller does addAll() on the result — since the method now returns
-        // immediately, no ad entries are added to the live timeline while
-        // chapter/content entries are built normally.
-        // Note: cannot return an empty list here since the method returns
-        // List not void — return-void exits the method cleanly and the
-        // caller handles the missing result via its existing null/empty checks.
+        // Return an EMPTY List at entry to suppress all AdBreakEntry/AdEntry
+        // construction. The caller does addAll() on the result, so an empty list
+        // means no ad entries are added to the live timeline while chapter/content
+        // entries are built normally.
+        //
+        // ⚠️ Do NOT use `return-void` here. The method's descriptor returns
+        // Ljava/util/List; — ART's verifier rejects `return-void` in a
+        // non-void method ("[0x0] return-void not expected"), which makes the
+        // WHOLE class fail verification and silently disables this suppression
+        // (observed on 7.9.0.61 via logcat VerifyError). Returning
+        // Collections.emptyList() is the valid form (mirrors Pluto's
+        // StitcherSession.getAdBreaks() empty-list hook). The method has
+        // .locals 8, so v0 is a valid register at entry.
         // ─────────────────────────────────────────────────────────────────────
         GenerateLiveTimelineEntriesForAdBreakFingerprint.method.addInstructions(
             0,
-            "return-void",
+            """
+                invoke-static {}, Ljava/util/Collections;->emptyList()Ljava/util/List;
+                move-result-object v0
+                return-object v0
+            """.trimIndent(),
         )
         
         // ─────────────────────────────────────────────────────────────────────────────
