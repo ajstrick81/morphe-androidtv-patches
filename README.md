@@ -19,7 +19,7 @@ I'm just like you — I enjoy watching TV and movies without being bored and ann
 | 🟢 Disney+ | `com.disney.disneyplus` | Working | `26.12.1+rc1-2026.07.15` | 7/21/26 |
 | 🟢 Prime Video | `com.amazon.amazonvideo.livingroom` | Working — native in-app ad strip (movies + TV shows), no DNS required | `6.23.23+v15.5.0.70-armv7a` | 7/30/26 |
 | 🟢 Netflix | `com.netflix.ninja` | Working — native in-app ad strip (pre-roll, mid-roll, pause-screen ad), no DNS required. Installs as a **side-by-side clone**; keep stock Netflix installed | `13.0.1 build 25028` | 8/14/26 |
-| 🟢 HBO Max | `com.wbd.hbomax` | Working | `v7.7.0.78` | 7/18/26 |
+| 🟢 HBO Max | `com.wbd.hbomax` | Working — removes ad markers/UI by default. Optional **Block SSAI Ad Origins** patch (opt-in, off by default) removes the stitched ad *video* entirely (no pre-rolls/mid-rolls) by failing the SSAI ad origins so the app falls back to the clean stream — reproduces the AdGuard DNS block in-app; covers US & EU regions | `v7.9.0.61` | 8/18/26 |
 | 🟢 Peacock | `com.peacocktv.peacockandroid` | Working — no DNS required | `v7.6.100` | 7/16/26 |
 | 🟢 Tubi | `com.tubitv` | Working | `v10.28.5000` | 7/20/26 |
 | 🟢 ViX | `com.univision.prendetv` | Working | `v4.47.2_tv` | 7/11/26 |
@@ -61,11 +61,12 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 ### 🎭 HBO Max
 
-1. Open the **[HBO Max (Android TV) listing on APKMirror](https://www.apkmirror.com/apk/warnermedia-direct-llc/max-stream-hbo-tv-movies-android-tv/)** and select version **`7.7.0.78`** (or the fallback `7.5.0.73`)
+1. Open the **[HBO Max (Android TV) listing on APKMirror](https://www.apkmirror.com/apk/warnermedia-direct-llc/max-stream-hbo-tv-movies-android-tv/)** and select version **`7.9.0.61`** (or the fallback `7.7.0.78`)
    > ⚠️ **Get the right package.** These patches target **`com.wbd.hbomax`** (the "Max: Stream HBO, TV & Movies — Android TV" listing linked above). A Google search may surface a different **`com.wbd.stream`** build — that is a *separate* app variant and the patches will **not** apply to it. Confirm the download shows package `com.wbd.hbomax` before patching.
 2. Download the `.apkm` file
 3. Select it in Morphe Manager
 4. Apply the patch
+   > 💡 **Want ads gone completely?** The default **Disable Ads** patch strips ad markers/UI, but on the ad-supported tier the ad *video* is server-side stitched (SSAI) and still plays. Also enable the opt-in **Block SSAI Ad Origins** patch to remove it entirely — it fails the SSAI ad origins (`*-free.prd.media.max.com`, GMSS, FreeWheel) so the app falls back to the clean, ad-free stream, reproducing the AdGuard DNS block in-app. Experimental / opt-in; expect a slightly longer initial load while the ad origin is refused.
 
 ---
 
