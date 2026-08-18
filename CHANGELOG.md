@@ -1,3 +1,10 @@
+# [1.29.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.28.0...v1.29.0) (2026-08-18)
+
+
+### Features
+
+* **hbomax:** 7.9.0.61 support + opt-in in-app SSAI ad-origin block ([80fbf0b](https://github.com/ajstrick81/morphe-androidtv-patches/commit/80fbf0b1a657264fca2971b96f9bc7032085ec7d)), closes [#118](https://github.com/ajstrick81/morphe-androidtv-patches/issues/118)
+
 # [1.28.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.27.0...v1.28.0) (2026-08-17)
 
 
