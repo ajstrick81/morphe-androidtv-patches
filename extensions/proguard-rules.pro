@@ -93,3 +93,11 @@
     public static androidx.media3.exoplayer.dash.manifest.DashManifest stripAdPeriods(androidx.media3.exoplayer.dash.manifest.DashManifest);
 }
 -dontwarn androidx.media3.exoplayer.dash.manifest.**
+
+# HBO Max — SSAI ad-origin filter. HboAdOriginFilter.guard(Object) is called
+# only from injected smali (invoke-static {} at DefaultHttpDataSource.open),
+# so R8 sees it as unreferenced and would strip or rename it. Keep the class
+# and the guard entry point intact.
+-keep class ajstrick81.morphe.extension.hbomax.ads.HboAdOriginFilter {
+    public static void guard(java.lang.Object);
+}

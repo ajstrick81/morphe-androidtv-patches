@@ -32,6 +32,7 @@ object AppCompatibilities {
     packageName = "com.wbd.hbomax",
     appIconColor = 0xFFFFFF,
     targets = listOf(
+        AppTarget("7.9.0.61"),
         AppTarget("7.7.0.78"),
         AppTarget("7.5.0.73"),
         AppTarget("7.2.0.41"),

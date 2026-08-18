@@ -1,6 +1,9 @@
 package app.morphe.patches.hbomax.ads
 
 import app.morphe.patcher.Fingerprint
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.reference.StringReference
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BoltNonLinearAdsRequest — Nonlinear (overlay) ad request serializer
@@ -82,5 +85,38 @@ internal object NowtilusEnabledFingerprint : Fingerprint(
     custom = { method, _ ->
         method.definingClass == "Lcom/mediamelon/core/qubit/ep/RegisterAPI;" &&
             method.name == "isNowtilusEnabled"
+    },
+)
+
+// ─────────────────────────────────────────────────────────────────────────────
+// media3 DefaultHttpDataSource.open(DataSpec) — the HTTP fetch path for the
+// manifest and every media segment. HBO wires this via
+// com.discovery.player.datasource.HttpURLConnectionDataSourceFactoryCreator,
+// which builds a media3 DefaultHttpDataSource$Factory.
+//
+// The class is R8-renamed per build (was Lx02; on 7.9.0.61), so it is matched
+// by content, not name: the media3 DefaultHttpDataSource is the only class that
+// carries the literal log tag "DefaultHttpDataSource" AND declares the
+// interface method open(DataSpec)J (returns a long, single DataSpec param).
+// This mirrors MLB At Bat's OkHttpDataSourceOpenFingerprint, which anchors on
+// the media3 "media3.datasource.okhttp" tag for the OkHttp variant.
+//
+// The guard is injected at index 0 of open(), before the method's internal
+// try-block, so a thrown IOException propagates straight to the ExoPlayer
+// loader (resiliency-v5.1 CDN failover) rather than being swallowed here.
+// ─────────────────────────────────────────────────────────────────────────────
+
+internal object DefaultHttpDataSourceOpenFingerprint : Fingerprint(
+    returnType = "J",
+    custom = { method, classDef ->
+        method.name == "open" &&
+            method.parameterTypes.size == 1 &&
+            classDef.methods.any { candidate ->
+                candidate.implementation?.instructions?.any { instruction ->
+                    instruction.opcode == Opcode.CONST_STRING &&
+                        ((instruction as ReferenceInstruction).reference as? StringReference)
+                            ?.string == "DefaultHttpDataSource"
+                } == true
+            }
     },
 )
