@@ -129,10 +129,25 @@ mechanisms — the one you remember is almost certainly the **blackout card**:
   This renders the "not available in your area" overlay during blackouts —
   the on-screen slate you've seen. Separate from ads; driven by a
   `BlackoutsRenderer` proto pushed from the server per channel.
-- **Ad slate/filler:** when DAI can't fill a break
-  (`NO_DAI_CONFIG_FROM_GAB` / `SERVER_ERROR` cue statuses above), the native
-  core falls back to filler — no dedicated Java "slate" class; handled in the
-  native player.
+- **Ad slate/filler = the "Enjoy the zen, we'll be right back" Zen Beach clip.**
+  Confirmed mechanism: when a cuepoint fires an ad break that DAI can't fill
+  (`NO_DAI_CONFIG_FROM_GAB` / `SERVER_ERROR`), the client plays a **server-
+  delivered interstitial video** as filler. It is NOT a bundled asset — no
+  "zen"/"Zen Beach"/"right back" string or media exists in the APK (the only
+  `zen` hits are `gads:zenith:`, "frozen", and a base64 blob — all unrelated).
+  The filler rides the mainline YouTube **interstitial** framework:
+  - Strings: `isPlayingInterstitial`, `INTERSTITIAL_REQUESTED` →
+    `INTERSTITIAL_PLAYING`, `interstitialPlayerResponse`, `interstitialCpn`,
+    `interstitialVideoState`, `LD.playInterstitialVideo`.
+  - State/logging in `aizp` (obf.) and `afso` (obf.) +
+    `player/video/state/DirectorSavedState`: the player tracks
+    `currentContentVideoId` vs `currentVideoId` and an `isPlayingInterstitial`
+    flag — i.e. it swaps the content stream for the interstitial (Zen) video for
+    the break duration, then returns to content.
+  - Implication for patching: the Zen filler is a *symptom* of an unsold break,
+    not the ad itself. Killing the cuepoint/ad-break upstream (see ad surface
+    above) removes both real ads and the Zen filler; targeting the interstitial
+    player alone would only skip the filler, not sold ads.
 
 ## Toolchain used (for reproducibility)
 
