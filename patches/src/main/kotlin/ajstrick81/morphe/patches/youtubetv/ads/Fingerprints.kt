@@ -1,67 +1,70 @@
 package ajstrick81.morphe.patches.youtubetv.ads
 
 import app.morphe.patcher.Fingerprint
+import com.android.tools.smali.dexlib2.AccessFlags
 
 // ===========================================================================
 // YouTube TV (YouTube Unplugged) — ad architecture
-// (confirmed by dex disassembly of base.apk, 10.33.2 / versionCode 210330210)
+// (confirmed by dex disassembly of base.apk + native disassembly of
+//  libgoogle3.so from split_config.armeabi_v7a.apk — the Onn device's ABI;
+//  10.33.2 / versionCode 210330210)
 //
 // YouTube TV delivers video ads via GOOGLE SERVER-STITCHED DAI (SSDAI / SSAI):
-// ads are stitched into the same media segments as content, and an out-of-band
-// CUEPOINT list tells the client where each ad break sits on the timeline.
+// ads are stitched into the same media segments as content, and a CUEPOINT list
+// tells the client where each ad break sits. The ad-break scheduling is owned by
+// the NATIVE C++ player core (youtube::media::CuePointDataProviderImpl in
+// libgoogle3.so); cuepoints arrive in Java via a JNI callback
+// (CuePointDataProviderWrapper$NativeCallback.onCuepointList) but NATIVE is
+// authoritative (it creates and holds the cuepoints).
 //
-// The ad-break decisioning is driven from the NATIVE C++ player core; cuepoints
-// arrive in Java through a JNI callback:
-//   CuePointDataProviderWrapper$NativeCallback.onCuepointList(byte[])
-// which parses a CuepointList proto and, per CuepointContext, builds a concrete
-// ad-break object (amxc extends amuu: id, type, startMs, endMs, ..., daiToken)
-// and dispatches it (apow) to the player's ad-break consumer.
+// THE LEVER (native-verified):
+//   CuePointDataProviderWrapper.nativeSetDaiDisabledByNoConfig(nativePtr)
+//   -> JNI shim @0x574c9e -> tail-calls CuePointDataProviderImpl vtable slot #11
+//      @0x5768d4, which sets a single bool member (obj+0x71) = "DAI disabled by
+//      no config" = true. This is the app's OWN sanctioned disable path;
+//      normally reached only when server hotconfig flag 45731777 is enabled, via
+//      a runnable scheduled after setCuePointDataProvider.
 //
-//   ServerStitchedDaiInfo ── daistate token (opaque)
-//   CuepointList ─ repeated CuepointContext ─ { bsat trigger (type enum +
-//                    start/end seconds + id/cpn), TimeRange, index, id, DAI token }
-//
-// The Zen Beach "Enjoy the zen, we'll be right back" slate is the UNSOLD-break
-// filler (server-delivered interstitial video), played when a cuepoint break
-// returns NO_DAI_CONFIG_FROM_GAB — it rides the same cuepoint path, so killing
-// cuepoints removes both real ads (gambling/adult included) and the Zen filler.
+// WHY THIS LEVER (vs. no-oping onCuepointList):
+//   libgoogle3.so ships NATIVE AD-BLOCKER ENFORCEMENT — an SSDAI response-action
+//   enum incl. FAIL_PLAYBACK_SHOW_AD_BLOCKER_ENFORCEMENT, driven SERVER-SIDE via
+//   video_streaming::StreamProtectionStatus + a Proof-of-Origin (PoToken)
+//   attestation. Suppression that makes the client merely LOOK like it skipped
+//   ads (dropping cuepoints, blocking hosts) risks tripping the wall (black
+//   screen / "ad blocker" enforcement). Driving the app's own "no DAI config"
+//   state is a LEGITIMATE state the server already models, so it is the
+//   suppression least likely to trip enforcement.
 //
 // ---------------------------------------------------------------------------
-// EXPERIMENTAL — this hook is a HYPOTHESIS pending on-device validation.
-//
-// onCuepointList is a callback FROM native code. It is UNPROVEN whether the
-// native core (nativePtr) schedules/splices breaks on its own and this Java
-// callback only feeds the client-side ad-break scheduler + UI/telemetry, OR
-// whether the player relies on this dispatch to schedule breaks at all. If the
-// native side is authoritative, no-oping this method will NOT stop the stitched
-// ad video from playing (same class of problem as the Netflix native ad-strip
-// work in experimental/). Validate on hardware against a live break BEFORE
-// treating this as a working ad-suppression patch. See
-// analysis/youtubetv/notes/recon.md.
+// EXPERIMENTAL / UNVALIDATED — server reaction can only be confirmed on-device.
+// Whether the native core (a) fully stops stitched breaks when obj+0x71 is set
+// this early, and (b) avoids server enforcement, is UNKNOWN until tested on the
+// Onn device against a live break. See analysis/youtubetv/notes/native-core.md.
 // ---------------------------------------------------------------------------
 
-// Hook — CuePointDataProviderWrapper$NativeCallback.onCuepointList(byte[])
+// Hook — CuePointDataProviderWrapper.<init>(Executor, Consumer)
 //
-// The single JNI->Java choke point for the cuepoint (ad-break) list. It parses
-// CuepointListOuterClass$CuepointList, iterates its CuepointContext entries, and
-// for each set entry constructs amxc(CuepointContext) wrapped in apow and hands
-// it to the Consumer (a bumi). Neutering it (early return-void) drops every
-// cuepoint-driven break the Java layer would schedule.
+// The wrapper's constructor calls the native createNative(...) and stores the
+// result in the `nativePtr:J` field. We inject immediately AFTER that store,
+// while nativePtr is still live in registers, an unconditional
+//   this.nativeSetDaiDisabledByNoConfig(this.nativePtr)
+// so every provider, at creation (before any cuepoint can arrive), puts the
+// native core into its sanctioned "DAI disabled by no config" state.
 //
 // Anchor stability: the defining class is a RETAINED (non-obfuscated) YouTube
-// media-interfaces library class, so definingClass + name + params + returnType
-// is a strong, R8-proof match. The method is package-private (no access
-// modifier in smali), so accessFlags are intentionally left unconstrained.
-// Confirmed present at:
-//   Lcom/google/android/libraries/youtube/media/interfaces/
-//       CuePointDataProviderWrapper$NativeCallback;->onCuepointList([B)V
+// media-interfaces library class; constructor signature (Executor, Consumer) is
+// stable. The createNative call inside it is matched at patch time by opcode
+// scan (invoke-static ...->createNative...), so we don't hard-code an offset.
 //
-// NOTE: definingClass uses \$ so Kotlin does not treat $NativeCallback as a
-// string template — it is the literal inner-class name.
-object OnCuepointListFingerprint : Fingerprint(
+// NOTE: definingClass uses \$ only inside string refs; the class itself has no $.
+object CuePointDataProviderWrapperInitFingerprint : Fingerprint(
     definingClass =
-        "Lcom/google/android/libraries/youtube/media/interfaces/CuePointDataProviderWrapper\$NativeCallback;",
-    name = "onCuepointList",
-    parameters = listOf("[B"),
+        "Lcom/google/android/libraries/youtube/media/interfaces/CuePointDataProviderWrapper;",
+    name = "<init>",
+    parameters = listOf(
+        "Lcom/google/android/libraries/youtube/media/interfaces/Executor;",
+        "Ljava/util/function/Consumer;",
+    ),
     returnType = "V",
+    accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.CONSTRUCTOR),
 )
