@@ -60,19 +60,79 @@ This is a **hybrid of the two hypotheses:**
     entry point where the stitched-segment (ad-boundary) list is delivered into
     the player; forwards to `mo6315v(...)`.
 
+## CORRECTION (deeper dig) — VideoRegion is NOT the ad-type carrier
+
+Decoding the proto wire descriptors corrected an initial wrong assumption:
+
+- `ServerStitchedDaiInfo` = `{ repeated scalar (field 1, `c`), bytes daistate
+  token (field 2, `d`) }`. It does **not** embed `StitchedSegmentsMetadata`.
+- `StitchedSegmentPortion` = `{ VideoRegion c, TimeRange d, String id e }`.
+- `VideoRegion` = enum `b` + four int32s (`c,d,e,f`). In `aqar`
+  (`m9404a`/`m9405b`/`m9407d`) those four ints are consumed as **screen
+  geometry** (x / y / size / z-order) with `getResources().getConfiguration()
+  .orientation` checks in `aqap`. So `StitchedSegmentsMetadata` /
+  `VideoRegion` is the **spatial multiview layout** subsystem (YouTube TV
+  Multiview — `PAytv_multiview_edit`, `PAytv_multiview_recommendation`), NOT the
+  ad timeline. `VideoRegion.b`'s enum (wire values 0–4, mapped in `aqap` L736)
+  is a region *role*, not ad-vs-content.
+
+### The REAL ad-break timeline: Cuepoints (native-driven)
+
+- **`CuepointListOuterClass$CuepointList`** = repeated
+  **`CuepointContext`** — the live SSDAI ad-break markers.
+- **`CuePointDataProviderWrapper`**
+  (`.../media/interfaces/`) is a **JNI bridge to the native C++ player core**:
+  - `long nativePtr`, `native void destroy(long)`,
+    `native void nativeOnAdBreakFulfillmentStatusChanged(long, String, int, byte[], String[])`.
+  - `NativeCallback.onCuepointList(byte[])` @ L116 — native → Java callback:
+    parses `CuepointList` from bytes, iterates `CuepointContext`, and for each
+    set entry dispatches `apow(new amxc(cuepointContext), id)` to a consumer.
+  - Inner `enum CuePointStatus`: `OK(0)`, `RATE_CONTROL(1)`, `SERVER_ERROR(2)`,
+    `INACTIVE(3)`, `DELETED(4)`, `RATE_CONTROL_BY_CLIENT(11)`,
+    **`NO_DAI_CONFIG_FROM_GAB(12)`**, `CACHE_MISS(13)` — "DAI config from GAB"
+    confirms Google DAI ad decisioning in the native/backend layer.
+  - Inner `AdConfigData(bbjk token, List)` carries the DAI ad config.
+
+**Implication:** ad-break *decisioning* lives in native code (platypus/C++),
+same shape as the Netflix native ad-strip challenge in this repo — not a
+pure-Java timeline. But the Java `onCuepointList(byte[])` boundary still receives
+the serialized cuepoint list, which is a candidate Java-side interception point
+(neuter it to deliver an empty `CuepointList`), and
+`nativeOnAdBreakFulfillmentStatusChanged` is the fulfillment-report edge.
+
 ## Candidate patch surface (not yet implemented)
 
-The ad timeline is a **list of `StitchedSegmentPortion`** (VideoRegion +
-TimeRange), delivered via `onStitchedSegmentsMetadataList(...)` and read back via
-`getSsdaiInfo(Time)`. This is the same "empty-the-ad-cue-accessor-before-RETURN"
-shape this repo already exploits for other SSAI apps (see
-`java-ad-timeline-hook-methodology`): filter the portion list down to
-content-only regions (or return an empty stitched list) so the player sees no ad
-ranges. Because ads are stitched into the *same* segments as content, dropping
-the whole list is NOT safe (would also drop content boundaries) — the correct
-approach is to filter by `VideoRegion` type, keeping content regions and removing
-ad regions. **Next step:** decode `VideoRegion`'s int fields to identify the
-ad-vs-content type enum value before writing a fingerprint.
+1. **Java boundary (shallow):** `CuePointDataProviderWrapper$NativeCallback
+   .onCuepointList(byte[])` — drop/empty the parsed cuepoint list so no ad
+   breaks are dispatched to the player. Needs testing: native side may still
+   splice ad segments regardless of the Java callback.
+2. **Native (deep):** the `nativePtr` C++ core that produces cuepoints and does
+   `NO_DAI_CONFIG_FROM_GAB`-style fulfillment. Same class of problem as
+   `experimental/netflix-native-adstrip/` — likely requires native hooking, not
+   a smali patch.
+
+**Next step:** decode `CuepointContext`'s fields (message @1, message @4,
+int32 @6, string @8, message @9) to find the ad-break time offset + type, and
+determine experimentally whether emptying the Java `onCuepointList` is
+sufficient or whether the native core stitches ads independently.
+
+## Slate / blackout ("I've seen it on live broadcasts")
+
+No literal "slate" token exists, but there are **two** distinct slate-like
+mechanisms — the one you remember is almost certainly the **blackout card**:
+
+- **Blackout slate (regional sports blackouts):** a full subsystem —
+  `com/.../unplugged/player/overlay/UnpluggedBlackoutsEventObserver` (obf.
+  `moa`), `TenxBlackoutsRenderer`, `TenxBlackoutRange`,
+  `createSimplifiedBlackoutsRenderer()`, and the log
+  *"Channel=%s is in active blackout but no blackout renderer is returned!"*.
+  This renders the "not available in your area" overlay during blackouts —
+  the on-screen slate you've seen. Separate from ads; driven by a
+  `BlackoutsRenderer` proto pushed from the server per channel.
+- **Ad slate/filler:** when DAI can't fill a break
+  (`NO_DAI_CONFIG_FROM_GAB` / `SERVER_ERROR` cue statuses above), the native
+  core falls back to filler — no dedicated Java "slate" class; handled in the
+  native player.
 
 ## Toolchain used (for reproducibility)
 
