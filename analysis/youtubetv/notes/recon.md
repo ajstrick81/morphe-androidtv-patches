@@ -111,10 +111,53 @@ the serialized cuepoint list, which is a candidate Java-side interception point
    `experimental/netflix-native-adstrip/` — likely requires native hooking, not
    a smali patch.
 
-**Next step:** decode `CuepointContext`'s fields (message @1, message @4,
-int32 @6, string @8, message @9) to find the ad-break time offset + type, and
-determine experimentally whether emptying the Java `onCuepointList` is
-sufficient or whether the native core stitches ads independently.
+### CuepointContext decoded (the ad-break record)
+
+`CuepointContext` proto fields (verified from wire descriptor):
+- `c` (field 1, msg `bsat`) — the **cuepoint trigger/type descriptor** (below)
+- `d` (field 4, msg `TimeRange`) — break time range
+- `e` (field 6, int32) — index / ordinal
+- `f` (field 8, String) — cue id
+- `g` (field 9, bytes `bbjk`) — opaque DAI context/state token
+
+`bsat` (trigger descriptor):
+- enum `c`/`f87288c` (verifier `bsas`, 3 vals) + enum via `bsar.m15523a`
+  (`bsaq`, 5 vals) — the **break type**
+- `double f87289d` — start seconds, `double f87290e` — end seconds
+  (both ×1000 → ms in `amxc`)
+- `String f87291f` — id, `String f87292g` — cpn
+- `double f87293h` — extra timing
+
+### The concrete ad-break object: `amxc extends amuu`
+
+`CuePointDataProviderWrapper$NativeCallback.onCuepointList(byte[])` parses the
+`CuepointList` and, per `CuepointContext`, builds **`amxc`** (a concrete
+`amuu` ad-break), then dispatches `apow(amxc, id)` to the player consumer.
+
+`amuu` base = the ad-break model:
+`amuu(String id, int type, long startMs, long endMs, String, boolean, long,
+String, bbjk daiToken)` — fields `f23592a`..`f23600i`.
+
+`amxc`'s ctor maps `bsat`'s type enum (via `bsar.m15523a`, 5 values) to an
+internal break-type int, and converts `f87289d`/`f87290e` seconds → ms for
+start/end. So each cuepoint fully describes: **type, start, end, id, cpn, and
+the DAI token** — everything the player needs to schedule the break.
+
+### Concrete patch target (Java, shallow)
+
+**`CuePointDataProviderWrapper$NativeCallback.onCuepointList([B)V`** — the
+JNI→Java callback that hands the player its ad-break list. Neutering it (early
+return, or dispatch an empty list) drops every cuepoint-driven break. Stable
+fingerprint anchors (survive R8):
+- enclosing class has `long nativePtr` + native
+  `nativeOnAdBreakFulfillmentStatusChanged(long, String, int, byte[], String[])`
+- method parses `CuepointListOuterClass$CuepointList` via `bbku.parseFrom`,
+  iterates `.f95383b`, constructs `apow(new amxc(...), id)`.
+
+**Open question (needs device test):** whether killing the Java callback stops
+playback ad-splicing, or whether the native core (`nativePtr`) schedules breaks
+independently and the Java callback is only for UI/telemetry. If the latter, the
+real fix is native (like `experimental/netflix-native-adstrip/`).
 
 ## Slate / blackout ("I've seen it on live broadcasts")
 
