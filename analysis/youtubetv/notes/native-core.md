@@ -144,6 +144,67 @@ server watches — and it can respond with
 - A network-level block of the DAI/ad hosts would likely trip the same
   enforcement (missing beacons/segments), so it is **not** a safe shortcut here.
 
+## Virtual method #11 disassembled — what "disable DAI" actually does
+
+Resolved `CuePointDataProviderImpl`'s vtable via its typeinfo
+(`N7youtube5media24CuePointDataProviderImplE`); slot #11 (the `vtable+0x2c` the
+JNI shim tail-calls) = **fn @ `0x5768d4`** (Thumb):
+```
+ldrb r0, [r4, #0x71]     ; bool flag @ object offset 0x71
+cbnz r0, set             ; if already disabled, just (re)set and return
+ldr  r5, [r4, #0x68]     ; observer/callback object
+cbz  r5, set
+  ... build 2 std::strings (reason/tag) ...
+  ldr r0,[r5]; ldr r3,[r0,#0xc]; blx r3   ; notify observer->vmethod#3(str,str) ONCE
+set:
+movs r0, #1
+strb r0, [r4, #0x71]     ; flag@0x71 = 1   → "DAI disabled by no config" = true
+```
+So the native disable is a **single boolean member at object offset `0x71`**,
+plus a one-time observer notification. Setting it is the whole operation — which
+is why candidate patch B (drive the app to call this) is a clean, low-footprint
+lever: it flips the exact state bit the core uses, using the core's own code
+path. (Confirming which cuepoint-dispatch reads `0x71` is left open — 0x71 is a
+common struct offset, 25 `ldrb.w …,#0x71` sites across the lib, most on unrelated
+objects; the provider's own reader wasn't isolated in this pass.)
+
+## Enforcement trigger — it is SERVER-DRIVEN (StreamProtection + PoToken)
+
+The 7 SSDAI response actions live in an enum-name table
+(`StringPiece{ptr,len}` array @ `0xc8f704`, values 0–6; ad-blocker enforcement =
+**index 2**). The table has **no direct literal xref** — it is PIC/PC-relative,
+consistent with a ToString used only for logging. The decision of *which* action
+to take is **not a local heuristic**; it is dictated by the server and tied to
+two protections found in `libgoogle3.so`:
+
+- **`video_streaming::StreamProtectionStatus`** (proto enum) and
+  `video_streaming::SabrError` — the SABR/onesie streaming layer carries a
+  server-set stream-protection status; the SSDAI action (incl.
+  `FAIL_PLAYBACK_SHOW_AD_BLOCKER_ENFORCEMENT`) is the client's response to it.
+- **Proof-of-Origin Token (PoToken) attestation:** `ProofOfOriginTokenManager`,
+  `OnPoTokenMintedCallback`, HMAC message-integrity ("Message-Integrity has dummy
+  value"). The client must mint a PoToken proving it is a genuine, unmodified
+  YouTube client; the server keys protection/enforcement off it plus the client's
+  ad-fulfillment signals (`nativeOnAdBreakFulfillmentStatusChanged`, beacon and
+  ad-segment fetches).
+
+**Bottom line for the patch question ("will B suppress ads without the wall?"):**
+- There is **no client-side enforcement on/off switch to patch** — the server
+  commands the action. You cannot locally "disable enforcement."
+- Enforcement fires on server-observed non-compliance (ads not fetched/played,
+  beacons not fired, and/or PoToken/StreamProtection failing). So any suppression
+  that makes the client *look* like it skipped ads risks
+  `FAIL_PLAYBACK_SHOW_AD_BLOCKER_ENFORCEMENT`.
+- The **least-risky** approach remains the app's **sanctioned no-config disable**
+  (flag `0x71` via `SetDaiDisabledByNoConfig`): "no DAI config" is a benign state
+  the server already models, so it is the suppression most likely to be treated
+  as legitimate rather than as ad-blocking. **But this is a hypothesis about the
+  server's reaction — it can only be confirmed on-device against a live break,
+  because the decision lives on the server, not in this binary.**
+- Network/DNS blocking of ad hosts is the **most** likely to trip enforcement
+  (segments/beacons simply vanish) and PoToken makes client spoofing hard —
+  reinforcing that the in-app sanctioned path is the better bet.
+
 ## Remaining native questions (next dig, if pursued)
 
 1. Disassemble virtual method #11 on `CuePointDataProviderImpl` to see exactly
