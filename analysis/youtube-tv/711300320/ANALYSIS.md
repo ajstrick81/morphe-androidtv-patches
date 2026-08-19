@@ -1,5 +1,10 @@
 # YouTube for Android TV 7.11.300 (711300320) — APK Analysis
 
+> **Which app this is:** "YouTube **for** Android TV" — the leanback YouTube
+> client (package `com.google.android.youtube.tv`) that ships on Android TV /
+> Google TV. This is **not** "YouTube TV: Live TV & more", the separate live-TV
+> streaming service (package `com.google.android.apps.youtube.unplugged`).
+
 **Package:** `com.google.android.youtube.tv`
 **Version:** 7.11.300 (versionCode `711300320`)
 **Source bundle:** `com.google.android.youtube.tv_7.11.300-711300320_1arch_..._apkmirror.com.apkm`
@@ -19,7 +24,8 @@
 
 The YouTube TV client is **not** a conventional native Android app whose UI and
 player live in smali. It is a **Cobalt "COAT" (Cobalt on Android TV) shell** that
-loads the YouTube TV **web app from the network at runtime** and runs it inside
+loads YouTube's **leanback (TV-interface) web app from the network at runtime**
+(`https://www.youtube.com/tv`) and runs it inside
 Google's native Cobalt/Starboard HTML5+JS engine.
 
 Evidence:
@@ -124,7 +130,9 @@ an ad behavior we can force.
    any *in-engine* enforcement lives.
 2. **Prototype the `--url` repoint** against a filtering front-end for
    `youtube.com/tv` — validate whether the TV web app renders and plays when
-   served through a proxy. This is the fastest path to a working ad-reduced client.
+   served through a proxy (the leanback web app at `youtube.com/tv`, not the
+  YouTube TV streaming service). This is the fastest path to a working
+  ad-reduced client.
 3. Decide the delivery model: resigned split-set sideload vs. a
    network/DNS-based solution that needs no repackaging (and no re-signing on
    every app update).
