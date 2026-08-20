@@ -201,7 +201,7 @@ public final class TwitchAtvWebViewHelper {
     private static final String AD_OVERLAY_JS = String.join("\n",
         "(function(){try{",
         "if(window.__morpheAdOverlay)return;",
-        "var AMBIENT=true;", // soft generated ambient pad during the break; set false to mute
+        "var musicWanted=false;try{musicWanted=(localStorage.getItem('morpheMusic')==='1');}catch(e){}", // persisted music toggle
         "var THEMES=[",
         " {name:'Cafe Rain',bg:'linear-gradient(160deg,#243b4a,#3a5566 42%,#c9975b)',rain:true,accent:'#ffd9a0'},",
         " {name:'Midnight',bg:'radial-gradient(120% 120% at 30% 20%,#2a2f6b,#12132b 60%,#05060f)',rain:false,accent:'#9db4ff'},",
@@ -216,8 +216,9 @@ public final class TwitchAtvWebViewHelper {
         " 'Stay present.'",
         "];",
         "var themeIdx=-1;",
-        "var root,bg,brand,quoteEl,greetEl,subEl,clockEl,hintEl,rainWrap;",
+        "var root,bg,brand,quoteEl,greetEl,subEl,clockEl,hintEl,rainWrap,dock;",
         "var clockTimer=null,quoteTimer=null,watchdog=null,audio=null;",
+        "var dockCtrls=[],ctlIdx=0,keyHandler=null;",
         "function el(tag,css){var e=document.createElement(tag);if(css)e.style.cssText=css;return e;}",
         "function injectKeyframes(){if(document.getElementById('mphe-kf'))return;var st=document.createElement('style');st.id='mphe-kf';",
         " st.textContent='@keyframes mpheRain{to{transform:translateY(118vh);}}@keyframes mpheSpin{to{transform:rotate(360deg);}}';",
@@ -235,8 +236,28 @@ public final class TwitchAtvWebViewHelper {
         " clockEl=el('div','font-size:9vw;font-weight:800;line-height:1;margin-top:2vw;text-shadow:0 6px 40px rgba(0,0,0,.55);');",
         " c.appendChild(greetEl);c.appendChild(subEl);c.appendChild(clockEl);root.appendChild(c);",
         " hintEl=el('div','position:absolute;bottom:6%;left:50%;transform:translateX(-50%);font-size:1.2vw;font-weight:600;opacity:.85;display:flex;align-items:center;gap:.8vw;text-shadow:0 2px 12px rgba(0,0,0,.6);');root.appendChild(hintEl);",
+        " buildDock();root.appendChild(dock);",
         " (document.body||document.documentElement).appendChild(root);injectKeyframes();setHint();",
         "}",
+        // D-pad-navigable control dock: scene chips + a music toggle. pointer-events
+        // are enabled only on the dock (root stays none) so clicks/taps also work.
+        "function buildDock(){dock=el('div','position:absolute;bottom:5%;left:50%;transform:translateX(-50%);display:flex;gap:1vw;align-items:center;padding:1.1vh 1.2vw;background:rgba(20,18,30,.55);border:1px solid rgba(255,255,255,.14);border-radius:14px;pointer-events:auto;');",
+        " dockCtrls=[];",
+        " for(var i=0;i<THEMES.length;i++){(function(i){var b=el('div','padding:1vh 1.2vw;border-radius:10px;font-size:1.1vw;font-weight:600;border:2px solid transparent;background:rgba(255,255,255,.06);cursor:pointer;white-space:nowrap;');b.textContent=THEMES[i].name;b.onclick=function(){ctlIdx=i;chooseScene(i);};dock.appendChild(b);dockCtrls.push({el:b,act:function(){chooseScene(i);}});})(i);}",
+        " var mb=el('div','padding:1vh 1.2vw;border-radius:10px;font-size:1.1vw;font-weight:600;border:2px solid transparent;background:rgba(255,255,255,.06);cursor:pointer;white-space:nowrap;');mb.onclick=function(){ctlIdx=dockCtrls.length-1;toggleMusic();};dock.appendChild(mb);dockCtrls.push({el:mb,act:toggleMusic,music:true});",
+        " musicLabel();highlightDock();}",
+        "function musicLabel(){var c=dockCtrls[dockCtrls.length-1];if(c)c.el.textContent=musicWanted?'Music: on':'Music: off';}",
+        "function highlightDock(){for(var i=0;i<dockCtrls.length;i++){var sel=(i===ctlIdx);dockCtrls[i].el.style.borderColor=sel?'#fff':'transparent';dockCtrls[i].el.style.background=sel?'rgba(255,255,255,.2)':'rgba(255,255,255,.06)';}}",
+        "function chooseScene(i){themeIdx=i;applyTheme(i);highlightDock();try{localStorage.setItem('morpheScene',i);}catch(e){}}",
+        "function toggleMusic(){musicWanted=!musicWanted;musicLabel();highlightDock();if(musicWanted)startAudio();else stopAudio();try{localStorage.setItem('morpheMusic',musicWanted?'1':'0');}catch(e){}}",
+        // TV WebViews deliver the D-pad as JS key events (arrows 37-40, center/Enter
+        // 13/23). Capture is added only while the overlay is shown and removed on
+        // hide, and we stop only the keys we consume — Back/others pass through to
+        // the app, so the viewer is never trapped.
+        "function onKey(e){var k=e.keyCode;",
+        " if(k===37){ctlIdx=(ctlIdx+dockCtrls.length-1)%dockCtrls.length;highlightDock();e.preventDefault();e.stopPropagation();}",
+        " else if(k===39){ctlIdx=(ctlIdx+1)%dockCtrls.length;highlightDock();e.preventDefault();e.stopPropagation();}",
+        " else if(k===13||k===23||k===66){if(dockCtrls[ctlIdx])dockCtrls[ctlIdx].act();e.preventDefault();e.stopPropagation();}}",
         "function buildRain(on){if(!rainWrap)return;rainWrap.innerHTML='';if(!on)return;",
         " for(var i=0;i<90;i++){var left=Math.random()*100,dur=0.5+Math.random()*0.7,delay=Math.random()*2,h=6+Math.random()*10;",
         "  rainWrap.appendChild(el('span','position:absolute;top:-14%;left:'+left+'%;width:1.5px;height:'+h+'vh;background:linear-gradient(transparent,rgba(255,255,255,.35));animation:mpheRain '+dur+'s linear '+delay+'s infinite;'));}}",
@@ -249,7 +270,7 @@ public final class TwitchAtvWebViewHelper {
         " var qi=Math.floor(Math.random()*QUOTES.length);quoteEl.textContent=QUOTES[qi];",
         " if(quoteTimer)clearInterval(quoteTimer);quoteTimer=setInterval(function(){qi=(qi+1)%QUOTES.length;quoteEl.style.opacity='0';setTimeout(function(){quoteEl.textContent=QUOTES[qi];quoteEl.style.opacity='.92';},400);},9000);startAudio();}",
         "function stopTimers(){if(clockTimer){clearInterval(clockTimer);clockTimer=null;}if(quoteTimer){clearInterval(quoteTimer);quoteTimer=null;}stopAudio();}",
-        "function startAudio(){if(!AMBIENT)return;try{if(!audio){var AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;var ctx=new AC();var g=ctx.createGain();g.gain.value=0.0;g.connect(ctx.destination);",
+        "function startAudio(){if(!musicWanted)return;try{if(!audio){var AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;var ctx=new AC();var g=ctx.createGain();g.gain.value=0.0;g.connect(ctx.destination);",
         "  var o1=ctx.createOscillator();o1.type='sine';o1.frequency.value=110;var o2=ctx.createOscillator();o2.type='sine';o2.frequency.value=110.5;",
         "  var o3=ctx.createOscillator();o3.type='sine';o3.frequency.value=165;var g3=ctx.createGain();g3.gain.value=0.5;o3.connect(g3);g3.connect(g);",
         "  o1.connect(g);o2.connect(g);o1.start();o2.start();o3.start();audio={ctx:ctx,g:g};}",
@@ -257,10 +278,16 @@ public final class TwitchAtvWebViewHelper {
         "function stopAudio(){try{if(audio)audio.g.gain.setTargetAtTime(0.0,audio.ctx.currentTime,0.8);}catch(e){}}",
         "window.__morpheOverlayTheme=function(n){try{for(var i=0;i<THEMES.length;i++){if(THEMES[i].name.toLowerCase().indexOf((''+n).toLowerCase())>=0){themeIdx=i;if(root)applyTheme(i);return THEMES[i].name;}}}catch(e){}return null;};",
         "window.__morpheAdOverlay=function(on){try{",
-        " if(on){if(!root)build();themeIdx=(themeIdx+1)%THEMES.length;applyTheme(themeIdx);startTimers();",
+        " if(on){if(!root)build();",
+        "  var saved=-1;try{var sv=localStorage.getItem('morpheScene');if(sv!==null)saved=parseInt(sv,10);}catch(e){}",
+        "  if(saved>=0&&saved<THEMES.length){themeIdx=saved;}else{themeIdx=(themeIdx+1)%THEMES.length;}", // saved pick wins; else rotate
+        "  ctlIdx=themeIdx;applyTheme(themeIdx);highlightDock();startTimers();",
         "  requestAnimationFrame(function(){root.style.opacity='1';});",
+        "  if(keyHandler)window.removeEventListener('keydown',keyHandler,true);keyHandler=onKey;window.addEventListener('keydown',keyHandler,true);",
         "  if(watchdog)clearTimeout(watchdog);watchdog=setTimeout(function(){window.__morpheAdOverlay(false);},120000);",
-        " }else{if(!root)return;root.style.opacity='0';stopTimers();if(watchdog){clearTimeout(watchdog);watchdog=null;}}",
+        " }else{if(!root)return;root.style.opacity='0';stopTimers();",
+        "  if(keyHandler){window.removeEventListener('keydown',keyHandler,true);keyHandler=null;}",
+        "  if(watchdog){clearTimeout(watchdog);watchdog=null;}}",
         "}catch(e){}};",
         "}catch(e){}})();");
 
