@@ -1,0 +1,17 @@
+{
+  "//": "frida-gadget config for YouTube TV capture. Frida loads <soname>.config.so next to the gadget (libgadget.so).",
+  "//interaction": "SCRIPT mode = fully rootless/PC-less: the gadget runs yttv_tap.js itself at process load. The script path is RELATIVE so frida resolves it next to the gadget in the app's own lib dir (the one location an untrusted_app can always read under SELinux). Ship yttv_tap.js as lib/armeabi-v7a/libgadget.script.so.",
+  "interaction": {
+    "type": "script",
+    "path": "libgadget.script.so",
+    "on_change": "reload"
+  },
+
+  "//listen-alternative": "To attach live from your PC instead (more interactive, needs frida-tools on the host), replace the interaction block above with the listen block below, then: frida -U -n com.google.android.youtube.tv  (or the confirmed package id), %resume.",
+  "//interaction_listen": {
+    "type": "listen",
+    "address": "127.0.0.1",
+    "port": 27042,
+    "on_load": "wait"
+  }
+}
