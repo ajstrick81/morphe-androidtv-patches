@@ -42,12 +42,111 @@ split), *not* Java `OkHttp`. Consequences:
 - **You must intercept at the TLS/network layer** (system proxy + user CA), and
   YouTube pins, so expect to defeat pinning too.
 
-That makes **method A (proxy + CA + unpinning)** the primary path and **method B
-(pcap + TLS keylog)** the fallback when pinning is stubborn.
+But there's a better insight for **our** case: the
+[reanalysis](YOUTUBE_TV_SCTE35_REANALYSIS.md) found the manifest + ad-decisioning
+pipeline is **Java (`androidx.media3`) in bytecode.** So we don't have to break
+TLS at all — we can read the `.mpd` and the `adSlotRenderer`/`cuepoint` payloads
+**from inside the app, after Cronet decrypts them.** That's what makes a
+**rootless** capture possible on an unrooted Onn.
 
 ---
 
-## Prerequisites
+## Prior art — we already proved rootless capture on the Onn
+
+The Onn TV is **not rooted**, and it doesn't need to be. Two rootless methods are
+already established in this repo — reuse them, don't reinvent:
+
+- **`testing/pluto-runbook.md`** — rootless MITM: patch the app's
+  `network_security_config.xml` to add `<certificates src="user"
+  overridePins="true">`, then MITM the manifest with an HTTPS-filtering proxy
+  (AdGuard/mitmproxy). The Onn shows an *"Allow debugging?"* prompt on first
+  `adb connect` — accept it. (Caveat there: Pluto has **no** active pinning;
+  YouTube TV **does**, so budget for the `overridePins`/gadget step.)
+- **`experimental/netflix-native-adstrip/frida/README.md`** + **`HANDOFF.md`** —
+  rootless **frida-gadget**: inject `lib/armeabi-v7a/libgadget.so` +
+  `libgadget.config.so` into the APK, add `System.loadLibrary("gadget")`, re-sign,
+  capture in-process. No root, no CA, and it can unpin from inside.
+
+## Choosing a method (rootless first)
+
+| # | Method | Root? | Sees payload? | Best for |
+|---|---|---|---|---|
+| **0** | **In-app instrumentation ("tap") patch** (extends the gadget/RE toolchain) | ❌ no | ✅ full (post-decrypt, in-process) | **Recommended.** We own the APK anyway; log the exact objects we care about. |
+| A | mitmproxy + **user**-CA `overridePins` + gadget unpinning (repackaged APK) | ❌ no | ✅ full | Proven on the Onn (Pluto runbook); use for wire-format flows. |
+| A′ | mitmproxy + **system**-CA + Frida | ✅ yes | ✅ full | Only if you already have a rooted box/AVD. |
+| B | pcap + TLS keylog | ✅ yes (for keylog hook) | ✅ full | Fallback when pinning is stubborn. |
+| C | Router/pcap, **no** decryption | ❌ no | ❌ hosts/sizes only | Coarse complement (ad-CDN volume). |
+
+**On the unrooted Onn, use Method 0 or A.** Both are rootless. Method 0 needs no
+CA and its tap code is a first draft of the suppression patch; Method A is the
+already-proven MITM path. Methods A′/B require root and are here only for
+completeness.
+
+> ⚠️ **Two Onn walls we already hit (from the Netflix `HANDOFF.md`) — expect them
+> for YouTube TV too:**
+> 1. **Preinstalled system app → can't replace on non-root.** If YouTube TV ships
+>    baked into the Onn image, an in-place re-signed install fails
+>    (`INSTALL_FAILED_UPDATE_INCOMPATIBLE` — retained data keeps the stock signer).
+>    Fix that worked before: a **package-rename clone** installed *alongside* stock,
+>    so there's no signer/system collision. Check first:
+>    `adb shell pm list packages -s | grep -iE "youtube|unplugged"` (‑s = system).
+> 2. **Integrity / DRM after re-sign.** Netflix needed a DexGuard `CertCheck`
+>    bypass; YouTube TV enforces **Play Integrity** + **Widevine**, so a re-signed
+>    build may refuse login or drop to L3/SD. Mitigate with a throwaway account,
+>    expect SD, and verify playback *before* trusting the capture. If integrity
+>    blocks playback outright, that's itself a finding → fall back to Method C plus
+>    on-screen ground truth.
+
+---
+
+## Method 0 — In-app instrumentation tap (rootless, recommended)
+
+Idea: add a tiny debug patch that logs, to `logcat`/a file, the three things the
+capture is meant to measure — the **DASH manifest**, the **ad-slot/cuepoint
+payloads**, and **ad-break lifecycle events** — read straight from the Java
+objects the reanalysis located. No proxy, no CA, no pinning.
+
+**Hook points** (pin exact obfuscated methods in the disassembly pass; anchor on
+the strings already found):
+
+| What to log | Anchor (from reanalysis) | dex |
+|---|---|---|
+| Raw `.mpd` / manifest bytes | `MediaPushMediaSource` / media3 DASH manifest parser input | classes3 |
+| SCTE-35 cues as parsed | `application/x-scte35` handler, ExoPlayer scte35 command `toString()` | classes2/3 |
+| Ad-slot selection | `SelectionResult{adSlotRenderers=…}`, `createAdBreakRequestSlotFromCuePoint()` | classes3 |
+| Ad breaks built | `InstreamAdBreak: [breakType, adBreakIndex, offset, originalVideoId]` | classes/classes3 |
+| Fulfillment status | `nativeOnAdBreakFulfillmentStatusChanged` (log the call + args) | native bridge |
+
+**Build/run (rootless, ADB sideload):**
+```bash
+# 0. Onn: Settings → System → About → tap Build 7×; enable ADB debugging.
+adb connect <ONN_IP>:5555
+adb shell pm list packages | grep -iE "youtube|unplugged"   # confirm package id
+
+# 1. Patch: inject the tap (ReVanced-style, this repo's toolchain) OR, quick-n-dirty,
+#    baksmali → add Log.i(...) at the anchors → smali → rebuild.
+# 2. Re-sign ALL splits with the SAME key (base + armeabi_v7a + dpi/lang splits):
+apksigner sign --ks debug.ks base.apk
+apksigner sign --ks debug.ks split_config.armeabi_v7a.apk
+# 3. Install the whole split set atomically:
+adb install-multiple base.apk split_config.armeabi_v7a.apk <other-splits...>
+
+# 4. Capture the tap while you watch a live channel + an ad break:
+adb logcat -v time | grep -E "SCTE|AdSlot|CuePoint|InstreamAdBreak|MPD|Fulfillment" \
+  | tee onn_tap_$(date +%s).log
+```
+Because the tap runs *inside* the decrypted pipeline, the log lines already
+contain the manifest XML and the ad payloads — feed them straight into
+[Decoding the SCTE-35](#decoding-the-scte-35-you-capture) and the
+[decision table](#decision-table-what-the-capture-proves). No TLS work at all.
+
+> This is also why Method 0 is efficient: the "tap" patch **is** the scaffold for
+> the suppression patch — once it shows us the accessor contents, emptying that
+> same accessor is the fix.
+
+---
+
+## Prerequisites (Methods A / A′ / B)
 
 - **Rooted Android TV device or emulator** (rooted AVD `x86_64`, or a rooted
   physical ADB-enabled ATV box). Root is needed to install a **system** CA and to
@@ -62,7 +161,16 @@ That makes **method A (proxy + CA + unpinning)** the primary path and **method B
 
 ---
 
-## Method A — mitmproxy + system CA + Frida unpinning (primary)
+## Method A — mitmproxy + user-CA `overridePins` + gadget unpinning (rootless)
+
+*Rootless variant (recommended for the Onn):* instead of a system CA, patch the
+app's `network_security_config.xml` to trust user certs and override pins
+(`<certificates src="user" overridePins="true">`, per the Pluto runbook), install
+the mitmproxy CA to the **user** store, and — because YouTube pins in native
+Cronet — also run the gadget unpinning script in-process. Steps 1/4/5 below apply
+unchanged; swap the system-CA step (2–3) for the user-CA + `overridePins` patch.
+
+*Root variant (only if you have a rooted box):*
 
 ### 1. Point the device at the proxy
 ```bash
@@ -198,3 +306,10 @@ Record the ratio and the decoded break types in the reanalysis doc's "Next steps
 - Tooling: `threefive` (SCTE-35 decoder), `mitmproxy`, Frida, Wireshark.
 - Internal: [`YOUTUBE_TV_SCTE35_REANALYSIS.md`](YOUTUBE_TV_SCTE35_REANALYSIS.md),
   [`SCTE35_AD_SIGNALING_REFERENCE.md`](SCTE35_AD_SIGNALING_REFERENCE.md).
+- Prior rootless-Onn capture playbooks (reused here):
+  [`../testing/pluto-runbook.md`](../testing/pluto-runbook.md) (user-CA
+  `overridePins` MITM),
+  [`../experimental/netflix-native-adstrip/frida/README.md`](../experimental/netflix-native-adstrip/frida/README.md)
+  (frida-gadget), and
+  [`../experimental/netflix-native-adstrip/HANDOFF.md`](../experimental/netflix-native-adstrip/HANDOFF.md)
+  (system-app / package-rename-clone wall).
