@@ -151,6 +151,119 @@ public final class TwitchAtvWebViewHelper {
         + "}catch(e){}},700);"
         + "}catch(e){}})();";
 
+    /**
+     * Injects the "focus break" ad overlay controller into the player page. This
+     * draws a full-screen, fwocus-style ambient splash (animated background,
+     * greeting, live clock, drifting focus quotes, optional soft ambient audio)
+     * ON TOP of the player during an ad window — instead of leaving the viewer on
+     * the plain black blank segment. It is purely cosmetic: the black+silent TS
+     * still plays underneath so the ad completes server-side and content resumes;
+     * the overlay only covers the black wait with something pleasant.
+     *
+     * <p>The overlay is show/hide-driven from native ad detection (see
+     * {@link #setOverlay}): {@code scrubPlaylist} already knows, per weaver-playlist
+     * poll, whether a {@code twitch-stitched-ad} is present, so we toggle the
+     * overlay on that exact signal rather than any fragile in-page timing. Defines
+     * {@code window.__morpheAdOverlay(bool)} (and {@code window.__morpheOverlayTheme(name)}
+     * for manual theming). Idempotent; a 120 s watchdog auto-hides if an ad-end
+     * poll is ever missed, so the overlay can never get stuck over live content.
+     */
+    private static void injectAdOverlay(WebView view) {
+        if (view == null) return;
+        try {
+            view.evaluateJavascript(AD_OVERLAY_JS, null);
+        } catch (Throwable t) {
+            Log.e(TAG, "ad-overlay injection failed", t);
+        }
+    }
+
+    /** Toggle the in-page focus-break overlay from a background thread (UI-thread hop). */
+    private static void setOverlay(final WebView view, final boolean show) {
+        if (view == null) return;
+        final String js = "if(window.__morpheAdOverlay)window.__morpheAdOverlay(" + show + ");";
+        try {
+            view.post(new Runnable() {
+                @Override public void run() {
+                    try {
+                        view.evaluateJavascript(js, null);
+                    } catch (Throwable t) {
+                        Log.e(TAG, "ad-overlay toggle failed", t);
+                    }
+                }
+            });
+        } catch (Throwable t) {
+            Log.e(TAG, "ad-overlay toggle post failed", t);
+        }
+    }
+
+    // Self-contained "focus break" overlay. Single-quoted JS only (no Java-string
+    // escaping); themes/quotes are pure CSS + generated DOM so nothing is fetched.
+    private static final String AD_OVERLAY_JS = String.join("\n",
+        "(function(){try{",
+        "if(window.__morpheAdOverlay)return;",
+        "var AMBIENT=true;", // soft generated ambient pad during the break; set false to mute
+        "var THEMES=[",
+        " {name:'Cafe Rain',bg:'linear-gradient(160deg,#243b4a,#3a5566 42%,#c9975b)',rain:true,accent:'#ffd9a0'},",
+        " {name:'Midnight',bg:'radial-gradient(120% 120% at 30% 20%,#2a2f6b,#12132b 60%,#05060f)',rain:false,accent:'#9db4ff'},",
+        " {name:'Sunset Lofi',bg:'linear-gradient(160deg,#3a2350,#a24d7a 55%,#f0a860)',rain:false,accent:'#ffd0e0'},",
+        " {name:'Forest',bg:'linear-gradient(160deg,#12241a,#254b34 46%,#7fae6b)',rain:true,accent:'#c8f0b0'}",
+        "];",
+        "var QUOTES=[",
+        " 'Clarity comes from action, not thought.',",
+        " 'The stream will be right back.',",
+        " 'Breathe. Stretch. Sip your coffee.',",
+        " 'Good things are worth a short wait.',",
+        " 'Stay present.'",
+        "];",
+        "var themeIdx=-1;",
+        "var root,bg,brand,quoteEl,greetEl,subEl,clockEl,hintEl,rainWrap;",
+        "var clockTimer=null,quoteTimer=null,watchdog=null,audio=null;",
+        "function el(tag,css){var e=document.createElement(tag);if(css)e.style.cssText=css;return e;}",
+        "function injectKeyframes(){if(document.getElementById('mphe-kf'))return;var st=document.createElement('style');st.id='mphe-kf';",
+        " st.textContent='@keyframes mpheRain{to{transform:translateY(118vh);}}@keyframes mpheSpin{to{transform:rotate(360deg);}}';",
+        " (document.head||document.documentElement).appendChild(st);}",
+        "function build(){",
+        " root=el('div','position:fixed;inset:0;z-index:2147483600;opacity:0;transition:opacity .6s ease;pointer-events:none;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#fff;');",
+        " bg=el('div','position:absolute;inset:0;transition:background 1s ease;');root.appendChild(bg);",
+        " root.appendChild(el('div','position:absolute;inset:0;background:radial-gradient(120% 120% at 50% 40%,transparent 42%,rgba(0,0,0,.55) 100%);'));",
+        " rainWrap=el('div','position:absolute;inset:0;overflow:hidden;');root.appendChild(rainWrap);",
+        " brand=el('div','position:absolute;top:5%;left:4%;font-size:2vw;font-weight:700;letter-spacing:.5px;text-shadow:0 2px 12px rgba(0,0,0,.6);');brand.textContent='morphe';root.appendChild(brand);",
+        " quoteEl=el('div','position:absolute;top:6%;right:4%;max-width:34%;text-align:right;font-size:1.5vw;font-weight:600;font-style:italic;opacity:.92;transition:opacity .4s ease;text-shadow:0 2px 12px rgba(0,0,0,.6);');root.appendChild(quoteEl);",
+        " var c=el('div','position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;width:100%;');",
+        " greetEl=el('div','font-size:2.4vw;font-weight:700;text-shadow:0 2px 16px rgba(0,0,0,.6);');",
+        " subEl=el('div','font-size:1.4vw;font-weight:500;opacity:.85;margin-top:.4vw;text-shadow:0 2px 12px rgba(0,0,0,.6);');",
+        " clockEl=el('div','font-size:9vw;font-weight:800;line-height:1;margin-top:2vw;text-shadow:0 6px 40px rgba(0,0,0,.55);');",
+        " c.appendChild(greetEl);c.appendChild(subEl);c.appendChild(clockEl);root.appendChild(c);",
+        " hintEl=el('div','position:absolute;bottom:6%;left:50%;transform:translateX(-50%);font-size:1.2vw;font-weight:600;opacity:.85;display:flex;align-items:center;gap:.8vw;text-shadow:0 2px 12px rgba(0,0,0,.6);');root.appendChild(hintEl);",
+        " (document.body||document.documentElement).appendChild(root);injectKeyframes();setHint();",
+        "}",
+        "function buildRain(on){if(!rainWrap)return;rainWrap.innerHTML='';if(!on)return;",
+        " for(var i=0;i<90;i++){var left=Math.random()*100,dur=0.5+Math.random()*0.7,delay=Math.random()*2,h=6+Math.random()*10;",
+        "  rainWrap.appendChild(el('span','position:absolute;top:-14%;left:'+left+'%;width:1.5px;height:'+h+'vh;background:linear-gradient(transparent,rgba(255,255,255,.35));animation:mpheRain '+dur+'s linear '+delay+'s infinite;'));}}",
+        "function applyTheme(i){var t=THEMES[i];if(!t)return;bg.style.background=t.bg;brand.style.color=t.accent;buildRain(t.rain);}",
+        "function setHint(){hintEl.innerHTML='';hintEl.appendChild(el('span','width:1.1vw;height:1.1vw;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;display:inline-block;animation:mpheSpin 1s linear infinite;'));var tx=el('span');tx.textContent='Ad break — back to the stream shortly';hintEl.appendChild(tx);}",
+        "function fmt(){var d=new Date(),h=d.getHours(),m=d.getMinutes(),ap=h<12?'AM':'PM',hh=h%12;if(hh===0)hh=12;return hh+':'+(m<10?'0'+m:m)+' '+ap;}",
+        "function greet(){var h=new Date().getHours();if(h<12)return['Good morning!','Morning focus time.'];if(h<18)return['Good afternoon!','Afternoon focus time.'];return['Good evening!','Evening wind-down.'];}",
+        "function startTimers(){var g=greet();greetEl.textContent=g[0];subEl.textContent=g[1];clockEl.textContent=fmt();",
+        " if(clockTimer)clearInterval(clockTimer);clockTimer=setInterval(function(){clockEl.textContent=fmt();},1000);",
+        " var qi=Math.floor(Math.random()*QUOTES.length);quoteEl.textContent=QUOTES[qi];",
+        " if(quoteTimer)clearInterval(quoteTimer);quoteTimer=setInterval(function(){qi=(qi+1)%QUOTES.length;quoteEl.style.opacity='0';setTimeout(function(){quoteEl.textContent=QUOTES[qi];quoteEl.style.opacity='.92';},400);},9000);startAudio();}",
+        "function stopTimers(){if(clockTimer){clearInterval(clockTimer);clockTimer=null;}if(quoteTimer){clearInterval(quoteTimer);quoteTimer=null;}stopAudio();}",
+        "function startAudio(){if(!AMBIENT)return;try{if(!audio){var AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;var ctx=new AC();var g=ctx.createGain();g.gain.value=0.0;g.connect(ctx.destination);",
+        "  var o1=ctx.createOscillator();o1.type='sine';o1.frequency.value=110;var o2=ctx.createOscillator();o2.type='sine';o2.frequency.value=110.5;",
+        "  var o3=ctx.createOscillator();o3.type='sine';o3.frequency.value=165;var g3=ctx.createGain();g3.gain.value=0.5;o3.connect(g3);g3.connect(g);",
+        "  o1.connect(g);o2.connect(g);o1.start();o2.start();o3.start();audio={ctx:ctx,g:g};}",
+        "  if(audio.ctx.resume)audio.ctx.resume();audio.g.gain.setTargetAtTime(0.04,audio.ctx.currentTime,1.5);}catch(e){}}",
+        "function stopAudio(){try{if(audio)audio.g.gain.setTargetAtTime(0.0,audio.ctx.currentTime,0.8);}catch(e){}}",
+        "window.__morpheOverlayTheme=function(n){try{for(var i=0;i<THEMES.length;i++){if(THEMES[i].name.toLowerCase().indexOf((''+n).toLowerCase())>=0){themeIdx=i;if(root)applyTheme(i);return THEMES[i].name;}}}catch(e){}return null;};",
+        "window.__morpheAdOverlay=function(on){try{",
+        " if(on){if(!root)build();themeIdx=(themeIdx+1)%THEMES.length;applyTheme(themeIdx);startTimers();",
+        "  requestAnimationFrame(function(){root.style.opacity='1';});",
+        "  if(watchdog)clearTimeout(watchdog);watchdog=setTimeout(function(){window.__morpheAdOverlay(false);},120000);",
+        " }else{if(!root)return;root.style.opacity='0';stopTimers();if(watchdog){clearTimeout(watchdog);watchdog=null;}}",
+        "}catch(e){}};",
+        "}catch(e){}})();");
+
     private static final class WrappedClient extends WebViewClient {
         private final WebViewClient original;
 
@@ -166,7 +279,7 @@ public final class TwitchAtvWebViewHelper {
                     return blankTsResponse(url);
                 }
                 if (isWeaverPlaylist(url)) {
-                    WebResourceResponse scrubbed = scrubPlaylist(url);
+                    WebResourceResponse scrubbed = scrubPlaylist(view, url);
                     if (scrubbed != null) return scrubbed;
                 }
             } catch (Throwable t) {
@@ -180,12 +293,14 @@ public final class TwitchAtvWebViewHelper {
         public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
             original.onPageStarted(view, url, favicon);
             injectPlaybackFix(view);
+            injectAdOverlay(view);
         }
 
         @Override
         public void onPageFinished(WebView view, String url) {
             original.onPageFinished(view, url);
             injectPlaybackFix(view);
+            injectAdOverlay(view);
         }
 
         @Override
@@ -212,13 +327,17 @@ public final class TwitchAtvWebViewHelper {
         }
     }
 
-    private static WebResourceResponse scrubPlaylist(String url) throws Exception {
+    private static WebResourceResponse scrubPlaylist(WebView view, String url) throws Exception {
         String body = httpGet(url);
         if (body == null) return null; // couldn't fetch — let the WebView load it
         if (!body.contains("twitch-stitched-ad")) {
-            // No ad this poll — serve the content unchanged (single fetch).
+            // No ad this poll — content resumed: hide the focus-break overlay and
+            // serve the content unchanged (single fetch).
+            setOverlay(view, false);
             return m3u8Response(body);
         }
+        // Ad present this poll — show the focus-break overlay over the blanked video.
+        setOverlay(view, true);
         String rewritten = blankAdSegments(body);
         Log.i(TAG, "blanked stitched-ad segments in weaver playlist");
         return m3u8Response(rewritten);
