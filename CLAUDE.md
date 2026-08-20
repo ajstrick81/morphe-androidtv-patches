@@ -18,6 +18,21 @@ because of a deliberate approach:
 - **Expect adversity and keep going.** Apps update, obfuscation changes,
   detection improves — setbacks are the normal cost of this work, not a
   signal to stop.
+- **Stay with the problem longer.** *"It's not that I'm so smart, it's just
+  that I stay with problems longer."* — Albert Einstein. Most breakthroughs
+  here aren't a cleverer trick; they're refusing to stop reading at the point
+  where the obvious answer already looks good enough. "Ads are server-side
+  SSAI, so a client patch can't help" *looks* like a wall — until you stay in
+  the dex long enough to find the client-guided `AdSlotRenderer + CuePoint +
+  AdBreakRequest` seam sitting in bytecode. The problem doesn't get easier;
+  you just don't leave. Call it curious persistence (or stubbornness pointed
+  at the right question) — staying while still asking *"what am I assuming?"*
+  is what turns `strings | grep` on a 31 MB dex into an architecture map.
+  It cuts both ways: staying longer is how you tear down the fake walls **and**
+  how you earn the right to call a real one real (e.g. proving Twitch's native
+  IVS source genuinely is unreachable, rather than assuming it). Knowing the
+  difference between a wall you haven't understood yet and one you have is
+  itself a finding.
 
 When picking up new patching challenges (new apps, broken patches after an
 app update, anti-tamper/detection countermeasures, etc.), default to this
