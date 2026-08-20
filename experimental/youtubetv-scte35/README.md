@@ -51,13 +51,15 @@ cp network_security_config.xml yttv_dec/res/xml/
 apktool b yttv_dec -o yttv.patched.apk
 ```
 
-**Route B — as a resourcePatch (repo-consistent, for later):** model it on
-[`pluto/.../CertificatePinningPatch.kt`](../../patches/src/main/kotlin/ajstrick81/morphe/patches/pluto/misc/security/CertificatePinningPatch.kt):
-`document("res/xml/network_security_config.xml")`, ensure a `<base-config>` and
-inject `<certificates src="user" overridePins="true">` into it **and** every
-existing `<domain-config>`. Use `edit-in-place if present, else create + wire the
-manifest attribute`. (Deferred until we confirm whether YouTube TV ships its own
-NSC and the exact package id.)
+**Route B — as a resourcePatch (repo-consistent):** drafted at
+[`patches/.../youtubetv/misc/security/CertificatePinningPatch.kt`](../../patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/security/CertificatePinningPatch.kt)
+(+ [`shared/Constants.kt`](../../patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/shared/Constants.kt)).
+It writes the authoritative NSC above and repoints the manifest
+`android:networkSecurityConfig`, modeled on the vix patch. **Before building,
+confirm the two placeholders in `Constants.kt`** (package id + a real
+`AppTarget` version) on the Onn — they're marked UNCONFIRMED. Not yet compiled in
+this environment (gradle distribution unreachable behind the proxy); the local
+PC build is its first real compile.
 
 ---
 
