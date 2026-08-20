@@ -147,6 +147,6 @@ measure it on device before assuming it exists or doesn't.
 ---
 
 ## Sources / cross-refs
-- [`SCTE35_AD_SIGNALING_REFERENCE.md`](SCTE35_AD_SIGNALING_REFERENCE.md) — the signaling foundation this pass applied.
+- [`SCTE35_AD_SIGNALING_REFERENCE.md`](SCTE35_AD_SIGNALING_REFERENCE.md) — the signaling foundation this pass applied, built on the SCTE-35 guide by **Andy Francis & Alex Zambelli** (Bitmovin/VidTech).
 - [`TWITCH_AD_SUPPRESSION_BLUEPRINT.md`](TWITCH_AD_SUPPRESSION_BLUEPRINT.md) — contrast: native-source wall + "empty the accessor" prior art.
 - On-disk evidence: `base.apk` dex strings, `split_config.armeabi_v7a.apk` native libs (this analysis).

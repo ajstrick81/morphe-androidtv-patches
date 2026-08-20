@@ -9,9 +9,12 @@ This is a research/architecture reference, not a patch. It exists so we pick the
 right strategy *before* touching bytecode, because everything branches on one
 empirical fact (see [The one question that decides everything](#the-one-question-that-decides-everything)).
 
-Primary source: *"The Essential Guide to SCTE-35"* (Bitmovin/VidTech, 2026
-update), cross-checked against the SCTE-35 spec (ANSI/SCTE 35, last revised
-2023-11-30) and SSAI vendor docs (AWS MediaTailor, Unified Streaming,
+Primary source: ***"The Essential Guide to SCTE-35"* by Andy Francis (Technical
+Content Lead) and Alex Zambelli (Director of Product, Encoding)** — Bitmovin /
+VidTech, 2026 update. Their write-up is the backbone of this reference; the depth
+of their command/descriptor breakdown and manifest examples is what made this
+analysis possible. Cross-checked against the SCTE-35 spec (ANSI/SCTE 35, last
+revised 2023-11-30) and SSAI vendor docs (AWS MediaTailor, Unified Streaming,
 Broadpeak).
 
 ---
