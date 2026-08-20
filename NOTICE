@@ -58,9 +58,26 @@ Modifications:
   are credited for identifying the CLCS interstitial enforcement seam and the
   neutralise-the-operation approach, not for code.
 
+- Flocus (app.flocus.com) — design inspiration
+  The Twitch Android TV "focus break" ad-window overlay (ambient scene,
+  personalized greeting, large clock, drifting focus quote, optional ambient
+  audio) is a visual homage to Flocus's focus/homescreen aesthetic. No Flocus
+  code or assets are used; the overlay is an independent, self-contained
+  implementation (CSS + generated DOM) whose look was inspired by Flocus.
+  Source: https://app.flocus.com/
+
+- fwocus (app.fwocus.com) — free Flocus-style focus screen
+  A free, ad-free alternative to Flocus, shared by its creator on
+  r/ProductivityApps, which independently reinforced this look and feel.
+  Credit to its creator for the free reinterpretation that inspired us.
+  Reddit: https://www.reddit.com/r/ProductivityApps/comments/1sc0cfj/i_built_a_100_free_alternative_to_flocus_no_ads/
+  Source: https://app.fwocus.com/
+
 Modifications:
 - Twitch techniques independently re-derived via dex disassembly of the
   official Twitch Android APK v30.2.2, not copied from source code
 - Adapted to morphe-androidtv-patches Fingerprint/bytecodePatch framework
+- The focus-break overlay is an original implementation inspired by Flocus /
+  fwocus; it contains no third-party code or assets from either.
 
 All original authors retain credit for their contributions.

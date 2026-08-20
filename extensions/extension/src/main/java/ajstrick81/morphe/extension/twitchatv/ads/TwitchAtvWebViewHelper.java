@@ -198,6 +198,13 @@ public final class TwitchAtvWebViewHelper {
 
     // Self-contained "focus break" overlay. Single-quoted JS only (no Java-string
     // escaping); themes/quotes are pure CSS + generated DOM so nothing is fetched.
+    //
+    // Design inspiration — Flocus (app.flocus.com) and fwocus (app.fwocus.com, a
+    // free Flocus-style focus screen shared by its creator on r/ProductivityApps).
+    // This overlay is an ORIGINAL, independent implementation: no code or assets
+    // from either project are used — only a visual homage to their focus/homescreen
+    // aesthetic (ambient scene, greeting, large clock, focus quote, ambient audio).
+    // Full credit in the repo NOTICE file.
     private static final String AD_OVERLAY_JS = String.join("\n",
         "(function(){try{",
         "if(window.__morpheAdOverlay)return;",
@@ -264,7 +271,7 @@ public final class TwitchAtvWebViewHelper {
         "function applyTheme(i){var t=THEMES[i];if(!t)return;bg.style.background=t.bg;brand.style.color=t.accent;buildRain(t.rain);}",
         "function setHint(){hintEl.innerHTML='';hintEl.appendChild(el('span','width:1.1vw;height:1.1vw;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;display:inline-block;animation:mpheSpin 1s linear infinite;'));var tx=el('span');tx.textContent='Ad break — back to the stream shortly';hintEl.appendChild(tx);}",
         "function fmt(){var d=new Date(),h=d.getHours(),m=d.getMinutes(),ap=h<12?'AM':'PM',hh=h%12;if(hh===0)hh=12;return hh+':'+(m<10?'0'+m:m)+' '+ap;}",
-        "function greet(){var h=new Date().getHours();if(h<12)return['Good morning!','Morning focus time.'];if(h<18)return['Good afternoon!','Afternoon focus time.'];return['Good evening!','Evening wind-down.'];}",
+        "function greet(){var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];var d=new Date(),h=d.getHours();var sub=h<12?'Morning focus time.':(h<18?'Afternoon focus time.':'Evening wind-down.');return[days[d.getDay()]+' is on your side!',sub];}",
         "function startTimers(){var g=greet();greetEl.textContent=g[0];subEl.textContent=g[1];clockEl.textContent=fmt();",
         " if(clockTimer)clearInterval(clockTimer);clockTimer=setInterval(function(){clockEl.textContent=fmt();},1000);",
         " var qi=Math.floor(Math.random()*QUOTES.length);quoteEl.textContent=QUOTES[qi];",
