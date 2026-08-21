@@ -321,10 +321,23 @@ Sequence-Number, `acont=primary`, no ad-decision call). Unlike Paramount/MLB DAI
 leanback exposes **no boundary oracle** — so segment blank/replace has no trigger
 to fire on. Signal-based suppression is ruled out.
 
-**Only remaining lever (untested):** client-type spoof `TVHTML5 → WEB` in the
-InnerTube context to try to downgrade playback into the web client's *client-side*
-doubleclick ad flow (which IS host-blockable). Risk: breaks leanback UI/DRM. This
-is the single avenue the capture did not close.
+**Client-type spoof `TVHTML5_UNPLUGGED → WEB` — TESTED 2026-08-21, FAILED.**
+Rewrote `context.client.clientName` on the playback-setup calls (`/next`,
+`/player/get_drm_license`) via the live proxy while leaving `browse` intact. The
+rewrite fired cleanly, but the leanback SABR pipeline **cannot consume a `WEB`
+player response**: `/next` entered a retry storm (10× re-POST) and playback stalled
+on a spinner. Crucially, **no `doubleclick`/`googleads` ad-decision call and no
+`adPlacements`/`playerAds` ever appeared** — the downgrade does not unlock a
+host-blockable client-side ad flow, it just breaks playback. Reverted by relaunching
+without `--proxy`.
+
+**Net: every client-side avenue is now closed.** YTTV leanback live = hardest-class
+SSAI. Reduction is not achievable by any signal, manifest, accessor, host-block, or
+client-spoof lever available to us. The floor is 100% of the served ad load. The
+only theoretical residual (heavy, out-of-scope) would be **content-analysis blind
+skip** (black-frame/silence detection) — but live can't seek past the live edge,
+so even that is inert. Recommend documenting YTTV leanback as **not addressable**
+and closing the effort.
 
 ---
 
