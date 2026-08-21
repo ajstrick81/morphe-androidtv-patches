@@ -295,6 +295,39 @@ Record the ratio and the decoded break types in the reanalysis doc's "Next steps
 
 ---
 
+## RESULT — on-device capture completed 2026-08-21 (Onn 4K, `.211`)
+
+**Verdict: row 3 (pure SSAI) — the residual wall. Client-side ad-reduction
+ceiling = 0% via any signal-based lever.** Captured a full live news commercial
+break through the MITM seam (`MainActivity.h()→0` + mitmproxy CA baked into
+`assets/ssl/certs/8bbe0e8d.0`), decoding both youtubei and googlevideo. Addon:
+[`experimental/youtubetv-scte35/`] + scratch `ytv_scte35.py`. Every candidate
+carriage path was checked and came back **negative**, even mid-break:
+
+| Layer inspected | What it carries | SCTE-35 / ad signal? |
+|---|---|---|
+| `youtubei/v1/player/heartbeat` `playerCueRangeSet` | `EMBARGO` only, 100% of samples | **None** (0 non-EMBARGO cues all session) |
+| UMP part `31 LIVE_METADATA` | media-timeline timestamps + timescale (1e6) | None |
+| UMP part `42 NEXT_REQUEST_POLICY` | next-request tokens, itag, mime | None |
+| UMP parts `47 / 52 / 53` (unnamed) | static timing cfg / rotating seq token / buffer-duration hints | None |
+| **in-media `emsg` box** (scheme `http://youtube.com/streaming/metadata/segment/…`) | `Sequence-Number`, `Ingestion-Walltime-Us`, `Target-Duration-Us`, `Streamable`, `First-Frame-Time-Us`, `Crypto-Period` | **None** — no ad/cue/splice/discontinuity key |
+| `video_id` / `itag` across the break | `dq416d40FWQ`, itag 381+412 unchanged on entry **and** exit | No stream switch — single contiguous SSAI splice |
+
+There is **no standard SCTE-35** (`urn:scte:scte35`) anywhere and **no proprietary
+ad marker** in YouTube's own `emsg` metadata scheme. The ad is byte-indistinguishable
+from content at every client-observable layer (same id/itag/fmt, contiguous
+Sequence-Number, `acont=primary`, no ad-decision call). Unlike Paramount/MLB DAI
+(which expose pod-serving URLs) or Disney/Pluto (client ad-cue accessor), YTTV
+leanback exposes **no boundary oracle** — so segment blank/replace has no trigger
+to fire on. Signal-based suppression is ruled out.
+
+**Only remaining lever (untested):** client-type spoof `TVHTML5 → WEB` in the
+InnerTube context to try to downgrade playback into the web client's *client-side*
+doubleclick ad flow (which IS host-blockable). Risk: breaks leanback UI/DRM. This
+is the single avenue the capture did not close.
+
+---
+
 ## Credits & sources
 - **SCTE-35 signaling foundation:** *"The Essential Guide to SCTE-35"* by
   **Andy Francis** (Technical Content Lead) and **Alex Zambelli** (Director of
