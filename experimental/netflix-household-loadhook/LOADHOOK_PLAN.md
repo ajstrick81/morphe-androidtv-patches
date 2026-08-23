@@ -213,6 +213,27 @@ and/or `unzip -p <built.apk> lib/armeabi-v7a/libgadget.script.so | grep -c <mark
 
 ---
 
+## 5b. Open question — CLCSInterstitialLolomo (github.com/YidirK/Nikflix issue #131)
+
+Nikflix issue #131 (2026-08-19) reports Netflix now fires a SECOND interstitial
+GraphQL `operationName`, `CLCSInterstitialLolomo`, alongside the one this plan's
+§3 already reasons about (`CLCSInterstitialPlaybackAndPostPlayback`). Nikflix is
+a browser extension and filters by `operationName` at the network layer — that
+approach doesn't port here (no network-interception layer in this app, only
+in-memory JS source patching). What's genuinely portable is the *lesson* §3
+already captured: scope narrowly (the redux gate), don't blanket-block.
+
+Unverified: whether `CLCSInterstitialLolomo` feeds the SAME
+`setAccountSharingFlags`/`isNetflixHouseholdAvailable` redux gate `HH_ANCHORS`
+already targets, or is a separate delivery path needing its own seam. Read-only
+recon probe for this (Step 0, ahead of §4 Step 2): `lolomo_probe.js` in this
+directory — scans for both operationName literals, dumps context around each
+hit, and checks proximity to the known HH markers. Run it on-device (adb
+logcat -s LOLOMO) before extending `HH_ANCHORS`; do not guess at a byte patch
+without seeing the actual source shape first.
+
+---
+
 ## 6. Risks / honest scope
 
 - Stripped-symbol hunt may be slow; the eval entrypoint might be inlined or reached via a
