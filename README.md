@@ -61,8 +61,8 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 ### 🎭 HBO Max
 
-1. Open the **[HBO Max (Android TV) listing on APKMirror](https://www.apkmirror.com/apk/warnermedia-direct-llc/max-stream-hbo-tv-movies-android-tv/)** and select version **`7.9.0.61`** (or the fallback `7.7.0.78`)
-   > ⚠️ **Get the right package.** These patches target **`com.wbd.hbomax`** (the "Max: Stream HBO, TV & Movies — Android TV" listing linked above). A Google search may surface a different **`com.wbd.stream`** build — that is a *separate* app variant and the patches will **not** apply to it. Confirm the download shows package `com.wbd.hbomax` before patching.
+1. Search **[APKMirror](https://www.apkmirror.com/?post_type=app_release&searchtype=apk&s=HBO+Max)** for **"HBO Max"** (publisher **WarnerMedia Global Digital Services, LLC**), open the **Android TV** listing, and select version **`7.9.0.61`** (or the fallback `7.7.0.78`)
+   > ⚠️ **Get the right package.** These patches target **`com.wbd.hbomax`**. WarnerMedia also publishes a separate **`com.wbd.stream`** build under a near-identical name/listing, and APKMirror's direct listing URLs for this app have moved between the two before — a hardcoded link here can silently point at the wrong build. Don't trust the listing title alone: open the download page and confirm it shows package **`com.wbd.hbomax`** before downloading.
 2. Download the `.apkm` file
 3. Select it in Morphe Manager
 4. Apply the patch
