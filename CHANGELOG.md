@@ -1,3 +1,10 @@
+## [1.29.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.29.0...v1.29.1) (2026-08-23)
+
+
+### Bug Fixes
+
+* **twitch:** drop phone Skip ads patch so ATV patching no longer aborts ([#126](https://github.com/ajstrick81/morphe-androidtv-patches/issues/126)) ([0f20370](https://github.com/ajstrick81/morphe-androidtv-patches/commit/0f203704002a9b576a859fbe1a7d18b2a60c403b)), closes [#128](https://github.com/ajstrick81/morphe-androidtv-patches/issues/128)
+
 # [1.29.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.28.0...v1.29.0) (2026-08-18)
 
 
