@@ -1,3 +1,10 @@
+## [1.29.2](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.29.1...v1.29.2) (2026-08-23)
+
+
+### Bug Fixes
+
+* **paramount:** self-correct live slate segment duration to smooth breaks ([3f5a6cd](https://github.com/ajstrick81/morphe-androidtv-patches/commit/3f5a6cd822241770c256262503f5dadfeb4e566c))
+
 ## [1.29.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.29.0...v1.29.1) (2026-08-23)
 
 
