@@ -25,7 +25,7 @@ I'm just like you — I enjoy watching TV and movies without being bored and ann
 | 🟢 ViX | `com.univision.prendetv` | Working | `v4.47.2_tv` | 7/11/26 |
 | 🟢 Pluto TV | `tv.pluto.android` | Working — VOD ad breaks removed (video, markers, beacons); LIVE TV ads are broadcast time and remain | `5.66.0-leanback` | 7/3/26 |
 | 🟢 Paramount+ | `com.cbs.ott` | Working — VOD ads removed (movies + TV shows, pre-roll + mid-roll); pause ads removed; live TV preserved | `v16.17.0` | 8/4/26 |
-| 🟢 Twitch | `tv.twitch.android.app` | Working — **Android TV "Starshot" build only**. Removes the on-screen ad-pod overlay/countdown ("Ad · 1 of 3") and blanks stitched (SSAI) ad video on live streams. A brief black gap can remain during a break; a VPN set to Albania is fully ad-free — see notes | `13.0.0.2` | 8/14/26 |
+| 🟢 Twitch | `tv.twitch.android.app` | Working — **Android TV "Starshot" build only; install exactly `13.0.0.2`** (the phone app is not supported — do not use the phone APK). Removes the on-screen ad-pod overlay/countdown ("Ad · 1 of 3") and blanks stitched (SSAI) ad video on live streams. A brief black gap can remain during a break; a VPN set to Albania is fully ad-free — see notes | `13.0.0.2` | 8/22/26 |
 | 🔴 Fox One | **Under Development** | — |
 | 🔴 MLB TV | **Under Development** | — |
 
