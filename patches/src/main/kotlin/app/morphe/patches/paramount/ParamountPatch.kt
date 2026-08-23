@@ -106,10 +106,24 @@ val paramountPatch = bytecodePatch(
         //
         // On-device verified (v16.17.0, live sports break): the branded card
         // renders and the stream recovers cleanly to the game. Full slate segment
-        // coverage observed (every 0..N segment resolves). The tail segment of a
-        // pod already carries its own "?d=" duration query, so "?d=4972" is only
-        // appended when the rewritten URL has no query (avoids a malformed
-        // "?d=..?d=.." double query, which the DAI endpoint rejects with 400).
+        // coverage observed (every 0..N segment resolves).
+        //
+        // Slate duration (smoothness): a slate segment request needs a "?d=<ms>"
+        // duration hint so the DAI endpoint returns a slate chunk that fills the
+        // timeline slot it replaces. Only the *tail* segment of a pod carries its
+        // own "?d=" (the leading full-length segments have no query), so those
+        // leading segments must be given a duration. A hardcoded value drifts if
+        // an event's pod uses a different segment length than the one it was
+        // measured on -> per-segment gap -> slate stutter. Instead this SELF-
+        // CORRECTS: whenever an ad-pod URL carries a real "?d=<n>", n is cached
+        // via System property "morphe.slate.d" (guarded by a digits check so a
+        // non-match never poisons it); query-less leading segments then append
+        // "?d=" + that learned value. Until a real value is seen it falls back to
+        // "4972" (the original constant), so the worst case is byte-identical to
+        // the previously-verified behavior -- it can only match the event's true
+        // segment length better, never worse. The "?" check preserves the tail's
+        // own query untouched (no malformed "?d=..?d=.." double query, which the
+        // DAI endpoint 400s).
         //
         // Register note: intercept() carries the Chain in a high param register
         // (p1), so it is moved to v0 (move-object/from16) before any invoke — a
@@ -142,6 +156,17 @@ val paramountPatch = bytecodePatch(
                 invoke-virtual {v1, v2}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
                 move-result v2
                 if-nez v2, :morphe_continue
+                const-string v2, "^.*[?&]d=([0-9]+).*${'$'}"
+                const-string v3, "${'$'}1"
+                invoke-virtual {v1, v2, v3}, Ljava/lang/String;->replaceFirst(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+                move-result-object v2
+                const-string v3, "[0-9]+"
+                invoke-virtual {v2, v3}, Ljava/lang/String;->matches(Ljava/lang/String;)Z
+                move-result v3
+                if-eqz v3, :morphe_learned
+                const-string v3, "morphe.slate.d"
+                invoke-static {v3, v2}, Ljava/lang/System;->setProperty(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+                :morphe_learned
                 const-string v2, "/([0-9]+)/([0-9]+)/([0-9]+)/([0-9a-fA-F]{32})/"
                 const-string v3, "/${'$'}1/slate/0/${'$'}4/"
                 invoke-virtual {v1, v2, v3}, Ljava/lang/String;->replaceFirst(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
@@ -153,7 +178,12 @@ val paramountPatch = bytecodePatch(
                 new-instance v2, Ljava/lang/StringBuilder;
                 invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
                 invoke-virtual {v2, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-                const-string v3, "?d=4972"
+                const-string v3, "?d="
+                invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+                const-string v3, "morphe.slate.d"
+                const-string v1, "4972"
+                invoke-static {v3, v1}, Ljava/lang/System;->getProperty(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+                move-result-object v3
                 invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
                 invoke-virtual {v2}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
                 move-result-object v1
