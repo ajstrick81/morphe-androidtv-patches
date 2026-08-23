@@ -139,7 +139,7 @@ All patches follow the same general workflow using **Morphe Manager**:
 > 🟡 **Stable fallback: `v16.8.0`.** The previous recommended build. Use it only
 > if you can't get `v16.17.0`.
 
-1. Open the **[Paramount+ (Android TV) listing on APKMirror](https://www.apkmirror.com/apk/cbs-interactive-inc/paramount-2/)** and select version **`16.17.0`** (fallback: `16.8.0`)
+1. Open the **[Paramount+ 16.17.0 (Android TV) release on APKMirror](https://www.apkmirror.com/apk/cbs-interactive-inc/paramount-2/paramount-android-tv-16-17-0-release/paramount-android-tv-16-17-0-2-android-apk-download/)** directly (or search APKMirror for the fallback `16.8.0` if unavailable)
 2. ⚠️ This listing is published by **CBS Interactive, Inc.** — the correct publisher. Do **not** use the separate Viacom-published build.
 3. Download the `.apkm` file
 4. Select it in Morphe Manager
