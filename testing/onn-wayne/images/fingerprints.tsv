@@ -1,0 +1,3 @@
+# build-id fragment<TAB>matching init_boot sha256<TAB>bootloader fastboot state
+UKRB.251217.001.A1	bbdc73fb81ca051ba4c87c0949dffb77997231f69d21a1f758246b12d462f881	alive
+UKRB.260113.027.A1	49278be4ee8467becc7bf57bc6f799447c488812d1ec0db94044430464a98118	dead

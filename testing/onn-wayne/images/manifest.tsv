@@ -1,0 +1,12 @@
+# Known-good firmware images for onn 4K Streaming Stick (2026) / wayne / RTD1325
+#
+# Source: XDA threads by almyz125 (attachments on the unlock + root guides),
+# corroborated by BigEmpty. Every file the toolkit touches MUST hash to one of
+# these values. An unlisted hash is treated as a hard failure, not a warning.
+#
+# role<TAB>sha256<TAB>build<TAB>notes
+init_boot	bbdc73fb81ca051ba4c87c0949dffb77997231f69d21a1f758246b12d462f881	UKRB.251217.001.A1/14612037	Shipping build. Magisk patch target and rollback image.
+init_boot	49278be4ee8467becc7bf57bc6f799447c488812d1ec0db94044430464a98118	UKRB.260113.027.A1/14997501	First OTA build. Only if the stick already updated.
+init_boot	c9c474ae58adcb33dbbdd6a3dccdde8cf9f549a5463b55d3b415c557e2f1a6b5	UKRB.251205.001/14546191	Never shipped whole; inactive-slot leftovers only. Listed for completeness.
+bootcode	e9646ad2e8dd6e7126e159648d654c8dec5e674268a8e0208427f89c7458b3d1	UKRB.251217.001.A1/14612037	FACTORY bootcode. Bootloader fastboot works. Appendix B restore image.
+bootcode	4c0f826fcfe9e45981d3924e10e50ffb1e44e73c259d0cef361beb3503b01d3a	UKRB.260113.027.A1/14997501	OTA bootcode. Bootloader fastboot is DEAD. Do not flash unless reverting to as-updated state.

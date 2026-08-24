@@ -144,3 +144,21 @@ this README, and empty `apks/ out/ tools/ keystore/` folders (via `.gitkeep`).
 **Never committed** (see `.gitignore`): downloaded jars, any `.apk`/`.apkm`,
 your patched output, the signing keystore, and `config/device.env`. APKs are
 copyrighted and keystores/device IPs are yours alone — keep them off GitHub.
+
+---
+
+## 📺 Device firmware: onn 4K Streaming Stick (2026) / wayne / RTD1325
+
+Patching APKs is one half; getting a stick that can run them unrestricted is the
+other. [`testing/onn-wayne/`](onn-wayne/README.md) is a USB-driven toolkit for
+the block-OTA → unlock bootloader → root-with-Magisk process on the 2026 onn
+stick, wrapped around
+[`docs/ONN_WAYNE_RTD1325_ROOT_GUIDE.md`](../docs/ONN_WAYNE_RTD1325_ROOT_GUIDE.md).
+
+It is deliberately separate from the harness above: those scripts assume a
+working TV, these ones assume a sealed box and a one-way door (the first OTA
+permanently removes bootloader unlock). Start with `onn-wayne/onn.sh preflight`
+**before the stick is ever powered on**.
+
+Once the stick is rooted, `onn-wayne/onn.sh install <apk>` puts a Morphe-patched
+APK on it, and the harness above takes over from there.

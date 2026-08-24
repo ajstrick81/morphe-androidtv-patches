@@ -1,0 +1,12 @@
+# Firmware images, the Magisk APK, patched output, and device config are all
+# local-only. Nothing binary or device-identifying belongs in this repo.
+images/*
+!images/manifest.tsv
+!images/fingerprints.tsv
+!images/.gitkeep
+
+work/
+config/wayne.env
+
+*.img
+*.apk
