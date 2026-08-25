@@ -1,3 +1,10 @@
+## [1.29.3](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.29.2...v1.29.3) (2026-08-25)
+
+
+### Bug Fixes
+
+* **hbomax:** enable Block SSAI Ad Origins by default ([#134](https://github.com/ajstrick81/morphe-androidtv-patches/issues/134)) ([df5a33a](https://github.com/ajstrick81/morphe-androidtv-patches/commit/df5a33ac50824010f3264f6cfb4d3e0d31b4a875)), closes [#125](https://github.com/ajstrick81/morphe-androidtv-patches/issues/125) [#125](https://github.com/ajstrick81/morphe-androidtv-patches/issues/125)
+
 ## [1.29.2](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.29.1...v1.29.2) (2026-08-23)
 
 
