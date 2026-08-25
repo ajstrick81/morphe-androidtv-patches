@@ -5,7 +5,7 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patches.shared.compat.AppCompatibilities
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HBO Max — Block SSAI Ad Origins  (OPT-IN, default OFF, EXPERIMENTAL)
+// HBO Max — Block SSAI Ad Origins  (DEFAULT ON — field-verified 7.9.0.61)
 //
 // Reproduces, inside the standalone patched APK, what the community AdGuard Home
 // DNS rule-lists do: strip HBO Max's ads COMPLETELY, not just their markers.
@@ -34,10 +34,14 @@ import app.morphe.patches.shared.compat.AppCompatibilities
 //
 // ⚠️ HONEST SCOPE / RISK: the end effect depends on HBO's resiliency layer
 //   falling back to a clean manifest when the -free origin fails, exactly as it
-//   does for a DNS failure. That is the proven AdGuard behaviour, but the in-app
-//   IOException path must be confirmed on-device to fall back cleanly rather than
-//   stall playback — which is why this ships OPT-IN and separate from the
-//   default-on "Disable Ads" patch until field-verified. The blocked hosts come
+//   does for a DNS failure. That is the proven AdGuard behaviour, and the in-app
+//   IOException path is on-device confirmed to fall back cleanly (Onn 4K, 7.9.0.61:
+//   guard fires, mid-roll markers/ads removed across HBO Original + licensed
+//   theatrical titles). Originally shipped OPT-IN until field-verified; now
+//   promoted to DEFAULT ON — the bytecode timeline patch alone only strips ad
+//   markers (issue #125: users saw all-unskippable stitched ads until this was
+//   enabled). Cost of default-on: a slightly longer initial spinner while the
+//   -free origin is refused and the clean manifest is re-requested. The blocked hosts come
 //   from the ad origins alone (…-free.prd.media.max.com, gmss., fwmrm.net,
 //   dnitv.com); the manifest origin (…h264.io) and QoE telemetry (litix.io,
 //   mediamelon) are intentionally left alone.
@@ -53,8 +57,9 @@ val hboBlockSsaiOriginsPatch = bytecodePatch(
         "segment requests to HBO's SSAI ad origins (amer-free/emea-free.prd.media.max.com, " +
         "gmss, FreeWheel) so the player's resiliency layer falls back to the clean, " +
         "ad-free manifest — removing the stitched ad VIDEO the default Disable Ads patch " +
-        "leaves behind. Opt-in / experimental; verify playback on-device.",
-    default = false,
+        "leaves behind. On by default (field-verified 7.9.0.61); expect a slightly " +
+        "longer initial spinner while the clean manifest is fetched.",
+    default = true,
 ) {
     compatibleWith(AppCompatibilities.HBO_TV)
 
