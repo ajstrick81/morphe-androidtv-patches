@@ -1,3 +1,10 @@
+## [1.29.4](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.29.3...v1.29.4) (2026-08-26)
+
+
+### Bug Fixes
+
+* **hbomax:** revert Block SSAI Ad Origins to opt-in (resume 39999 regression) ([#135](https://github.com/ajstrick81/morphe-androidtv-patches/issues/135)) ([9ad3118](https://github.com/ajstrick81/morphe-androidtv-patches/commit/9ad31181948e33a8a9e3f0ef090b86273c554b36)), closes [#134](https://github.com/ajstrick81/morphe-androidtv-patches/issues/134) [#125](https://github.com/ajstrick81/morphe-androidtv-patches/issues/125)
+
 ## [1.29.3](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.29.2...v1.29.3) (2026-08-25)
 
 
