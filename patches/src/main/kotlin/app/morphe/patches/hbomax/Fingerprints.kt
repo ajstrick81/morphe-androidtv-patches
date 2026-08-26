@@ -120,3 +120,32 @@ internal object DefaultHttpDataSourceOpenFingerprint : Fingerprint(
             }
     },
 )
+
+// ─────────────────────────────────────────────────────────────────────────────
+// media3 DashManifestParser.parse(Uri, InputStream) — parses the .mpd document
+// into a DashManifest. HBO's stitched SSAI manifest embeds the ad breaks as real
+// DASH <Period>s, so laundering the InputStream here (dropping ad periods before
+// the parser sees them) removes the ads at the source — resume-safe, unlike the
+// downstream segment block (see HboManifestFilter / the resume-39999 note).
+//
+// The class is R8-renamed (Loq1; on 7.9.0.61). It is matched by content: the DASH
+// parser is the class carrying the distinctive tag string "MpdParser", and its
+// real parse() (not the synthetic bridge to Object) takes (Uri, InputStream) and
+// its body loads the const-string "MPD" at the document root. Anchoring on those
+// survives the per-build rename. The launder call is injected at index 0 so the
+// swapped InputStream is what XmlPullParser.setInput() consumes.
+// ─────────────────────────────────────────────────────────────────────────────
+
+internal object DashManifestParserParseFingerprint : Fingerprint(
+    custom = { method, _ ->
+        method.name == "parse" &&
+            method.parameterTypes.size == 2 &&
+            method.parameterTypes[0] == "Landroid/net/Uri;" &&
+            method.parameterTypes[1] == "Ljava/io/InputStream;" &&
+            method.implementation?.instructions?.any { instruction ->
+                instruction.opcode == Opcode.CONST_STRING &&
+                    ((instruction as ReferenceInstruction).reference as? StringReference)
+                        ?.string == "MPD"
+            } == true
+    },
+)
