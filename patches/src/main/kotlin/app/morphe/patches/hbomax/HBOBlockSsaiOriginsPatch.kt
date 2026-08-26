@@ -5,7 +5,7 @@ import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patches.shared.compat.AppCompatibilities
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HBO Max — Block SSAI Ad Origins  (DEFAULT ON — field-verified 7.9.0.61)
+// HBO Max — Block SSAI Ad Origins  (OPT-IN, default OFF — see RESUME 39999 note)
 //
 // Reproduces, inside the standalone patched APK, what the community AdGuard Home
 // DNS rule-lists do: strip HBO Max's ads COMPLETELY, not just their markers.
@@ -32,19 +32,30 @@ import app.morphe.patches.shared.compat.AppCompatibilities
 //   requests to those origins, which the ExoPlayer loader surfaces to the same
 //   resiliency layer as a load error (the in-app equivalent of the DNS failure).
 //
-// ⚠️ HONEST SCOPE / RISK: the end effect depends on HBO's resiliency layer
-//   falling back to a clean manifest when the -free origin fails, exactly as it
-//   does for a DNS failure. That is the proven AdGuard behaviour, and the in-app
-//   IOException path is on-device confirmed to fall back cleanly (Onn 4K, 7.9.0.61:
-//   guard fires, mid-roll markers/ads removed across HBO Original + licensed
-//   theatrical titles). Originally shipped OPT-IN until field-verified; now
-//   promoted to DEFAULT ON — the bytecode timeline patch alone only strips ad
-//   markers (issue #125: users saw all-unskippable stitched ads until this was
-//   enabled). Cost of default-on: a slightly longer initial spinner while the
-//   -free origin is refused and the clean manifest is re-requested. The blocked hosts come
-//   from the ad origins alone (…-free.prd.media.max.com, gmss., fwmrm.net,
-//   dnitv.com); the manifest origin (…h264.io) and QoE telemetry (litix.io,
-//   mediamelon) are intentionally left alone.
+// ⚠️ RESUME 39999 REGRESSION — WHY THIS IS OPT-IN / DEFAULT OFF:
+//   This works cleanly only on a FRESH start. The block fails media3 SEGMENT
+//   requests to the -free origin *downstream* — after the manifest is already
+//   ad-stitched. It relies on HBO's `VideoStartFailureRecoveryUseCase`, which
+//   ONLY recovers manifest failures that occur at VIDEO START:
+//     • Fresh start: the -free block trips at startup → start-failure recovery →
+//       swaps to the clean `_fallback.mpd` → no ad periods, no markers, safe.
+//     • RESUME: playback resumes from a bookmark on a clean origin, so the block
+//       does NOT trip at start (0 blocks logged); the session stays on the
+//       ad-stitched manifest. When playback then REACHES a mid-roll — by normal
+//       play OR by seek — the -free request is a POST-start failure that recovery
+//       does not handle → escalates to `39999 ws2 Source error` (FATAL) →
+//       "Couldn't Play Content" error screen. Confirmed on-device 2026-08-25
+//       (Onn 4K, 7.9.0.61): resume + play-into-ad reproducibly errors.
+//   v1.29.3 briefly shipped this DEFAULT ON (#134) and was REVERTED to opt-in
+//   here because resume is the common path. The real fix is an UPSTREAM,
+//   connection-layer host block of the ad-DECISION / ad-TIMELINE hosts
+//   (fwmrm.net, gmss.*.discomax.com) so ads are never stitched — the in-app
+//   equivalent of the AdGuard DNS list, which does NOT hit this because it blocks
+//   those hosts for ALL HTTP clients, upstream of stitching. See memory
+//   hbomax-origin-block-resume-39999-regression. Until that lands, the media3
+//   segment block below is safe only as an opt-in for fresh-start viewing.
+//   Blocked hosts: …-free.prd.media.max.com, gmss., fwmrm.net, dnitv.com; the
+//   manifest origin (…h264.io) and QoE telemetry (litix.io, mediamelon) are left alone.
 //
 // The DefaultHttpDataSource class is R8-renamed per build; it is matched by its
 // "DefaultHttpDataSource" log-tag string + the open(DataSpec)J shape rather than
@@ -57,9 +68,10 @@ val hboBlockSsaiOriginsPatch = bytecodePatch(
         "segment requests to HBO's SSAI ad origins (amer-free/emea-free.prd.media.max.com, " +
         "gmss, FreeWheel) so the player's resiliency layer falls back to the clean, " +
         "ad-free manifest — removing the stitched ad VIDEO the default Disable Ads patch " +
-        "leaves behind. On by default (field-verified 7.9.0.61); expect a slightly " +
-        "longer initial spinner while the clean manifest is fetched.",
-    default = true,
+        "leaves behind. OPT-IN: works on a fresh start, but a RESUMED session that " +
+        "reaches a mid-roll throws a fatal 'Couldn't Play Content' (39999) error, so " +
+        "it is default-off pending the upstream connection-layer fix.",
+    default = false,
 ) {
     compatibleWith(AppCompatibilities.HBO_TV)
 
