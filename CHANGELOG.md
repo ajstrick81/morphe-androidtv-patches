@@ -1,3 +1,10 @@
+# [1.30.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.29.4...v1.30.0) (2026-08-27)
+
+
+### Features
+
+* **hbomax:** prefer HBO's ad-free FALLBACK stream (clean SSAI fix, [#125](https://github.com/ajstrick81/morphe-androidtv-patches/issues/125)) ([#137](https://github.com/ajstrick81/morphe-androidtv-patches/issues/137)) ([70b6dd4](https://github.com/ajstrick81/morphe-androidtv-patches/commit/70b6dd40872f2835ec5b40809bed2180fae714e4))
+
 ## [1.29.4](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.29.3...v1.29.4) (2026-08-26)
 
 
