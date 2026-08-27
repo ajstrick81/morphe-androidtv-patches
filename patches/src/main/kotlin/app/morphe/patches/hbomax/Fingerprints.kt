@@ -120,3 +120,20 @@ internal object DefaultHttpDataSourceOpenFingerprint : Fingerprint(
             }
     },
 )
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PlayableKt.getStreamInfo(Playable, StreamInfo$Type) — resolves a stream by type
+// from the Playable's stream list. An ad-supported Playable carries a PRIMARY
+// (ad-stitched, …/dash.mpd) and a FALLBACK (ad-free, …/<hash>_fallback.mpd on the
+// alternate CDN) stream. Remapping a PRIMARY request to FALLBACK (when present)
+// makes the player load the ad-free manifest from the first request — verified
+// primary/fallback URL pair captured on-device 7.9.0.61. Class name not obfuscated.
+// ─────────────────────────────────────────────────────────────────────────────
+
+internal object GetStreamInfoFingerprint : Fingerprint(
+    custom = { method, _ ->
+        method.definingClass ==
+            "Lcom/discovery/player/common/models/PlayableKt;" &&
+            method.name == "getStreamInfo"
+    },
+)

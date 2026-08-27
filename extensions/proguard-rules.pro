@@ -101,3 +101,10 @@
 -keep class ajstrick81.morphe.extension.hbomax.ads.HboAdOriginFilter {
     public static void guard(java.lang.Object);
 }
+
+# HBO Max — prefer the ad-free FALLBACK stream. HboStreamSelector.preferFallbackType
+# is called only from injected smali (at PlayableKt.getStreamInfo), so R8 would
+# strip it. Keep the class and the entry point.
+-keep class ajstrick81.morphe.extension.hbomax.ads.HboStreamSelector {
+    public static java.lang.Object preferFallbackType(java.lang.Object, java.lang.Object);
+}
