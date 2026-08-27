@@ -101,3 +101,11 @@
 -keep class ajstrick81.morphe.extension.hbomax.ads.HboAdOriginFilter {
     public static void guard(java.lang.Object);
 }
+
+# HBO Max — SSAI manifest launderer. HboManifestFilter.launderManifest(InputStream)
+# is called only from injected smali (invoke-static {} at DashManifestParser.parse),
+# so R8 sees it as unreferenced and would strip it (NoClassDefFoundError at runtime).
+# Keep the class and the launderManifest entry point intact.
+-keep class ajstrick81.morphe.extension.hbomax.ads.HboManifestFilter {
+    public static java.io.InputStream launderManifest(java.io.InputStream);
+}
