@@ -108,3 +108,10 @@
 -keep class ajstrick81.morphe.extension.hbomax.ads.HboStreamSelector {
     public static java.lang.Object preferFallbackType(java.lang.Object, java.lang.Object);
 }
+
+# Paramount+ — LIVE sports slate PTS-aligner. MorpheTsRewriter.alignSlateToLive(String,String)
+# is called only from injected smali (invoke-static {} in AviaNetworkInterceptor.intercept),
+# so R8 sees it as unreferenced and would strip or rename it. Keep the class and the entry point.
+-keep class ajstrick81.morphe.extension.paramount.ads.MorpheTsRewriter {
+    public static byte[] alignSlateToLive(java.lang.String, java.lang.String);
+}
