@@ -38,3 +38,20 @@ branch is unchanged except for the monotonic engine.
 
 Test loop: install `out_disc.aligned.apk` → live break → grep `MorpheLiveAd`/`STRIPMANIFEST` +
 watch VDA INs (flushes gone?) + 6015/3002. Restore shipped build with the production-patched apk.
+
+## RESULT (2026-08-28): FAILED / froze — track closed
+
+On-device live break with `out_disc`:
+- Monotonic slate PTS worked (target advanced 0, 450451, 900902 … monotonic, no per-pod reset).
+- **BUT `stripManifest` never fired** — across 55 variant `.m3u8` requests it found ZERO
+  `#EXT-X-DISCONTINUITY` tags. So the DAI variant playlist does NOT carry inline discontinuity
+  markers; the pod-boundary signal is elsewhere (likely `EXT-X-DISCONTINUITY-SEQUENCE` header
+  and/or the in-segment PTS reset). The strip was a no-op.
+- With nothing stripped, the monotonic PTS alone re-froze the player mid-break (continuous ~2s
+  INs-gap storm) — reconfirming the slate11 finding: the player enforces the per-period timeline;
+  you cannot simply go monotonic.
+
+**Conclusion:** the manifest-strip lever does not apply as hypothesized, and the ~2.6s per-pod
+decoder flush is at the structural ceiling. Shipped v1.30.1 (per-pod PTS align) is the practical
+best. If ever revisited, FIRST capture the actual variant `.m3u8` *body* to see how the pod
+boundary is really signaled before attempting anything.
