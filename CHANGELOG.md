@@ -1,3 +1,10 @@
+## [1.30.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.30.0...v1.30.1) (2026-08-28)
+
+
+### Bug Fixes
+
+* **paramount:** PTS-align live sports slate for smooth playback ([#91](https://github.com/ajstrick81/morphe-androidtv-patches/issues/91)) ([#139](https://github.com/ajstrick81/morphe-androidtv-patches/issues/139)) ([2b336c0](https://github.com/ajstrick81/morphe-androidtv-patches/commit/2b336c05a39cab0537b0e211697b21e8e556e8cb))
+
 # [1.30.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.29.4...v1.30.0) (2026-08-27)
 
 
