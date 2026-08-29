@@ -132,24 +132,26 @@ val paramountPatch = bytecodePatch(
         // original body (which re-initializes its own registers), matching the
         // ":morphe_continue nop" fall-through idiom.
         //
-        // Smoothness (PTS alignment): a pure URL-redirect delivers the slate media
-        // with the SLATE asset's own base PTS, stitched onto the live edge — so each
-        // segment boundary and every 0..N loop is a discontinuity → ExoPlayer's live
-        // adjuster jumps/skips ("choppy", issue #91). Instead of letting okhttp follow
-        // the 302, this proceeds the slate request, then hands the ORIGINAL ad URL and
-        // the slate URL to the MorpheTsRewriter extension, which fetches the slate media
-        // out-of-band, PTS-aligns it onto the real ad slot's live-edge timeline
-        // (deterministic podBase + N*SEG_TICKS, real head fetched once per pod), and
-        // returns the rewritten bytes. Those are delivered as a synthetic 200 (Location
-        // removed so okhttp does not follow the redirect). The result is a smooth branded
-        // card that hands back to live content exactly. On ANY failure alignSlateToLive
-        // returns null and we return the original 302 → okhttp follows it to the slate
-        // exactly like the previous redirect behavior (never worse; never real ads).
+        // Smoothness note (v1.30.2 — reverted the PTS-align hot-path): v1.30.1 tried to
+        // smooth the slate by PTS-aligning it in-interceptor via the MorpheTsRewriter
+        // extension — it proceeded the slate request, then SYNCHRONOUSLY out-of-band
+        // fetched the slate media (up to 16MB) + a real-ad head and byte-rewrote PTS/PCR
+        // on the okhttp call thread the player was blocked on. That validated smooth on a
+        // fast Onn 4K + LAN, but on weaker hardware / slower networks (tester report,
+        // issue #91: TiVo Stream 4K) the added serialized latency starved the player
+        // pipeline → AVIA watchdog bailed to the profile-selection screen at EVERY break
+        // (a hard regression vs the merely-choppy v1.29.2). The null-return failsafe only
+        // covered exceptions, not "succeeded but too slow", so slowness had no safety net.
+        // Until the smoother is re-architected OFF the hot path (warm the slate cache
+        // async at break start + a per-segment deadline fallback), this reverts to the
+        // proven pure URL-redirect: proceed the rewritten slate request and return its 302
+        // so okhttp follows it to the slate media (v1.29.2 behavior — choppy on segment
+        // boundaries, but plays on all hardware, never crashes, never real ads). The
+        // MorpheTsRewriter extension + keep-rule are retained unused for that rework.
         //
         // Register note: intercept() carries the Chain in a high param register (p1),
-        // moved to v0 first. v1 = original ad URL (preserved for the aligner), v4 = slate
-        // URL, v5 = proceeded response; v2/v3/v6/v7/v8 scratch. Non-ad requests fall
-        // through to the original body via ":morphe_continue nop".
+        // moved to v0 first. v1 = ad URL, v4 = slate URL, v5 = proceeded response;
+        // v2/v3 scratch. Non-ad requests fall through via ":morphe_continue nop".
         // ------------------------------------------------------------------
         AviaNetworkInterceptorFingerprint.method.addInstructions(
             0,
@@ -211,33 +213,6 @@ val paramountPatch = bytecodePatch(
                 move-result-object v2
                 invoke-interface {v0, v2}, Lokhttp3/Interceptor${'$'}Chain;->proceed(Lokhttp3/Request;)Lokhttp3/Response;
                 move-result-object v5
-                invoke-static {v1, v4}, Lajstrick81/morphe/extension/paramount/ads/MorpheTsRewriter;->alignSlateToLive(Ljava/lang/String;Ljava/lang/String;)[B
-                move-result-object v6
-                if-eqz v6, :morphe_giveback
-                array-length v7, v6
-                if-eqz v7, :morphe_giveback
-                const/4 v7, 0x0
-                invoke-static {v7, v6}, Lokhttp3/ResponseBody;->create(Lokhttp3/MediaType;[B)Lokhttp3/ResponseBody;
-                move-result-object v6
-                invoke-virtual {v5}, Lokhttp3/Response;->newBuilder()Lokhttp3/Response${'$'}Builder;
-                move-result-object v7
-                const/16 v8, 0xc8
-                invoke-virtual {v7, v8}, Lokhttp3/Response${'$'}Builder;->code(I)Lokhttp3/Response${'$'}Builder;
-                move-result-object v7
-                const-string v8, "OK"
-                invoke-virtual {v7, v8}, Lokhttp3/Response${'$'}Builder;->message(Ljava/lang/String;)Lokhttp3/Response${'$'}Builder;
-                move-result-object v7
-                const-string v8, "Location"
-                invoke-virtual {v7, v8}, Lokhttp3/Response${'$'}Builder;->removeHeader(Ljava/lang/String;)Lokhttp3/Response${'$'}Builder;
-                move-result-object v7
-                const-string v8, "Content-Length"
-                invoke-virtual {v7, v8}, Lokhttp3/Response${'$'}Builder;->removeHeader(Ljava/lang/String;)Lokhttp3/Response${'$'}Builder;
-                move-result-object v7
-                invoke-virtual {v7, v6}, Lokhttp3/Response${'$'}Builder;->body(Lokhttp3/ResponseBody;)Lokhttp3/Response${'$'}Builder;
-                move-result-object v7
-                invoke-virtual {v7}, Lokhttp3/Response${'$'}Builder;->build()Lokhttp3/Response;
-                move-result-object v5
-                :morphe_giveback
                 return-object v5
                 :morphe_continue
                 nop
