@@ -1,3 +1,10 @@
+## [1.30.2](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.30.1...v1.30.2) (2026-08-29)
+
+
+### Bug Fixes
+
+* **paramount:** revert live-slate PTS-align off the player hot path ([#91](https://github.com/ajstrick81/morphe-androidtv-patches/issues/91)) ([#141](https://github.com/ajstrick81/morphe-androidtv-patches/issues/141)) ([b58e5d2](https://github.com/ajstrick81/morphe-androidtv-patches/commit/b58e5d2a8e096da2765a210b48ccb34fba2edc7c))
+
 ## [1.30.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.30.0...v1.30.1) (2026-08-28)
 
 
