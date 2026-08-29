@@ -10,6 +10,7 @@ object AppCompatibilities {
     packageName = "com.cbs.ott",
     appIconColor = 0x0064FF,
     targets = listOf(
+        AppTarget("16.19.0"),
         AppTarget("16.17.0"),
         AppTarget("16.12.0"),
         AppTarget("16.8.0"),
