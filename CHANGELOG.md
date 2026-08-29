@@ -1,3 +1,10 @@
+## [1.30.3](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.30.2...v1.30.3) (2026-08-29)
+
+
+### Bug Fixes
+
+* **paramount:** harden ad-patch fingerprints; verify + support v16.19.0 ([#142](https://github.com/ajstrick81/morphe-androidtv-patches/issues/142)) ([5fcbb59](https://github.com/ajstrick81/morphe-androidtv-patches/commit/5fcbb596f55702f180223857b4dcec06a541b89b))
+
 ## [1.30.2](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.30.1...v1.30.2) (2026-08-29)
 
 
