@@ -5,6 +5,8 @@
  *   v16.8.0  (versionCode 520000464) — com.cbs.ott  [empty-request era, see history]
  *   v16.12.0 (versionCode 520000571) — com.cbs.ott
  *   v16.17.0 (versionCode 520000758) — com.cbs.ott  [current mechanism]
+ *   v16.19.0 (versionCode 520000827) — com.cbs.ott  [fingerprints re-verified;
+ *                                       all three targets unchanged vs 16.17.0]
  *
  * MECHANISM (v16.17.0, on-device verified 2026-08-04):
  *   The AVIA player's DAI resource provider
