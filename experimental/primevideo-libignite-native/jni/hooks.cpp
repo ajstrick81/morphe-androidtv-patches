@@ -206,12 +206,40 @@ void maybe_empty_regolith(void* vbuf, size_t n) {
 inline void maybe_empty_regolith(void*, size_t) {}
 #endif
 
+// DIAGNOSTIC (read-only, build with -DPV_LOG_MANIFEST=1): if the in-gate buffer
+// carries the PRS manifest URL, log a window of it. Used to recover the FULL
+// `ta.vod-dash.../iad_2/...` manifest URL structure so we can judge whether an
+// ad-free sibling exists on the same CDN (in-session URL-rewrite pivot). NEVER
+// writes — reads only, so it can't trip the gzip-CRC (CURL 61) failure mode.
+#if defined(PV_LOG_MANIFEST) && PV_LOG_MANIFEST
+void log_manifest_url(const char* s, size_t n) {
+    static const char* kNeedles[] = { "vod-dash", "playbackUrls", ".mpd", "pv-cdn.net" };
+    for (const char* needle : kNeedles) {
+        size_t nl = ::strlen(needle);
+        if (n < nl) continue;
+        for (size_t i = 0; i + nl <= n; ++i) {
+            if (::memcmp(s + i, needle, nl) != 0) continue;
+            // walk back to the opening quote, forward to the closing quote
+            size_t b = i; while (b > 0 && s[b-1] != '"' && (i - b) < 400) --b;
+            size_t e = i; while (e < n && s[e] != '"' && (e - i) < 600) ++e;
+            char buf[640]; size_t len = e - b; if (len > sizeof(buf)-1) len = sizeof(buf)-1;
+            ::memcpy(buf, s + b, len); buf[len] = '\0';
+            LOGI("PVMANIFEST [%s] n=%zu: %s", needle, n, buf);
+            return; // one per buffer is enough
+        }
+    }
+}
+#endif
+
 void maybe_strip(const void* src, size_t n, const void* caller) {
     g_calls_total.fetch_add(1, std::memory_order_relaxed);
     if (src == nullptr || n < kMinScanLen || n > kMaxScanLen) return;
     if (is_decompress_chunk(n)) { g_skipped_chunk.fetch_add(1, std::memory_order_relaxed); return; }
     maybe_empty_regolith(const_cast<void*>(src), n);   // TV: empty regolith ad-decision response (dst-side)
     g_calls_in_gate.fetch_add(1, std::memory_order_relaxed);
+#if defined(PV_LOG_MANIFEST) && PV_LOG_MANIFEST
+    log_manifest_url(static_cast<const char*>(src), n);
+#endif
 
     uint64_t prev_max = g_max_n.load(std::memory_order_relaxed);
     if (n > prev_max) g_max_n.store(n, std::memory_order_relaxed);
