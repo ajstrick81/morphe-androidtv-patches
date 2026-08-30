@@ -138,3 +138,4 @@ local.properties
 # patch classpath" (frida-gadget is redistributable under its wxWindows licence).
 patches/src/main/resources/netflix/native/**/*.so
 !patches/src/main/resources/netflix/native/armeabi-v7a/libgadget.so
+scratchmlb/
