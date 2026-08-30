@@ -196,8 +196,18 @@ function patchHH(rs){ if(hhDone||!HH_ENABLED)return;
 // Aggressive early HH patcher: the appboot source materialises ~20-30s in. This tight 100ms loop
 // (no gibbon gate, no initial delay) flips the anchors + neuters the MHU screens the instant they
 // appear, to win the parse race by minimising scan latency.
-var _fastHHn=0;
-function fastHH(){ if(!HH_ENABLED||hhDone)return; _fastHHn++;
+// PRIORITY GATE (2026-08-30): fastHH's per-pass 16-MHU Memory.scanSync sweep and fastMASTER's
+// getAdMetadata kill compete on the ONE JS thread. On-device a household build let a PRE-ROLL slip
+// because fastHH starved fastMASTER (MASTER landed +38s vs ~+25s clean). So we YIELD: don't run the
+// heavy HH sweep until masterDone (the pre-roll kill) lands — the household gate doesn't mount until
+// ~+30-44s and the getAdMetadata source appears ~+25s, so deferring the HH scan the few seconds until
+// MASTER lands costs no household runway. Safety fallback: after ~30s of waiting, proceed regardless
+// (if the MASTER anchor is absent this launch there are no ads to protect, and HH is time-critical).
+var _fastHHn=0, _fastHHwait=0;
+function fastHH(){ if(!HH_ENABLED||hhDone)return;
+  if(!masterDone && _fastHHwait<300){ _fastHHwait++; setTimeout(fastHH,100); return; }   // yield to fastMASTER
+  if(_fastHHwait && _fastHHn===0) L('fastHH: released after '+_fastHHwait+' waits (masterDone='+masterDone+')');
+  _fastHHn++;
   try{ var _r=Process.enumerateRanges('rw-'); patchHH(_r); neuterMhuRenders(_r); }catch(e){}
   if(hhDone){ L('fastHH: all HH anchors flipped by pass '+_fastHHn); return; }
   if(_fastHHn<450) setTimeout(fastHH, 100);   // ~45s of tight scanning
