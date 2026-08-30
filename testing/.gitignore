@@ -19,3 +19,6 @@ config/device.env
 *.apks
 *.xapk
 *.mpp
+
+# Junction to D:\morphe-archivepks (large APK library, off-drive)
+apks-archive/
