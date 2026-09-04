@@ -82,9 +82,13 @@ val skipAdsPatch = bytecodePatch(
         // obfuscated in this build, so we route the parsed manifest through
         // stripAdPeriods at DashManifestParser.parse's return (post-download,
         // post-parse — it never touches the streaming OkHttp client, which
-        // black-screens playback when wrapped). It keeps only content periods
-        // (DRM rendition path; both ad flavors — siloh/_ad/creative and head/sign —
-        // are un-DRM'd), re-bases them contiguous, and rebuilds the manifest.
+        // black-screens playback when wrapped). It DROPS the ad periods, detected
+        // positively by the ad-creative URL signature (_ad/creative on the spots,
+        // _ad_bumper on the pod bumper), and keeps everything else (content, DRM'd
+        // or not) — re-bases the kept periods contiguous and rebuilds the manifest.
+        // Positive ad-detection (vs trusting a DRM marker for content) is the issue
+        // #144 fix: some titles serve content un-DRM'd, so the old content==pDRM test
+        // dropped the whole episode to a 10s stub -> skip/restart.
         // Fail-open: any surprise returns the original manifest (ads remain,
         // playback never breaks). See the pluto-adbreaks-suppression note and the
         // PLUTO_VOD_ADREMOVAL_HANDOFF doc for how this seam was mapped.
