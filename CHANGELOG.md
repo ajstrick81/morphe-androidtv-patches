@@ -1,3 +1,10 @@
+## [1.30.4](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.30.3...v1.30.4) (2026-09-04)
+
+
+### Bug Fixes
+
+* **pluto:** detect VOD ads positively so un-DRM'd-content titles don't break ([870e4f1](https://github.com/ajstrick81/morphe-androidtv-patches/commit/870e4f19892aff5f393f01bb6faa2777f8cf7149)), closes [#144](https://github.com/ajstrick81/morphe-androidtv-patches/issues/144)
+
 ## [1.30.3](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.30.2...v1.30.3) (2026-08-29)
 
 
