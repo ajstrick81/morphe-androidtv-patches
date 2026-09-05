@@ -26,6 +26,7 @@ I'm just like you — I enjoy watching TV and movies without being bored and ann
 | 🟢 Pluto TV | `tv.pluto.android` | Working — VOD ad breaks removed (video, markers, beacons); LIVE TV ads are broadcast time and remain | `5.66.0-leanback` | 7/3/26 |
 | 🟢 Paramount+ | `com.cbs.ott` | Working — VOD ads removed (movies + TV shows, pre-roll + mid-roll); pause ads removed; live TV preserved | `v16.17.0` | 8/4/26 |
 | 🟢 Twitch | `tv.twitch.android.app` | Working — **Android TV "Starshot" build only; install exactly `13.0.0.2`** (the phone app is not supported — do not use the phone APK). Removes the on-screen ad-pod overlay/countdown ("Ad · 1 of 3") and blanks stitched (SSAI) ad video on live streams. A brief black gap can remain during a break; a VPN set to Albania is fully ad-free — see notes | `13.0.0.2` | 8/22/26 |
+| 🟢 ESPN | `com.espn.score_center` | Working — **Android TV** only. Live commercial breaks masked with a full-screen slate + audio mute (passthrough SSAI can't be removed, only covered); VOD/scheduled ads suppressed. No DNS required | `6.11.1` | 9/5/26 |
 | 🔴 Fox One | **Under Development** | — |
 | 🔴 MLB TV | **Under Development** | — |
 
@@ -223,6 +224,25 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 1. Open the **[Twitch: Live Streaming (Android TV) 13.0.0.2 release on APKMirror](https://www.apkmirror.com/apk/twitch-interactive-inc/twitch-android-tv/twitch-live-streaming-android-tv-13-0-0-2-release/)** (version **`13.0.0.2`**)
 2. ⚠️ Use this **Android TV** listing and the exact **`13.0.0.2`** "Starshot" build — not the phone or Fire TV build (the patch targets this TV build specifically)
+3. Download the `.apkm` file
+4. Select it in Morphe Manager
+5. Apply the patch
+
+---
+
+### 🏈 ESPN
+
+> 🟢 **Working — Android TV only (`6.11.1`).** ESPN **live** commercial breaks are
+> native **passthrough SSAI** — the ad is stitched into the same stream as the game,
+> so it cannot be removed, only **masked**. This patch detects each break from the
+> stream's own ad markers and covers the player with a full-screen **"Commercial
+> Break" slate** while **muting** the player, then lifts cleanly when live content
+> resumes. **VOD / scheduled** ads are separately suppressed. Optional: drop your own
+> slate image/video on the device, or a `slate_off` marker file to disable the live
+> slate. DNS filters do **not** help here.
+
+1. Open the **[ESPN (Android TV) 6.11.1 release on APKMirror](https://www.apkmirror.com/apk/disney/espn-android-tv/espn-android-tv-6-11-1-release/)** directly (version **`6.11.1`**) — use this link rather than searching, to avoid landing on the phone build or a different version
+2. ⚠️ Use this **Android TV** listing and the exact **`6.11.1`** build (package `com.espn.score_center`)
 3. Download the `.apkm` file
 4. Select it in Morphe Manager
 5. Apply the patch
