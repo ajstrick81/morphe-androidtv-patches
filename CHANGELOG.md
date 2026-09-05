@@ -1,3 +1,10 @@
+# [1.31.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.30.4...v1.31.0) (2026-09-05)
+
+
+### Features
+
+* **espn:** mask live commercial breaks with a slate + mute; suppress VOD ads ([#150](https://github.com/ajstrick81/morphe-androidtv-patches/issues/150)) ([670afa2](https://github.com/ajstrick81/morphe-androidtv-patches/commit/670afa2ae98745d38653d05b190a76e0df44f45d))
+
 ## [1.30.4](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.30.3...v1.30.4) (2026-09-04)
 
 
