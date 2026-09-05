@@ -115,3 +115,23 @@
 -keep class ajstrick81.morphe.extension.paramount.ads.MorpheTsRewriter {
     public static byte[] alignSlateToLive(java.lang.String, java.lang.String);
 }
+
+# ESPN Android TV — live passthrough-SSAI slate overlay helper. Called directly
+# from injected smali via invoke-static {} in PlayerActivity.onResume()/onPause(),
+# MediaPlayerViewModel.attachSession(), sessionListener.onEvent(), and
+# SgaiPlaybackSession.playlistRetrieved().
+-keep class ajstrick81.morphe.extension.espn.ads.EspnAdBreakOverlayHelper {
+    public static void registerActivity(android.app.Activity);
+    public static void unregisterActivity(android.app.Activity);
+    public static void setSession(java.lang.Object);
+    public static void onPlayerEvent(java.lang.Object);
+    public static void onDateRanges(java.lang.Object);
+}
+# EspnAdBreakOverlayHelper reflects the app's suspend DisneyMediaPlaybackSession
+# chain and passes its own kotlin.coroutines.Continuation; keep the coroutine
+# framework classes un-renamed in the extension (R8 was renaming Continuation to
+# `q`, breaking the reflective call).
+-keep class kotlin.coroutines.Continuation { *; }
+-keep class kotlin.coroutines.CoroutineContext { *; }
+-keep class kotlin.coroutines.EmptyCoroutineContext { *; }
+-keep class kotlin.coroutines.jvm.internal.** { *; }
