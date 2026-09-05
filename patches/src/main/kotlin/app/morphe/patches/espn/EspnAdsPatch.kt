@@ -40,7 +40,7 @@ import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 @Suppress("unused")
 val espnAdsPatch = bytecodePatch(
     name = "ESPN Android TV",
-    description = "Suppresses ESPN VOD/scheduled ads (DMP SGAI isAdDisabled) and masks LIVE " +
+    description = "Suppresses ESPN Android TV VOD/scheduled ads (DMP SGAI isAdDisabled) and masks LIVE " +
         "passthrough-SSAI commercial breaks with a full-screen \"Commercial Break\" slate + mute " +
         "(the live ad can't be removed, only covered). Optional slate media is user-supplied local " +
         "files; disable the live slate with a `slate_off` marker file. No DNS dependency.",
