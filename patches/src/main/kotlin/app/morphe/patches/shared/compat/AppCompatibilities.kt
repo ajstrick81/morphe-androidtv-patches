@@ -40,6 +40,15 @@ object AppCompatibilities {
     ),
     )
 
+    val ESPN_TV = Compatibility(
+        name = "ESPN Android TV",
+        packageName = "com.espn.score_center",
+        appIconColor = 0xCC0000,
+        targets = listOf(
+            AppTarget("6.11.1"),
+        ),
+    )
+
     val MLB_TV = Compatibility(
     name = "MLB.tv Android TV",
     packageName = "com.bamnetworks.mobile.android.gameday.atbat",
