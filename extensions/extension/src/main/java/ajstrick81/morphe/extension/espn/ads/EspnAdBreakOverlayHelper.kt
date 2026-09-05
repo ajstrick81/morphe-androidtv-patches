@@ -17,6 +17,10 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import java.lang.ref.WeakReference
 import java.lang.reflect.Method
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.concurrent.Executors
+import org.json.JSONObject
 
 /**
  * ESPN Android TV — "COMMERCIAL BREAK / WE'LL BE RIGHT BACK" slate + mute over
@@ -94,6 +98,20 @@ object EspnAdBreakOverlayHelper {
     private var lastActive = false
     private var mGetZeroPdt: Method? = null
     private var dbgTick = 0
+
+    // Optional live-score strip (opt-in) — see startScoreStrip().
+    private const val SCOREBOARD_MARKER = "scoreboard_on"   // presence = enable; contents = optional "sport/league[,sport/league]"
+    private const val SCORE_REFRESH_MS = 15_000L
+    private val DEFAULT_LEAGUES = listOf("football/college-football", "football/nfl")
+    private val netExecutor = Executors.newSingleThreadExecutor()
+    private var scoreStrip: TextView? = null
+    private var activeLeagues: List<String> = emptyList()
+    private val scoreRefresh = object : Runnable {
+        override fun run() {
+            refreshScoreOnce()
+            if (scoreStrip != null) mainHandler.postDelayed(this, SCORE_REFRESH_MS)
+        }
+    }
 
     // ─────────────────────────── lifecycle / host ──────────────────────────
     @JvmStatic
@@ -304,6 +322,8 @@ object EspnAdBreakOverlayHelper {
         container.addView(overlay, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         overlay.bringToFront()
         videoView?.let { vv -> vv.requestFocus(); vv.start() }
+        // Optional live-score strip over the slate (opt-in via `scoreboard_on`).
+        startScoreStrip(overlay, container.context)
         mute(container.context)
         shown = true
         rearmFailsafe()
@@ -313,6 +333,7 @@ object EspnAdBreakOverlayHelper {
     private fun hideSlateNow(reason: String) {
         mainHandler.removeCallbacks(hideRunnable)
         if (!shown) return
+        stopScoreStrip()
         videoView?.let { try { it.stopPlayback() } catch (_: Throwable) {} }
         videoView = null
         currentOverlay?.let { (it.parent as? ViewGroup)?.removeView(it) }
@@ -346,6 +367,102 @@ object EspnAdBreakOverlayHelper {
             sm.invoke(ac, muted)
         } catch (t: Throwable) {
             if (DEBUG) Log.w(TAG, "setPlayerMuted failed: $t")
+        }
+    }
+
+    // ───────────── optional live-score strip (ESPN public scoreboard API) ─────────────
+    // Endpoint shapes courtesy of the community ESPN hidden-API documentation projects:
+    //   github.com/pseudo-r/Public-ESPN-API, akeaswaran's gist (b48b02f1...),
+    //   cwendt94/espn-api, quantum0813/ESPNSportsAPI, ITIRadio/ESPN-API. Thanks!
+    // Opt-in: drop a `scoreboard_on` file in the app's external files dir. Its contents
+    // (optional) are a comma-separated list of "sport/league" (e.g. "baseball/mlb");
+    // empty = default college-football + nfl. Shows the first in-progress game's
+    // score + clock over the slate, refreshed periodically. Public API, no auth.
+    private fun scoreboardLeagues(context: Context): List<String>? = try {
+        val f = context.getExternalFilesDir(null)?.let { java.io.File(it, SCOREBOARD_MARKER) }
+        if (f == null || !f.exists()) null
+        else f.readText().split(",", "\n").map { it.trim() }.filter { it.isNotEmpty() }
+            .ifEmpty { DEFAULT_LEAGUES }
+    } catch (_: Throwable) { null }
+
+    private fun startScoreStrip(overlay: FrameLayout, context: Context) {
+        val leagues = scoreboardLeagues(context) ?: return
+        activeLeagues = leagues
+        val strip = TextView(context).apply {
+            text = "· LIVE ·"
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER
+            letterSpacing = 0.04f
+            setBackgroundColor(Color.parseColor("#B3000000")) // ~70% black
+            setPadding(dp(context, 26f), dp(context, 10f), dp(context, 26f), dp(context, 10f))
+        }
+        overlay.addView(
+            strip,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP or Gravity.CENTER_HORIZONTAL,
+            ).apply { topMargin = dp(context, 28f) },
+        )
+        strip.bringToFront()
+        scoreStrip = strip
+        mainHandler.post(scoreRefresh)
+    }
+
+    private fun stopScoreStrip() {
+        mainHandler.removeCallbacks(scoreRefresh)
+        scoreStrip = null
+    }
+
+    private fun refreshScoreOnce() {
+        val leagues = activeLeagues
+        netExecutor.execute {
+            val line = fetchScoreLine(leagues)
+            if (line != null) mainHandler.post { scoreStrip?.text = line }
+        }
+    }
+
+    private fun fetchScoreLine(leagues: List<String>): String? {
+        for (lg in leagues) {
+            try {
+                val json = httpGet("https://site.api.espn.com/apis/site/v2/sports/$lg/scoreboard") ?: continue
+                val events = JSONObject(json).optJSONArray("events") ?: continue
+                for (i in 0 until events.length()) {
+                    val comp = events.getJSONObject(i).optJSONArray("competitions")?.optJSONObject(0) ?: continue
+                    val type = comp.optJSONObject("status")?.optJSONObject("type")
+                    if (type?.optString("state") != "in") continue   // in-progress only
+                    val cs = comp.optJSONArray("competitors") ?: continue
+                    var away = ""; var home = ""
+                    for (j in 0 until cs.length()) {
+                        val c = cs.getJSONObject(j)
+                        val ab = c.optJSONObject("team")?.optString("abbreviation") ?: "?"
+                        val sc = c.optString("score", "0")
+                        if (c.optString("homeAway") == "home") home = "$ab $sc" else away = "$ab $sc"
+                    }
+                    val detail = type.optString("shortDetail", "")
+                    return listOf("$away    $home", detail).filter { it.isNotBlank() }.joinToString("   ·   ")
+                }
+            } catch (t: Throwable) {
+                if (DEBUG) Log.w(TAG, "score fetch failed ($lg): $t")
+            }
+        }
+        return null
+    }
+
+    private fun httpGet(urlStr: String): String? {
+        var conn: HttpURLConnection? = null
+        return try {
+            conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 4000; readTimeout = 4000; requestMethod = "GET"
+                setRequestProperty("User-Agent", "Mozilla/5.0")
+            }
+            if (conn.responseCode != 200) null
+            else conn.inputStream.bufferedReader().use { it.readText() }
+        } catch (t: Throwable) {
+            if (DEBUG) Log.w(TAG, "httpGet failed: $t"); null
+        } finally {
+            conn?.disconnect()
         }
     }
 
