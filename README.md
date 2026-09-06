@@ -20,7 +20,7 @@ I'm just like you — I enjoy watching TV and movies without being bored and ann
 | 🟢 Prime Video | `com.amazon.amazonvideo.livingroom` | Working — native in-app ad strip (movies + TV shows), no DNS required | `6.23.23+v15.5.0.70-armv7a` | 7/30/26 |
 | 🟢 Netflix | `com.netflix.ninja` | Working — native in-app ad strip (pre-roll, mid-roll, pause-screen ad), no DNS required. Installs as a **side-by-side clone**; keep stock Netflix installed | `13.0.1 build 25028` | 8/14/26 |
 | 🟢 HBO Max | `com.wbd.hbomax` | Working — **fully ad-free by default** (v1.30.0). The **Prefer Ad-Free Stream** patch loads HBO's own ad-free manifest (its resiliency-fallback stream), so pre-rolls, mid-rolls, and even the ad-tier's stitched **SSAI baked-in ads** are gone — along with the ad markers/countdown — on both fresh start and resume, and it loads faster. No DNS required. (Legacy opt-in **Block SSAI Ad Origins** is now off by default and superseded.) | `v7.9.0.61` | 8/26/26 |
-| 🟢 Peacock | `com.peacocktv.peacockandroid` | Working — no DNS required | `v7.6.100` | 7/16/26 |
+| 🟢 Peacock | `com.peacocktv.peacockandroid` | Working — no DNS required | `v7.8.100` | 9/6/26 |
 | 🟢 Tubi | `com.tubitv` | Working | `v10.28.5000` | 7/20/26 |
 | 🟢 ViX | `com.univision.prendetv` | Working | `v4.47.2_tv` | 7/11/26 |
 | 🟢 Pluto TV | `tv.pluto.android` | Working — VOD ad breaks removed (video, markers, beacons); LIVE TV ads are broadcast time and remain | `5.66.0-leanback` | 7/3/26 |
@@ -187,7 +187,7 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 ### 🦚 Peacock
 
-1. Open the **[Peacock TV (Android TV) 7.6.100 release on APKMirror](https://www.apkmirror.com/apk/peacock-tv-llc/peacock-tv-android-tv/peacock-tv-stream-tv-movies-android-tv-7-6-100-release/)** directly (this is version **`7.6.100`** — use this link rather than searching, which can land on the similarly-named `7.6.10`)
+1. Open the **[Peacock TV (Android TV) 7.8.100 release on APKMirror](https://www.apkmirror.com/apk/peacock-tv-llc/peacock-tv-android-tv/peacock-tv-stream-tv-movies-android-tv-7-8-100-apk-release/)** directly (this is version **`7.8.100`** — use this link rather than searching, which can land on a similarly-named build). Versions **`7.5.102`** and **`7.6.100`** are also supported.
 2. Download the `.apkm` file
 3. Select it in Morphe Manager
 4. Apply the patch
