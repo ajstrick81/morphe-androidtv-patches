@@ -16,7 +16,7 @@ val skipAdsPatch = bytecodePatch(
     description = "Disables ad delivery via Sky SDK surgical targets (FreeWheel DI module " +
         "skip, MediaTailor SSAI layers, ad-break-started no-op), AdBlockInterceptor wiring " +
         "on both the app NetworkingKt OkHttp client and the Sky SDK addon network client, " +
-        "and a WebView shouldInterceptRequest wrapper. Validated v7.5.102 and v7.6.100.",
+        "and a WebView shouldInterceptRequest wrapper. Validated v7.5.102, v7.6.100 and v7.8.100.",
 ) {
     compatibleWith(Constants.COMPATIBILITY)
 
