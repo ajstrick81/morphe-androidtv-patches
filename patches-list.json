@@ -1,5 +1,5 @@
 {
-  "version": "1.33.1",
+  "version": "1.34.0",
   "appNames": {
     "com.fox.foxone": "Fox One Android TV",
     "com.netflix.ninja": "Netflix Android TV",
@@ -61,6 +61,32 @@
           "targets": [
             {
               "version": "6.23.23+v15.5.0.70-armv7a",
+              "experimental": false
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "Clone ESPN",
+      "description": "Installs the patched ESPN as a separate app alongside the stock one, instead of replacing it. Enable this when ESPN is a preinstalled system app that can't be uninstalled — most commonly on Amazon Fire TV, and on some Android TV boxes and Onn devices. The clone gets its own package (suffix .mod), so it shows up as a second ESPN icon and keeps its own settings. Leave OFF if you were able to uninstall the original ESPN first (a normal in-place install is cleaner). Opt-in.",
+      "use": false,
+      "dependencies": [],
+      "compatiblePackages": {
+        "com.espn.score_center": [
+          "6.11.1"
+        ]
+      },
+      "compatibility": [
+        {
+          "name": "ESPN Android TV",
+          "packageName": "com.espn.score_center",
+          "description": null,
+          "appIconColor": 13369344,
+          "targets": [
+            {
+              "version": "6.11.1",
               "experimental": false
             }
           ]
@@ -297,6 +323,32 @@
       "options": []
     },
     {
+      "name": "Disable auto-updates",
+      "description": "Stops the Google Play Store from silently updating ESPN back to the official version and wiping out the patch (which would bring the ads back). Works by setting the patched build's version number far ahead of anything on the Store, so it's treated as already up to date. You can still update deliberately by re-patching a newer APK in Morphe. Recommended to leave ON. Does not apply to mount-installed apps.",
+      "use": true,
+      "dependencies": [],
+      "compatiblePackages": {
+        "com.espn.score_center": [
+          "6.11.1"
+        ]
+      },
+      "compatibility": [
+        {
+          "name": "ESPN Android TV",
+          "packageName": "com.espn.score_center",
+          "description": null,
+          "appIconColor": 13369344,
+          "targets": [
+            {
+              "version": "6.11.1",
+              "experimental": false
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
       "name": "Disney+ Android TV",
       "description": "Removes mid-roll / pre-roll ads and pause ads.",
       "use": true,
@@ -339,9 +391,37 @@
     },
     {
       "name": "ESPN Android TV",
-      "description": "Suppresses ESPN Android TV VOD/scheduled ads (DMP SGAI isAdDisabled) and masks LIVE passthrough-SSAI commercial breaks with a full-screen \"Commercial Break\" slate + mute (the live ad can't be removed, only covered). Optional slate media is user-supplied local files; disable the live slate with a `slate_off` marker file. No DNS dependency.",
+      "description": "Suppresses ESPN Android TV VOD/scheduled ads by forcing DMP SGAI isAdDisabled = true (that one boolean gates all six ad-scheduling sites). Live passthrough-SSAI commercial breaks can't be removed — to MASK them with a slate + mute, also select the \"ESPN live commercial-break slate\" patch. No DNS dependency.",
       "use": true,
       "dependencies": [],
+      "compatiblePackages": {
+        "com.espn.score_center": [
+          "6.11.1"
+        ]
+      },
+      "compatibility": [
+        {
+          "name": "ESPN Android TV",
+          "packageName": "com.espn.score_center",
+          "description": null,
+          "appIconColor": 13369344,
+          "targets": [
+            {
+              "version": "6.11.1",
+              "experimental": false
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "ESPN live commercial-break slate",
+      "description": "Masks LIVE ESPN commercial breaks (which are passthrough SSAI and can't be removed) with a full-screen slate + mute: your own video/image clips, or the animated \"Be Right Back\" overlay with a live countdown. Includes an on-screen D-pad picker to switch styles. Leave OFF if you only want the VOD ad suppression and no on-screen slate during live breaks. Runtime opt-out: a `slate_off` marker file.",
+      "use": true,
+      "dependencies": [
+        "BytecodePatch"
+      ],
       "compatiblePackages": {
         "com.espn.score_center": [
           "6.11.1"

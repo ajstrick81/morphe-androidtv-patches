@@ -1,3 +1,10 @@
+# [1.34.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.33.1...v1.34.0) (2026-09-07)
+
+
+### Features
+
+* **espn:** Clone + Disable auto-updates patches, and make the live slate optional ([#158](https://github.com/ajstrick81/morphe-androidtv-patches/issues/158)) ([2376924](https://github.com/ajstrick81/morphe-androidtv-patches/commit/237692495ea6fec17efb4ec81c26459ba44297f7))
+
 ## [1.33.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.33.0...v1.33.1) (2026-09-07)
 
 
