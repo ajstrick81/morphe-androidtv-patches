@@ -190,7 +190,10 @@ object EspnAdBreakOverlayHelper {
         mainHandler.removeCallbacks(pollRunnable)
         if (session != null) {
             mainHandler.post(pollRunnable)
-            dumpSessionMetadata(session)   // recon: find a reachable event identifier
+            // Delay the recon: getPlaybackSession()/getDataSource() throw if called
+            // synchronously here (session not yet wired). ~4s in, the manifest path
+            // — our known identity signal — is reachable on the dataSource.
+            mainHandler.postDelayed({ this.session?.let { dumpSessionMetadata(it) } }, 4_000L)
         }
     }
 
@@ -202,16 +205,14 @@ object EspnAdBreakOverlayHelper {
     private fun dumpSessionMetadata(s: Any) {
         if (dumpedSession) return
         dumpedSession = true
-        try {
-            logObjIdentifiers("session", s)
-            val ps = byName(s.javaClass, "getPlaybackSession")?.invoke(s)
-            if (ps != null) {
-                logObjIdentifiers("playbackSession", ps)
-                val ds = byName(ps.javaClass, "getDataSource")?.invoke(ps)
-                if (ds != null) logObjIdentifiers("dataSource", ds)
-            }
-        } catch (t: Throwable) {
-            Log.w(TAG, "dumpSessionMetadata failed: $t")
+        // Per-step try so one throwing getter can't abort the whole walk (that
+        // hid playbackSession/dataSource — where the manifest path lives — last time).
+        try { logObjIdentifiers("session", s) } catch (t: Throwable) { Log.w(TAG, "dump session failed: $t") }
+        val ps = try { byName(s.javaClass, "getPlaybackSession")?.invoke(s) } catch (t: Throwable) { Log.w(TAG, "getPlaybackSession failed: $t"); null }
+        if (ps != null) {
+            try { logObjIdentifiers("playbackSession", ps) } catch (t: Throwable) { Log.w(TAG, "dump playbackSession failed: $t") }
+            val ds = try { byName(ps.javaClass, "getDataSource")?.invoke(ps) } catch (t: Throwable) { Log.w(TAG, "getDataSource failed: $t"); null }
+            if (ds != null) try { logObjIdentifiers("dataSource", ds) } catch (t: Throwable) { Log.w(TAG, "dump dataSource failed: $t") }
         }
     }
 
@@ -761,7 +762,10 @@ object EspnAdBreakOverlayHelper {
         return try {
             conn = (URL(urlStr).openConnection() as HttpURLConnection).apply {
                 connectTimeout = 4000; readTimeout = 4000; requestMethod = "GET"
-                setRequestProperty("User-Agent", "Mozilla/5.0")
+                // ESPN's site.api actively 403s browser-family and default-Java
+                // UAs (Mozilla/*, Java/*, empty). It answers 200 for recognized
+                // HTTP-client UAs — okhttp is a legit Android client string.
+                setRequestProperty("User-Agent", "okhttp/4.9.0")
             }
             val code = conn.responseCode
             if (code != 200) {
