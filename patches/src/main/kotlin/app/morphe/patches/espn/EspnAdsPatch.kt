@@ -40,13 +40,12 @@ import com.android.tools.smali.dexlib2.iface.reference.FieldReference
 @Suppress("unused")
 val espnAdsPatch = bytecodePatch(
     name = "ESPN Android TV",
-    description = "Suppresses ESPN Android TV VOD/scheduled ads (DMP SGAI isAdDisabled) and masks LIVE " +
-        "passthrough-SSAI commercial breaks with a full-screen \"Commercial Break\" slate + mute " +
-        "(the live ad can't be removed, only covered). Optional slate media is user-supplied local " +
-        "files; disable the live slate with a `slate_off` marker file. No DNS dependency.",
+    description = "Suppresses ESPN Android TV VOD/scheduled ads by forcing DMP SGAI isAdDisabled = " +
+        "true (that one boolean gates all six ad-scheduling sites). Live passthrough-SSAI " +
+        "commercial breaks can't be removed — to MASK them with a slate + mute, also select the " +
+        "\"ESPN live commercial-break slate\" patch. No DNS dependency.",
 ) {
     compatibleWith(AppCompatibilities.ESPN_TV)
-    extendWith("extensions/extension.mpe")
 
     execute {
         // Locate the `iput-boolean pX, ...->isAdDisabled:Z` in the constructor and
@@ -70,62 +69,6 @@ val espnAdsPatch = bytecodePatch(
         method.addInstructions(
             iputIndex,
             "const/16 v$valueRegister, 0x1",
-        )
-
-        // ─────────────────────────────────────────────────────────────────────
-        // LIVE SLATE OVERLAY (the passthrough-SSAI mask).
-        //
-        // isAdDisabled above kills SCHEDULED interstitials / DATERANGE ads (VOD),
-        // but ESPN live ads are native passthrough SSAI played straight from the
-        // main manifest — isAdDisabled is inert against them (proven on-device).
-        // Since there is no content under a live national commercial, the accepted
-        // ceiling is to COVER the ad with an ESPN-style "COMMERCIAL BREAK / WE'LL
-        // BE RIGHT BACK" slate and mute audio.
-        //
-        // Live passthrough breaks emit NO break/interstitial event (proven on-
-        // device 2026-09-03) — the only truth is "playhead inside a break window",
-        // so the helper computes containment from two feeds (see below).
-        // All-bytecode; no native/segment work.
-        // ─────────────────────────────────────────────────────────────────────
-
-        // 1) Register / unregister the slate's host container (PlayerActivity's
-        //    android.R.id.content root) around the visible lifecycle.
-        PlayerActivityOnResumeFingerprint.method.addInstructions(
-            0,
-            "invoke-static { p0 }, Lajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper;" +
-                "->registerActivity(Landroid/app/Activity;)V",
-        )
-        PlayerActivityOnPauseFingerprint.method.addInstructions(
-            0,
-            "invoke-static { p0 }, Lajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper;" +
-                "->unregisterActivity(Landroid/app/Activity;)V",
-        )
-
-        // 2) Feed A — playhead position. sessionListener.onEvent(event) receives
-        //    every PlaybackSessionEvent; the helper reads the playhead out of
-        //    TimelineProgressEvent and re-evaluates window containment.
-        SessionListenerOnEventFingerprint.method.addInstructions(
-            0,
-            "invoke-static { p1 }, Lajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper;" +
-                "->onPlayerEvent(Ljava/lang/Object;)V",
-        )
-
-        // 3) Feed B1 — capture the DMP session so the helper can poll
-        //    session.getBreaks() (works on streams that surface interstitial
-        //    breaks, e.g. with the on-screen countdown). p1 = the session.
-        AttachSessionFingerprint.method.addInstructions(
-            0,
-            "invoke-static { p1 }, Lajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper;" +
-                "->setSession(Ljava/lang/Object;)V",
-        )
-
-        // 4) Feed B2 — manifest DateRanges. On pure-passthrough streams getBreaks()
-        //    is empty, but SgaiPlaybackSession.playlistRetrieved(DateTime, List<DateRange>)
-        //    always carries the ad windows (absolute dates). p2 = the DateRange list.
-        PlaylistRetrievedFingerprint.method.addInstructions(
-            0,
-            "invoke-static { p2 }, Lajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper;" +
-                "->onDateRanges(Ljava/lang/Object;)V",
         )
     }
 }
