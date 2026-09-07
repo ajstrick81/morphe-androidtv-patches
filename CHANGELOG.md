@@ -1,3 +1,10 @@
+## [1.34.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.34.0...v1.34.1) (2026-09-07)
+
+
+### Bug Fixes
+
+* **pluto:** re-map resume bookmark into ad-stripped timeline ([#147](https://github.com/ajstrick81/morphe-androidtv-patches/issues/147)) ([65efe05](https://github.com/ajstrick81/morphe-androidtv-patches/commit/65efe05b1b2dc04265e46d1737287b6a3afe4d6c)), closes [#2](https://github.com/ajstrick81/morphe-androidtv-patches/issues/2)
+
 # [1.34.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.33.1...v1.34.0) (2026-09-07)
 
 
