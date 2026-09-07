@@ -530,8 +530,12 @@ object EspnAdBreakOverlayHelper {
     private fun fadeAdsHint() {
         if (pickerView != null) return   // viewer is mid-menu; keep the overlay live
         adsHintPill?.let { p -> p.animate().alpha(0f).setDuration(400).withEndAction { p.visibility = View.GONE }.start() }
-        currentOverlay?.let { it.isFocusable = false; it.isFocusableInTouchMode = false; it.setOnKeyListener(null) }
-        Log.d(TAG, "ads hint faded — ad uncovered")
+        // Fade the pill so the ad is visually uncovered, but KEEP the transparent
+        // overlay focusable with its key listener so a D-pad press can still
+        // reopen the picker. Without this, ADS mode trapped the viewer: once the
+        // hint faded there was no way back to the other slate modes.
+        currentOverlay?.let { it.isFocusable = true; it.isFocusableInTouchMode = true; it.requestFocus() }
+        Log.d(TAG, "ads hint faded — ad uncovered (picker still reachable via D-pad)")
     }
 
     private fun hideSlateNow(reason: String) {
