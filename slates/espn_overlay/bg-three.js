@@ -13,8 +13,11 @@
       this.style.width = '100%';
       this.style.height = '100%';
 
-      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: 'high-performance' });
+      // TV is a fixed 1080p panel. Rendering at devicePixelRatio 2 means a
+      // 3840x2160 buffer (4x the fragments) — the main cause of stutter on the
+      // Onn GPU. Pin to 1x; at TV viewing distance it's indistinguishable.
+      renderer.setPixelRatio(1);
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.15;
       renderer.domElement.style.cssText = 'display:block;width:100%;height:100%';
@@ -71,21 +74,21 @@
       });
 
       const ringA = new THREE.Mesh(
-        new THREE.TorusGeometry(5.6, 0.055, 8, 160),
+        new THREE.TorusGeometry(5.6, 0.055, 8, 96),
         new THREE.MeshBasicMaterial({ color: 0xff2338, transparent: true, opacity: 0.5 })
       );
       ringA.rotation.set(1.15, 0.3, 0);
       ringA.position.z = -6;
       scene.add(ringA);
       const ringB = new THREE.Mesh(
-        new THREE.TorusGeometry(8.2, 0.04, 8, 160),
+        new THREE.TorusGeometry(8.2, 0.04, 8, 96),
         new THREE.MeshBasicMaterial({ color: 0x8fa6c4, transparent: true, opacity: 0.22 })
       );
       ringB.rotation.set(1.32, -0.4, 0);
       ringB.position.z = -8;
       scene.add(ringB);
 
-      const N = 420, pos = new Float32Array(N * 3);
+      const N = 240, pos = new Float32Array(N * 3);
       for (let i = 0; i < N; i++) {
         pos[i * 3] = (Math.random() - 0.5) * 34;
         pos[i * 3 + 1] = (Math.random() - 0.5) * 20;
