@@ -91,6 +91,7 @@
 # runtime (compileOnly).
 -keep class ajstrick81.morphe.extension.pluto.ads.PlutoDashManifestProbe {
     public static androidx.media3.exoplayer.dash.manifest.DashManifest stripAdPeriods(androidx.media3.exoplayer.dash.manifest.DashManifest);
+    public static long mapResumePosition(androidx.media3.common.Player, long);
 }
 -dontwarn androidx.media3.exoplayer.dash.manifest.**
 

@@ -5,6 +5,9 @@ import app.morphe.patcher.patch.bytecodePatch
 import ajstrick81.morphe.patches.pluto.shared.Constants
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.reference.MethodReference
 
 @Suppress("unused")
 val skipAdsPatch = bytecodePatch(
@@ -16,7 +19,10 @@ val skipAdsPatch = bytecodePatch(
         "gone); (2) empties the client-side ad-break timeline (StitcherSession.adBreaks — " +
         "the same data AdGuard strips via jsonprune) and no-ops pause ads and clickable-ad " +
         "overlays, removing the markers/UI/beacons. Fail-open: a manifest it can't rewrite " +
-        "is passed through unchanged (ads remain, playback never breaks). LIVE TV ads are " +
+        "is passed through unchanged (ads remain, playback never breaks). A resume bookmark " +
+        "saved in the original (ad-inclusive) timeline is re-mapped into the shortened " +
+        "timeline so resuming a partially-watched episode no longer overshoots the end and " +
+        "autoplay-skips (issue #147). LIVE TV ads are " +
         "real broadcast time in the linear feed and are not removable. Validated on-device, " +
         "5.66.0-leanback.",
 ) {
@@ -102,6 +108,42 @@ val skipAdsPatch = bytecodePatch(
                 """
                     invoke-static {v$manifestRegister}, Lajstrick81/morphe/extension/pluto/ads/PlutoDashManifestProbe;->stripAdPeriods(Landroidx/media3/exoplayer/dash/manifest/DashManifest;)Landroidx/media3/exoplayer/dash/manifest/DashManifest;
                     move-result-object v$manifestRegister
+                """.trimIndent(),
+            )
+        }
+
+        // Hook 6 — resume-overshoot fix (issue #147).
+        //
+        // Hook 5 shortens the VOD content timeline by dropping ad periods. Pluto
+        // restores a "Continue Watching" bookmark in the ORIGINAL (ad-inclusive)
+        // timeline; Avia applies it as the ExoPlayer start position in
+        // AviaPlayer.startExoplayer via a single Player.seekTo(J). If that bookmark
+        // is past the new, shorter duration, ExoPlayer seeks past the end ->
+        // STATE_ENDED -> Pluto autoplay-advances to the next episode (the one-off
+        // skip in #147). The parsed timeline is already live at this point, so we
+        // route the start position through PlutoDashManifestProbe.mapResumePosition,
+        // which re-maps an original-timeline bookmark into stripped-timeline
+        // coordinates (subtracting ad time removed before it) just before the seek.
+        // Fail-open: mapResumePosition returns the original value on anything
+        // unexpected, so resume can never be broken.
+        AviaStartExoplayerFingerprint.method.apply {
+            val instructions = implementation!!.instructions.toList()
+            val seekIndex = instructions.indexOfFirst {
+                it.opcode == Opcode.INVOKE_INTERFACE &&
+                    ((it as? ReferenceInstruction)?.reference as? MethodReference)?.let { ref ->
+                        ref.definingClass == "Landroidx/media3/common/Player;" && ref.name == "seekTo"
+                    } == true
+            }
+            check(seekIndex >= 0) { "skipAdsPatch Hook 6: no Player.seekTo(J) in startExoplayer" }
+            val seek = instructions[seekIndex] as FiveRegisterInstruction
+            val playerReg = seek.registerC       // ExoPlayer being seeked
+            val posLow = seek.registerD          // start position (wide, low half)
+            val posHigh = seek.registerE         // start position (wide, high half)
+            addInstructions(
+                seekIndex,
+                """
+                    invoke-static {v$playerReg, v$posLow, v$posHigh}, Lajstrick81/morphe/extension/pluto/ads/PlutoDashManifestProbe;->mapResumePosition(Landroidx/media3/common/Player;J)J
+                    move-result-wide v$posLow
                 """.trimIndent(),
             )
         }

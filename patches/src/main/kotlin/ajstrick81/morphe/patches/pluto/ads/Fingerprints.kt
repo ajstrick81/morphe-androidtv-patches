@@ -145,6 +145,31 @@ object DashManifestParserParseFingerprint : Fingerprint(
 )
 
 // ---------------------------------------------------------------------------
+// Hook 6 — AviaPlayer.startExoplayer(MediaSource) — the RESUME-SEEK seam (issue #147).
+//
+// Pluto plays through Paramount's Avia SDK on top of media3/ExoPlayer (both
+// un-obfuscated in this build). When the media is loaded, startExoplayer reads the
+// resume bookmark off the media asset (getStartPosition(), in the ORIGINAL
+// ad-inclusive timeline) and applies it with a single
+//   Landroidx/media3/common/Player;->seekTo(J)V
+// call — the ONLY seekTo(J) in this method. Because Hook 5 shortened the content
+// timeline, a bookmark past the new (shorter) duration makes ExoPlayer seek past
+// the end -> STATE_ENDED -> Pluto autoplay-advances to the next episode (the
+// one-off skip in #147). The parsed timeline is already live here, so the player's
+// current (stripped) duration is readable. Hook 6 routes the start position through
+// PlutoDashManifestProbe.mapResumePosition(player, pos) just before that seekTo,
+// re-mapping an original-timeline bookmark into stripped-timeline coordinates.
+// Confirmed present in 5.66.0-leanback:
+//   com/paramount/android/avia/player/player/core/AviaPlayer;
+//     ->startExoplayer(Landroidx/media3/exoplayer/source/MediaSource;)V
+object AviaStartExoplayerFingerprint : Fingerprint(
+    definingClass = "Lcom/paramount/android/avia/player/player/core/AviaPlayer;",
+    name = "startExoplayer",
+    parameters = listOf("Landroidx/media3/exoplayer/source/MediaSource;"),
+    returnType = "V",
+)
+
+// ---------------------------------------------------------------------------
 // Tier 2 candidate — VOD auto-skip (NOT wired; requires on-device validation)
 //
 // Because the ad-break timeline is fully client-side, VOD ads *may* be made
