@@ -73,8 +73,10 @@ object EspnAdBreakOverlayHelper {
     private var currentMode: SlateMode = SlateMode.VIDEO
     private var pickerView: LinearLayout? = null
     private var pickerIndex = 0
+    // CARD/SCOREBOARD are intentionally NOT offered in the picker (CARD stays as
+    // the silent fallback when video/overlay assets are missing).
     private val PICKER_MODES = listOf(
-        SlateMode.VIDEO, SlateMode.CARD, SlateMode.SCOREBOARD, SlateMode.VIDEO_SCORE, SlateMode.OVERLAY, SlateMode.ADS, SlateMode.BLANK,
+        SlateMode.VIDEO, SlateMode.VIDEO_SCORE, SlateMode.OVERLAY, SlateMode.ADS, SlateMode.BLANK,
     )
     private var adsHintPill: View? = null
     private val adsHintFade = Runnable { fadeAdsHint() }
@@ -108,6 +110,9 @@ object EspnAdBreakOverlayHelper {
     private var lastPlayhead = Long.MIN_VALUE       // media-timeline ms
     private var lastPlayheadAbs = Long.MIN_VALUE    // epoch ms (zeroPDT + playhead)
     private var lastActive = false
+    // Remaining ms of the currently-active ad window (matched in evaluate), or -1
+    // when unknown. Feeds the OVERLAY countdown so it reflects the real break.
+    @Volatile private var currentBreakRemainingMs: Long = -1L
     private var mGetZeroPdt: Method? = null
     private var dbgTick = 0
 
@@ -384,18 +389,24 @@ object EspnAdBreakOverlayHelper {
 
     private fun evaluate(playhead: Long, playheadAbs: Long) {
         var active = false
+        var remainingMs = -1L
         val ws = windowStart; val we = windowEnd
         for (i in ws.indices) {
-            if (playhead >= ws[i] - EDGE_TOLERANCE_MS && playhead <= we[i] + EDGE_TOLERANCE_MS) { active = true; break }
+            if (playhead >= ws[i] - EDGE_TOLERANCE_MS && playhead <= we[i] + EDGE_TOLERANCE_MS) {
+                active = true; remainingMs = we[i] - playhead; break
+            }
         }
         if (!active && playheadAbs != Long.MIN_VALUE) {
             synchronized(winStartById) {
                 for ((id, start) in winStartById) {
                     val end = winEndById[id] ?: continue
-                    if (playheadAbs >= start - EDGE_TOLERANCE_MS && playheadAbs <= end + WINDOW_TRAILING_MS) { active = true; break }
+                    if (playheadAbs >= start - EDGE_TOLERANCE_MS && playheadAbs <= end + WINDOW_TRAILING_MS) {
+                        active = true; remainingMs = end - playheadAbs; break
+                    }
                 }
             }
         }
+        currentBreakRemainingMs = remainingMs
         if (active != lastActive) {
             lastActive = active
             Log.d(TAG, "playhead=$playhead abs=$playheadAbs -> ${if (active) "IN AD WINDOW" else "content"}")
@@ -671,7 +682,7 @@ object EspnAdBreakOverlayHelper {
     private fun modeLabel(m: SlateMode): String = when (m) {
         SlateMode.VIDEO -> "Video"; SlateMode.CARD -> "Card"
         SlateMode.SCOREBOARD -> "Scoreboard"; SlateMode.VIDEO_SCORE -> "Video + Score"
-        SlateMode.OVERLAY -> "Be Right Back"
+        SlateMode.OVERLAY -> "Be Right Back (ESPN Ad-Break Overlay)"
         SlateMode.ADS -> "Ads (no slate)"; SlateMode.BLANK -> "Blank"
     }
 
@@ -913,11 +924,19 @@ object EspnAdBreakOverlayHelper {
             Log.w(TAG, "overlay mode: ${OVERLAY_DIR}/index.html not found — falling back to card")
             return null
         }
-        // Optional countdown length; default 150s. The graphic loops at 0 anyway.
-        val secs = try {
+        // Countdown length, in priority order:
+        //   1. the REAL remaining time of the active ad window (evaluate computed
+        //      it from the window end minus the live playhead) — accurate,
+        //   2. an `overlay_secs` marker override,
+        //   3. 150s default.
+        // The graphic loops at 0, and the slate is dismissed when the window ends,
+        // so a slightly-off estimate self-corrects.
+        val realRemainingSecs = currentBreakRemainingMs.let { if (it in 1_000..1_800_000) (it / 1000).toInt() else null }
+        val secs = realRemainingSecs ?: (try {
             context.getExternalFilesDir(null)?.let { java.io.File(it, OVERLAY_SECS_MARKER) }
                 ?.takeIf { it.exists() }?.readText()?.trim()?.toIntOrNull()
-        } catch (_: Throwable) { null } ?: 150
+        } catch (_: Throwable) { null } ?: 150)
+        Log.d(TAG, "overlay countdown secs=$secs (realRemaining=${realRemainingSecs ?: "n/a"})")
         val wv = android.webkit.WebView(context).apply {
             setBackgroundColor(Color.BLACK)
             settings.apply {
