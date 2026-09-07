@@ -1,3 +1,10 @@
+## [1.33.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.33.0...v1.33.1) (2026-09-07)
+
+
+### Bug Fixes
+
+* **espn:** simplify slate picker (Video / Video+Score / Overlay / Blank) ([#157](https://github.com/ajstrick81/morphe-androidtv-patches/issues/157)) ([ea19d5c](https://github.com/ajstrick81/morphe-androidtv-patches/commit/ea19d5c0f4ae88e2cbe41b3dbf5175dc03ffcdea))
+
 # [1.33.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.32.0...v1.33.0) (2026-09-07)
 
 
