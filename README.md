@@ -271,6 +271,15 @@ All Twitch techniques were independently re-derived via dex disassembly and are 
 
 Our "Suppress Household Prompt" patch shares no source code with Nikflix — it is an independent implementation for the Android TV app (`com.netflix.ninja`), located by analyzing our own on-device appboot heap dumps. Nikflix is credited for identifying the enforcement seam. See [NOTICE](NOTICE).
 
+**ESPN live-score slate** (optional scoreboard overlay) uses ESPN's public "hidden" stats API, documented by the community:
+- [pseudo-r/Public-ESPN-API](https://github.com/pseudo-r/Public-ESPN-API)
+- [akeaswaran's ESPN hidden-API gist](https://gist.github.com/akeaswaran/b48b02f1c94f873c6655e7129910fc3b)
+- [cwendt94/espn-api](https://github.com/cwendt94/espn-api)
+- [quantum0813/ESPNSportsAPI](https://github.com/quantum0813/ESPNSportsAPI)
+- [ITIRadio/ESPN-API](https://github.com/ITIRadio/ESPN-API)
+
+We use only the publicly documented, unauthenticated scoreboard endpoints for read-only live scores; no source code from these projects is included. Thanks to their maintainers.
+
 ---
 
 ## 📜 License

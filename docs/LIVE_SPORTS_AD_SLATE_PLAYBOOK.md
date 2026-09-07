@@ -177,7 +177,45 @@ client-IMA, fall back to the §2 manifest-DateRange method.
 
 ---
 
-## 6. Verification: Health Monitor
+## 6b. Optional enhancement — live-data slate (scoreboard overlay)
+
+A slate doesn't have to be a dead card. ESPN's public "hidden" stats API (no auth) lets
+the slate show the **live score/clock during the break** — arguably more useful than a
+plain "be right back" card, and portable across ESPN / FoxOne / MLB.tv since ESPN's API
+covers the same games (and MLB has an equivalent league path).
+
+Public endpoints (GET, no cookie):
+- Scoreboard (find the live game): `https://site.api.espn.com/apis/site/v2/sports/{sport}/{league}/scoreboard`
+  e.g. `football/nfl`, `football/college-football`, `baseball/mlb`, `basketball/nba`.
+- Per-event detail: `.../sports/{sport}/{league}/summary?event={id}` — richer `situation`
+  (down/distance/possession), `probabilities` (win %), `plays` (last play).
+
+Response shape used: `events[].competitions[0]` → `competitors[]`
+(`homeAway`, `team.abbreviation`, `score`) + `status.type.state` (`pre`/`in`/`post`) and
+`status.type.shortDetail` (clock/period/situation text). Filter to `state == "in"`.
+
+Implementation notes (see `EspnAdBreakOverlayHelper` scoreboard prototype):
+- Fetch on a background thread (`HttpURLConnection`, short timeouts), parse with `org.json`
+  (both in the Android framework — no new deps). Refresh every ~15 s while the slate is up.
+- Render a compact strip over the slate: `AWAY 21  HOME 17 · Q3 4:12`.
+- **Event-ID mapping** (the one fiddly part): the stream doesn't tell you which event you're
+  watching. Options, easiest first: show the single in-progress game if there's only one;
+  let the user pin a team/event via a marker file; or match the DMP `ProgramInfo`/airing
+  metadata (title/teams) against the scoreboard. Prototype gates on a `scoreboard_on` marker
+  (opt-in) and shows the first in-progress game (or a league/team from the marker's contents).
+- Portability: swap `{sport}/{league}` per app. MLB.tv → `baseball/mlb` (or statsapi.mlb.com,
+  richer); FoxOne (NFL/college) → the same ESPN football endpoints.
+
+Detection is unaffected — this is pure slate polish layered on the manifest-DateRange trigger.
+
+**Credits.** The ESPN endpoint shapes come from the community's hidden-API documentation:
+[pseudo-r/Public-ESPN-API](https://github.com/pseudo-r/Public-ESPN-API),
+[akeaswaran's gist](https://gist.github.com/akeaswaran/b48b02f1c94f873c6655e7129910fc3b),
+[cwendt94/espn-api](https://github.com/cwendt94/espn-api),
+[quantum0813/ESPNSportsAPI](https://github.com/quantum0813/ESPNSportsAPI),
+[ITIRadio/ESPN-API](https://github.com/ITIRadio/ESPN-API). Thanks to those maintainers.
+
+## 7. Verification: Health Monitor
 Reuse `health-monitor-technique`. The ESPN run script
 (`scratchpad/health_monitor.sh`) babysits ~26 min: per-minute heartbeat (app alive,
 foreground activity), counts break cycles + which media loaded, screenshots each slate,

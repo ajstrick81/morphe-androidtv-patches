@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;600;700&family=Barlow+Semi+Condensed:wght@500;600&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #05070a; overflow: hidden; width: 100%; height: 100%; }
+  #fit { position: fixed; inset: 0; background: #05070a; opacity: 0; transition: opacity .5s ease; }
+  #fit.ready { opacity: 1; }
+  #stage { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; transform-origin: top left; }
+  @keyframes sweep { 0% { transform: translateX(-120%) skewX(-18deg); opacity: 0; } 12% { opacity: .85; } 55% { opacity: .5; } 100% { transform: translateX(220%) skewX(-18deg); opacity: 0; } }
+  @keyframes riseIn { from { transform: translateY(28px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes barPulse { 0%, 100% { box-shadow: 0 0 34px 6px rgba(255,26,50,.45), 0 0 90px 18px rgba(255,26,50,.18); } 50% { box-shadow: 0 0 54px 10px rgba(255,26,50,.7), 0 0 130px 26px rgba(255,26,50,.26); } }
+  @keyframes dotBlink { 0%, 45% { opacity: 1; } 50%, 100% { opacity: .15; } }
+  @media (prefers-reduced-motion: reduce) { .anim { animation: none !important; } }
+</style>
+</head>
+<body>
+<div id="fit"><div id="stage">
+  <div style="position:relative;width:1920px;height:1080px;overflow:hidden;background:radial-gradient(120% 90% at 50% 42%, #131c27 0%, #0a0f16 48%, #04060a 100%);font-family:'Barlow Condensed',sans-serif;color:#fff">
+
+    <div style="position:absolute;inset:0;background:repeating-linear-gradient(115deg, rgba(255,255,255,.022) 0 3px, rgba(255,255,255,0) 3px 88px)"></div>
+
+    <div style="position:absolute;inset:0">
+      <bg-three id="bg" speed="1" style="width:100%;height:100%"></bg-three>
+    </div>
+
+    <div style="position:absolute;inset:0;background:radial-gradient(58% 46% at 50% 46%, rgba(255,35,56,.13) 0%, rgba(255,35,56,0) 70%)"></div>
+
+    <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#ff2338 0%,#ff2338 38%,rgba(255,35,56,.15) 38%,rgba(255,35,56,.15) 100%)"></div>
+
+    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0">
+
+      <div class="anim" style="display:flex;align-items:center;gap:18px;animation:riseIn .7s cubic-bezier(.2,.8,.2,1) both">
+        <div style="width:86px;height:2px;background:linear-gradient(90deg,rgba(255,35,56,0),#ff2338)"></div>
+        <div style="position:relative;padding:12px 26px 10px;background:#ff2338;box-shadow:0 0 40px rgba(255,35,56,.55), inset 0 -3px 0 rgba(0,0,0,.25);clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%)">
+          <div id="brand" style="font-family:Anton,sans-serif;font-size:44px;letter-spacing:.1em;line-height:1;text-transform:uppercase">ESPN</div>
+        </div>
+        <div style="width:86px;height:2px;background:linear-gradient(90deg,#ff2338,rgba(255,35,56,0))"></div>
+      </div>
+
+      <div class="anim" style="position:relative;margin-top:34px;animation:riseIn .8s .08s cubic-bezier(.2,.8,.2,1) both">
+        <div style="font-family:Anton,sans-serif;font-size:112px;line-height:.92;letter-spacing:.055em;text-transform:uppercase;background:linear-gradient(180deg,#ffffff 6%,#e4ecf6 34%,#8d9bad 62%,#46525f 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 8px 26px rgba(0,0,0,.6))">Be Right</div>
+        <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
+          <div class="anim" style="position:absolute;top:-20%;left:0;width:22%;height:140%;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.5),rgba(255,255,255,0));animation:sweep 5.5s 1.2s cubic-bezier(.4,0,.2,1) infinite"></div>
+        </div>
+      </div>
+
+      <div class="anim" style="position:relative;margin-top:-14px;animation:riseIn .9s .16s cubic-bezier(.2,.8,.2,1) both">
+        <div style="font-family:Anton,sans-serif;font-size:196px;line-height:.9;letter-spacing:.02em;transform:scaleX(1.22);transform-origin:center;text-transform:uppercase;background:linear-gradient(180deg,#ff5c6c 0%,#ff2338 40%,#c2081c 100%);-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:0 0 90px rgba(255,35,56,.35)">Back</div>
+        <div style="position:absolute;left:0;right:0;bottom:14px;height:56px;background:radial-gradient(60% 100% at 50% 100%, rgba(255,35,56,.5), rgba(255,35,56,0) 70%);filter:blur(18px);pointer-events:none"></div>
+      </div>
+
+      <div class="anim" style="position:relative;width:1080px;margin-top:8px;animation:riseIn 1s .24s cubic-bezier(.2,.8,.2,1) both">
+        <div style="position:relative;height:22px;background:rgba(255,255,255,.09);overflow:hidden;clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%)">
+          <div id="barfill" style="position:absolute;inset:0 0 0 0;width:100%;background:linear-gradient(90deg,#c2081c,#ff2338 60%,#ff6274);transition:width .9s linear"></div>
+        </div>
+        <div class="anim" style="position:absolute;inset:0;animation:barPulse 2.6s ease-in-out infinite;clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%);pointer-events:none"></div>
+      </div>
+
+      <div class="anim" style="display:flex;align-items:center;gap:40px;margin-top:36px;animation:riseIn 1s .32s cubic-bezier(.2,.8,.2,1) both">
+        <div id="tagline" style="font-family:'Barlow Semi Condensed',sans-serif;font-weight:600;font-size:34px;letter-spacing:.42em;text-transform:uppercase;color:#aebdd0">We'll resume shortly</div>
+        <div style="width:2px;height:36px;background:rgba(255,255,255,.18)"></div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div class="anim" style="width:13px;height:13px;border-radius:50%;background:#ff2338;box-shadow:0 0 18px #ff2338;animation:dotBlink 1.6s steps(1,end) infinite"></div>
+          <div style="font-family:'Barlow Semi Condensed',sans-serif;font-weight:600;font-size:28px;letter-spacing:.3em;color:#7b8ca1;text-transform:uppercase">Back in</div>
+          <div id="clock" style="font-family:'JetBrains Mono',monospace;font-weight:700;font-size:40px;letter-spacing:.04em;color:#fff;min-width:132px;text-shadow:0 0 26px rgba(255,35,56,.55)">2:30</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:0;height:76px;background:linear-gradient(90deg,rgba(6,9,14,.92),rgba(6,9,14,.55) 60%,rgba(6,9,14,0))">
+      <div style="height:100%;display:flex;align-items:center;padding:0 34px;background:#ff2338;font-family:Anton,sans-serif;font-size:30px;letter-spacing:.16em;text-transform:uppercase;clip-path:polygon(0 0,100% 0,calc(100% - 22px) 100%,0 100%)">Up Next</div>
+      <div id="upnext" style="padding:0 40px;font-family:'Barlow Semi Condensed',sans-serif;font-weight:600;font-size:30px;letter-spacing:.24em;text-transform:uppercase;color:#c3d0e0">Live coverage continues</div>
+    </div>
+
+    <div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(100% 78% at 50% 50%, rgba(0,0,0,0) 42%, rgba(0,0,0,.62) 100%)"></div>
+    <div id="scan" style="position:absolute;inset:0;pointer-events:none;opacity:.5;background:repeating-linear-gradient(180deg, rgba(255,255,255,.035) 0 1px, rgba(0,0,0,0) 1px 4px)"></div>
+  </div>
+</div></div>
+
+<script src="three.min.js"></script>
+<script src="bg-three.js"></script>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var brand = q.get('brand'); if (brand) document.getElementById('brand').textContent = brand;
+  var tag = q.get('tag'); if (tag) document.getElementById('tagline').textContent = tag;
+  var up = q.get('up'); if (up) document.getElementById('upnext').textContent = up;
+  var speed = q.get('speed'); if (speed != null) document.getElementById('bg').setAttribute('speed', speed);
+  if (q.get('scanlines') === '0') document.getElementById('scan').style.display = 'none';
+
+  // Scale the fixed 1920x1080 stage to fit the viewport (letterboxed).
+  var stage = document.getElementById('stage');
+  function fit() {
+    var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    var tx = (window.innerWidth - 1920 * s) / 2;
+    var ty = (window.innerHeight - 1080 * s) / 2;
+    stage.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + s + ')';
+  }
+  fit(); window.addEventListener('resize', fit);
+
+  // Countdown: total seconds from ?secs (default 150). Loops at 0 so the
+  // graphic can sit on air indefinitely. Uses an absolute end target so it
+  // stays honest across any throttling.
+  var total = Math.max(1, parseInt(q.get('secs') || '150', 10) || 150);
+  var clockEl = document.getElementById('clock');
+  var barEl = document.getElementById('barfill');
+  var endAt = Date.now() + total * 1000;
+  function tick() {
+    var left = Math.round((endAt - Date.now()) / 1000);
+    if (left <= 0) { endAt = Date.now() + total * 1000; left = total; }
+    var m = Math.floor(left / 60), s = left % 60;
+    clockEl.textContent = m + ':' + String(s).padStart(2, '0');
+    barEl.style.width = ((left / total) * 100) + '%';
+  }
+  tick(); setInterval(tick, 250);
+
+  // Reveal only once fonts + the first 3D frames are up, so the WebView
+  // cold-start assembly (blank -> layout -> first paint) fades in from black
+  // instead of popping. Fallback timer in case fonts never resolve.
+  var reveal = function () { document.getElementById('fit').classList.add('ready'); };
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(function () { setTimeout(reveal, 200); });
+    setTimeout(reveal, 1200);
+  } else {
+    setTimeout(reveal, 600);
+  }
+})();
+</script>
+</body>
+</html>
