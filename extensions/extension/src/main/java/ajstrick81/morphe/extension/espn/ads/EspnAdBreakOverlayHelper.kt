@@ -73,10 +73,12 @@ object EspnAdBreakOverlayHelper {
     private var currentMode: SlateMode = SlateMode.VIDEO
     private var pickerView: LinearLayout? = null
     private var pickerIndex = 0
-    // CARD/SCOREBOARD are intentionally NOT offered in the picker (CARD stays as
-    // the silent fallback when video/overlay assets are missing).
+    // Picker offers only the four viewer-facing choices. CARD/SCOREBOARD are
+    // internal (CARD is the silent fallback when video/overlay assets are
+    // missing); ADS is marker-only (it releases the remote by design, so it must
+    // not be a picker entry or it would strand the viewer).
     private val PICKER_MODES = listOf(
-        SlateMode.VIDEO, SlateMode.VIDEO_SCORE, SlateMode.OVERLAY, SlateMode.ADS, SlateMode.BLANK,
+        SlateMode.VIDEO, SlateMode.VIDEO_SCORE, SlateMode.OVERLAY, SlateMode.BLANK,
     )
     private var adsHintPill: View? = null
     private val adsHintFade = Runnable { fadeAdsHint() }
@@ -530,6 +532,9 @@ object EspnAdBreakOverlayHelper {
     private fun fadeAdsHint() {
         if (pickerView != null) return   // viewer is mid-menu; keep the overlay live
         adsHintPill?.let { p -> p.animate().alpha(0f).setDuration(400).withEndAction { p.visibility = View.GONE }.start() }
+        // Release the overlay so the ad is fully uncovered and the remote returns
+        // to the app. (ADS is no longer offered in the picker — it's marker-only —
+        // so this can't strand a picker user.)
         currentOverlay?.let { it.isFocusable = false; it.isFocusableInTouchMode = false; it.setOnKeyListener(null) }
         Log.d(TAG, "ads hint faded — ad uncovered")
     }
