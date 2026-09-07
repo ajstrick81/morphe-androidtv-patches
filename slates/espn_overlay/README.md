@@ -25,9 +25,15 @@ The patch loads these from the app's external files dir at runtime, so updating
 the design is a push — no APK rebuild:
 
 ```
-adb push index.html   /sdcard/Android/data/com.espn.score_center/files/espn_overlay/index.html
-adb push bg-three.js  /sdcard/Android/data/com.espn.score_center/files/espn_overlay/bg-three.js
-adb push three.min.js /sdcard/Android/data/com.espn.score_center/files/espn_overlay/three.min.js
+D=/sdcard/Android/data/com.espn.score_center/files/espn_overlay
+adb shell mkdir -p $D
+adb push index.html   $D/index.html
+adb push bg-three.js  $D/bg-three.js
+adb push three.min.js $D/three.min.js
+# REQUIRED (Android 11+): a shell-created subdir is 0770 (drwxrws---), so the
+# app (a different uid) can't traverse it and the overlay silently falls back
+# to the card. Make it world-traversable so the app can read the assets:
+adb shell chmod 0775 $D
 ```
 
 Then select **Be Right Back** in the on-screen slate picker, or:
