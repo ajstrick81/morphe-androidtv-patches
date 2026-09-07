@@ -1,3 +1,10 @@
+# [1.33.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.32.0...v1.33.0) (2026-09-07)
+
+
+### Features
+
+* **espn:** animated Be Right Back overlay slate, live-score strip fixes & slate picker ([#156](https://github.com/ajstrick81/morphe-androidtv-patches/issues/156)) ([d085d7b](https://github.com/ajstrick81/morphe-androidtv-patches/commit/d085d7b08c04cf3b2decbee6391bef53795496cf)), closes [hi#performance](https://github.com/hi/issues/performance)
+
 # [1.32.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.31.0...v1.32.0) (2026-09-06)
 
 
