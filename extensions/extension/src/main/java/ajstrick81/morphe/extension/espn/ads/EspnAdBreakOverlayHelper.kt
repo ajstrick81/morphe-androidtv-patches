@@ -64,6 +64,7 @@ object EspnAdBreakOverlayHelper {
     private var activityRef: WeakReference<Activity> = WeakReference(null)
     private var currentOverlay: FrameLayout? = null
     private var videoView: android.widget.VideoView? = null
+    private var overlayWebView: android.webkit.WebView? = null
     private var rotationIndex = 0            // advances each break for media round-robin
     private var didMute = false
     private var shown = false
@@ -73,7 +74,7 @@ object EspnAdBreakOverlayHelper {
     private var pickerView: LinearLayout? = null
     private var pickerIndex = 0
     private val PICKER_MODES = listOf(
-        SlateMode.VIDEO, SlateMode.CARD, SlateMode.SCOREBOARD, SlateMode.VIDEO_SCORE, SlateMode.ADS, SlateMode.BLANK,
+        SlateMode.VIDEO, SlateMode.CARD, SlateMode.SCOREBOARD, SlateMode.VIDEO_SCORE, SlateMode.OVERLAY, SlateMode.ADS, SlateMode.BLANK,
     )
     private var adsHintPill: View? = null
     private val adsHintFade = Runnable { fadeAdsHint() }
@@ -125,7 +126,11 @@ object EspnAdBreakOverlayHelper {
     //   video+score  — user slate clip + live-score strip on top
     private const val SLATE_MODE_MARKER = "slate_mode"
     private const val ADS_HINT_MS = 5_000L   // ADS mode: how long the "slate options" pill lingers
-    private enum class SlateMode { VIDEO, CARD, SCOREBOARD, VIDEO_SCORE, ADS, BLANK }
+    //   overlay      — animated WebView broadcast graphic (Be Right Back +
+    //                  live countdown), loaded from files/espn_overlay/index.html
+    private enum class SlateMode { VIDEO, CARD, SCOREBOARD, VIDEO_SCORE, ADS, BLANK, OVERLAY }
+    private const val OVERLAY_DIR = "espn_overlay"     // holds index.html + bg-three.js + three.min.js
+    private const val OVERLAY_SECS_MARKER = "overlay_secs"  // optional countdown length (seconds)
 
     private fun readSlateMode(context: Context): SlateMode {
         val explicit = try {
@@ -137,6 +142,7 @@ object EspnAdBreakOverlayHelper {
             "scoreboard", "score" -> SlateMode.SCOREBOARD
             "video+score", "video_score", "videoscore", "video-score" -> SlateMode.VIDEO_SCORE
             "video" -> SlateMode.VIDEO
+            "overlay", "webview", "brb" -> SlateMode.OVERLAY
             "ads", "none", "off" -> SlateMode.ADS
             "blank", "black" -> SlateMode.BLANK
             else -> if (scoreboardMarkerPresent(context)) SlateMode.VIDEO_SCORE else SlateMode.VIDEO
@@ -463,6 +469,7 @@ object EspnAdBreakOverlayHelper {
         mainHandler.removeCallbacks(adsHintFade)
         adsHintPill = null
         releaseVideo()
+        releaseWebView()
         currentOverlay?.let { (it.parent as? ViewGroup)?.removeView(it) }
         currentOverlay = null
         currentMode = mode
@@ -524,6 +531,7 @@ object EspnAdBreakOverlayHelper {
         adsHintPill = null
         stopScoreStrip()
         releaseVideo()
+        releaseWebView()
         currentOverlay?.let { (it.parent as? ViewGroup)?.removeView(it) }
         currentOverlay = null
         activityRef.get()?.let { unmute(it) }
@@ -656,12 +664,14 @@ object EspnAdBreakOverlayHelper {
     private fun modeToken(m: SlateMode): String = when (m) {
         SlateMode.VIDEO -> "video"; SlateMode.CARD -> "card"
         SlateMode.SCOREBOARD -> "scoreboard"; SlateMode.VIDEO_SCORE -> "video+score"
+        SlateMode.OVERLAY -> "overlay"
         SlateMode.ADS -> "ads"; SlateMode.BLANK -> "blank"
     }
 
     private fun modeLabel(m: SlateMode): String = when (m) {
         SlateMode.VIDEO -> "Video"; SlateMode.CARD -> "Card"
         SlateMode.SCOREBOARD -> "Scoreboard"; SlateMode.VIDEO_SCORE -> "Video + Score"
+        SlateMode.OVERLAY -> "Be Right Back"
         SlateMode.ADS -> "Ads (no slate)"; SlateMode.BLANK -> "Blank"
     }
 
@@ -879,6 +889,58 @@ object EspnAdBreakOverlayHelper {
         videoView = null
     }
 
+    // Clean WebView teardown — stop JS/RAF, detach, destroy. Mirrors releaseVideo.
+    private fun releaseWebView() {
+        overlayWebView?.let { wv ->
+            try {
+                (wv.parent as? ViewGroup)?.removeView(wv)
+                wv.stopLoading()
+                wv.loadUrl("about:blank")
+                wv.onPause()
+                wv.destroy()
+            } catch (_: Throwable) {}
+        }
+        overlayWebView = null
+    }
+
+    // OVERLAY mode: the animated "Be Right Back" broadcast graphic rendered in a
+    // WebView from files/espn_overlay/index.html (HTML + three.js + live countdown).
+    // Returns null if the assets aren't present, so the caller falls back to the card.
+    private fun buildOverlay(context: Context): FrameLayout? {
+        val dir = try { context.getExternalFilesDir(null)?.let { java.io.File(it, OVERLAY_DIR) } } catch (_: Throwable) { null }
+        val index = dir?.let { java.io.File(it, "index.html") }
+        if (index == null || !index.exists()) {
+            Log.w(TAG, "overlay mode: ${OVERLAY_DIR}/index.html not found — falling back to card")
+            return null
+        }
+        // Optional countdown length; default 150s. The graphic loops at 0 anyway.
+        val secs = try {
+            context.getExternalFilesDir(null)?.let { java.io.File(it, OVERLAY_SECS_MARKER) }
+                ?.takeIf { it.exists() }?.readText()?.trim()?.toIntOrNull()
+        } catch (_: Throwable) { null } ?: 150
+        val wv = android.webkit.WebView(context).apply {
+            setBackgroundColor(Color.BLACK)
+            settings.apply {
+                javaScriptEnabled = true
+                domStorageEnabled = true
+                allowFileAccess = true
+                mediaPlaybackRequiresUserGesture = false
+                @Suppress("DEPRECATION") allowFileAccessFromFileURLs = true
+                @Suppress("DEPRECATION") allowUniversalAccessFromFileURLs = true
+            }
+            webChromeClient = android.webkit.WebChromeClient()
+            isFocusable = false; isFocusableInTouchMode = false
+        }
+        overlayWebView = wv
+        val url = "file://${index.absolutePath}?secs=$secs"
+        wv.loadUrl(url)
+        Log.d(TAG, "overlay webview loading $url")
+        return FrameLayout(context).apply {
+            setBackgroundColor(Color.BLACK); isClickable = true; isFocusable = true
+            addView(wv, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        }
+    }
+
     // Base layer for the current break, chosen by mode. CARD/SCOREBOARD skip the
     // video entirely (SCOREBOARD gets the score strip added over the card by the
     // caller); VIDEO/VIDEO_SCORE play user media, falling back to the card when
@@ -888,6 +950,7 @@ object EspnAdBreakOverlayHelper {
             setBackgroundColor(Color.BLACK); isClickable = true; isFocusable = true
         }
         if (mode == SlateMode.CARD || mode == SlateMode.SCOREBOARD) return buildCard(context)
+        if (mode == SlateMode.OVERLAY) return buildOverlay(context) ?: buildCard(context)
 
         // VIDEO / VIDEO_SCORE — user media, round-robined per break.
         val media = slateMediaFiles(context)
@@ -924,23 +987,19 @@ object EspnAdBreakOverlayHelper {
     private fun buildCard(context: Context): FrameLayout {
         val column = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER }
 
-        // ESPN's own logo asset (drawable-nodpi/espn_logo), loaded by name from the
-        // app's resources — no bundled/copyrighted image.
-        try {
-            val id = context.resources.getIdentifier("espn_logo", "drawable", context.packageName)
-            if (id != 0) {
-                val logo = android.widget.ImageView(context).apply {
-                    setImageResource(id)
-                    adjustViewBounds = true
-                }
-                column.addView(
-                    logo,
-                    LinearLayout.LayoutParams(dp(context, 140f), ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                        bottomMargin = dp(context, 28f)
-                    },
-                )
-            }
-        } catch (_: Throwable) { /* logo optional */ }
+        // White "ESPN" text wordmark (per design pick) — plain white lettering,
+        // no logo image and nothing copyrighted bundled.
+        val wordmark = TextView(context).apply {
+            text = "ESPN"; setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 64f); typeface = Typeface.DEFAULT_BOLD
+            gravity = Gravity.CENTER; letterSpacing = 0.12f
+        }
+        column.addView(
+            wordmark,
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                bottomMargin = dp(context, 28f)
+            },
+        )
 
         val title = TextView(context).apply {
             text = "COMMERCIAL BREAK"; setTextColor(Color.WHITE)
