@@ -235,17 +235,26 @@ All patches follow the same general workflow using **Morphe Manager**:
 > 🟢 **Working — Android TV only (`6.11.1`).** ESPN **live** commercial breaks are
 > native **passthrough SSAI** — the ad is stitched into the same stream as the game,
 > so it cannot be removed, only **masked**. This patch detects each break from the
-> stream's own ad markers and covers the player with a full-screen **"Commercial
-> Break" slate** while **muting** the player, then lifts cleanly when live content
-> resumes. **VOD / scheduled** ads are separately suppressed. Optional: drop your own
-> slate image/video on the device, or a `slate_off` marker file to disable the live
-> slate. DNS filters do **not** help here.
+> stream's own ad markers and covers the player with a full-screen **slate** while
+> **muting** the player, then lifts cleanly when live content resumes. **VOD /
+> scheduled** ads are separately suppressed. DNS filters do **not** help here.
 
 1. Open the **[ESPN (Android TV) 6.11.1 release on APKMirror](https://www.apkmirror.com/apk/disney/espn-android-tv/espn-android-tv-6-11-1-release/)** directly (version **`6.11.1`**) — use this link rather than searching, to avoid landing on the phone build or a different version
 2. ⚠️ Use this **Android TV** listing and the exact **`6.11.1`** build (package `com.espn.score_center`)
 3. Download the `.apkm` file
 4. Select it in Morphe Manager
-5. Apply the patch
+5. Choose your patch options (below) and apply
+
+**Patch options**
+
+| Patch | Default | What it does |
+| --- | --- | --- |
+| **ESPN Android TV** | ✅ On (core) | Suppresses VOD / scheduled ads by forcing the DMP SGAI `isAdDisabled` flag. Always keep this on. |
+| **ESPN live commercial-break slate** | ✅ On | Masks **live** passthrough-SSAI breaks with a full-screen slate + mute. Deselect if you only want VOD ad suppression and no on-screen slate during live breaks. |
+| **Disable auto-updates** | ✅ On | Stops the Play Store from silently reinstalling the official ESPN and wiping the patch. Update deliberately by re-patching a newer APK. |
+| **Clone ESPN** | ⬜ Off (opt-in) | Installs the patched app **alongside** a stock ESPN that can't be uninstalled (common on **Amazon Fire TV** and some TV boxes). Gives it its own package/icon. Leave off if you could uninstall the original first. |
+
+**Live-slate styles (on-device):** while a break is up, press the D-pad to open an on-screen picker and switch between **Video** (your own clips), **Video + Score** (clips + a live-score strip), **Be Right Back (ESPN Ad-Break Overlay)** (an animated broadcast graphic with a live countdown), and **Blank**. Slate media is user-supplied local files placed in the app's external files dir — nothing is bundled. Drop a `slate_off` marker file to disable the live slate without re-patching. See [`slates/espn_overlay/`](slates/espn_overlay/) for the animated overlay assets and setup.
 
 ---
 
