@@ -108,19 +108,28 @@
       resize();
       new ResizeObserver(resize).observe(this);
 
+      // Cap rendering to ~30fps. The scene drifts slowly, so 30fps looks smooth,
+      // and a steady 30 beats an erratic higher rate when the GPU is also busy
+      // decoding the ad video underneath the overlay. Motion integrates the
+      // accumulated time (step) so drift speed is unchanged by the throttle.
       const clock = new THREE.Clock();
+      const MIN_FRAME = 1 / 30;
+      let acc = 0;
       const tick = () => {
         this._raf = requestAnimationFrame(tick);
         const sp = parseFloat(this.getAttribute('speed') || '1') || 0;
-        const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+        acc += Math.min(clock.getDelta(), 0.05);
+        if (acc < MIN_FRAME) return;
+        const step = acc; acc = 0;
+        const t = clock.elapsedTime;
         slabs.forEach(g => {
-          g.position.x += dt * 0.85 * sp * g.userData.sp;
+          g.position.x += step * 0.85 * sp * g.userData.sp;
           if (g.position.x > 17) g.position.x = -17;
-          g.position.y += Math.sin(t * 0.5 + g.userData.ph) * dt * 0.22 * sp;
+          g.position.y += Math.sin(t * 0.5 + g.userData.ph) * step * 0.22 * sp;
           g.rotation.y = Math.sin(t * 0.35 + g.userData.ph) * 0.34;
         });
-        ringA.rotation.z += dt * 0.16 * sp;
-        ringB.rotation.z -= dt * 0.1 * sp;
+        ringA.rotation.z += step * 0.16 * sp;
+        ringB.rotation.z -= step * 0.1 * sp;
         dust.rotation.y = t * 0.012 * sp;
         camera.position.x = Math.sin(t * 0.13) * 0.5;
         camera.position.y = Math.cos(t * 0.1) * 0.32;

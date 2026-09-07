@@ -7,7 +7,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;600;700&family=Barlow+Semi+Condensed:wght@500;600&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
 <style>
   html, body { margin: 0; padding: 0; background: #05070a; overflow: hidden; width: 100%; height: 100%; }
-  #fit { position: fixed; inset: 0; background: #05070a; }
+  #fit { position: fixed; inset: 0; background: #05070a; opacity: 0; transition: opacity .5s ease; }
+  #fit.ready { opacity: 1; }
   #stage { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; transform-origin: top left; }
   @keyframes sweep { 0% { transform: translateX(-120%) skewX(-18deg); opacity: 0; } 12% { opacity: .85; } 55% { opacity: .5; } 100% { transform: translateX(220%) skewX(-18deg); opacity: 0; } }
   @keyframes riseIn { from { transform: translateY(28px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
@@ -116,6 +117,17 @@
     barEl.style.width = ((left / total) * 100) + '%';
   }
   tick(); setInterval(tick, 250);
+
+  // Reveal only once fonts + the first 3D frames are up, so the WebView
+  // cold-start assembly (blank -> layout -> first paint) fades in from black
+  // instead of popping. Fallback timer in case fonts never resolve.
+  var reveal = function () { document.getElementById('fit').classList.add('ready'); };
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(function () { setTimeout(reveal, 200); });
+    setTimeout(reveal, 1200);
+  } else {
+    setTimeout(reveal, 600);
+  }
 })();
 </script>
 </body>
