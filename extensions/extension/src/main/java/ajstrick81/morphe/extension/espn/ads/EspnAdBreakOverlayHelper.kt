@@ -565,15 +565,25 @@ object EspnAdBreakOverlayHelper {
         val overlay = currentOverlay ?: return
         val ctx = overlay.context
         pickerIndex = PICKER_MODES.indexOf(currentMode).coerceAtLeast(0)
+        // Scrim opacity is tunable at runtime: drop a `picker_alpha` marker with
+        // a 0..100 value (percent). Absent/invalid -> 35%. Read on every open so
+        // pushing a new value + reopening the picker shows it with no rebuild.
+        val alphaPct = try {
+            ctx.getExternalFilesDir(null)?.let { java.io.File(it, "picker_alpha") }
+                ?.takeIf { it.exists() }?.readText()?.trim()?.toIntOrNull()
+                ?.coerceIn(0, 100)
+        } catch (_: Throwable) { null } ?: 35
+        val scrim = (Math.round(alphaPct * 2.55).toInt() shl 24) or 0x0A0E14
         val menu = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#E60A0E14")) // ~90% dark
+            setBackgroundColor(scrim)
             setPadding(dp(ctx, 32f), dp(ctx, 22f), dp(ctx, 32f), dp(ctx, 22f))
         }
         menu.addView(TextView(ctx).apply {
             text = "SELECT SLATE"; setTextColor(Color.parseColor("#C7CDD6"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f); letterSpacing = 0.18f
             gravity = Gravity.CENTER; setPadding(0, 0, 0, dp(ctx, 14f))
+            setShadowLayer(6f, 0f, 2f, Color.parseColor("#CC000000")) // legibility over the box-less bg
         })
         PICKER_MODES.forEach { m ->
             menu.addView(
@@ -581,6 +591,7 @@ object EspnAdBreakOverlayHelper {
                     text = modeLabel(m); setTextColor(Color.WHITE)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f); typeface = Typeface.DEFAULT_BOLD
                     gravity = Gravity.CENTER; setPadding(dp(ctx, 28f), dp(ctx, 10f), dp(ctx, 28f), dp(ctx, 10f))
+                    setShadowLayer(7f, 0f, 2f, Color.parseColor("#DD000000")) // legibility over the box-less bg
                 },
                 LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT),
             )
