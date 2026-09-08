@@ -23,7 +23,7 @@ I'm just like you — I enjoy watching TV and movies without being bored and ann
 | 🟢 Peacock | `com.peacocktv.peacockandroid` | Working — no DNS required | `v7.8.100` | 9/6/26 |
 | 🟢 Tubi | `com.tubitv` | Working | `v10.28.5000` | 7/20/26 |
 | 🟢 ViX | `com.univision.prendetv` | Working | `v4.47.2_tv` | 7/11/26 |
-| 🟢 Pluto TV | `tv.pluto.android` | Working — VOD ad breaks removed (video, markers, beacons); LIVE TV ads are broadcast time and remain | `5.66.0-leanback` | 7/3/26 |
+| 🟢 Pluto TV | `tv.pluto.android` | Working — VOD ad breaks removed (video, markers, beacons); LIVE TV breaks maskable (black screen + mute) via optional patch | `5.66.0-leanback` | 9/7/26 |
 | 🟢 Paramount+ | `com.cbs.ott` | Working — VOD ads removed (movies + TV shows, pre-roll + mid-roll); pause ads removed; live TV preserved | `v16.17.0` | 8/4/26 |
 | 🟢 Twitch | `tv.twitch.android.app` | Working — **Android TV "Starshot" build only; install exactly `13.0.0.2`** (the phone app is not supported — do not use the phone APK). Removes the on-screen ad-pod overlay/countdown ("Ad · 1 of 3") and blanks stitched (SSAI) ad video on live streams. A brief black gap can remain during a break; a VPN set to Albania is fully ad-free — see notes | `13.0.0.2` | 8/22/26 |
 | 🟢 ESPN | `com.espn.score_center` | Working — **Android TV** only. Live commercial breaks masked with a full-screen slate + audio mute (passthrough SSAI can't be removed, only covered); VOD/scheduled ads suppressed. No DNS required | `6.11.1` | 9/5/26 |
@@ -174,14 +174,26 @@ All patches follow the same general workflow using **Morphe Manager**:
 > the content, so there is no ad domain to block and no ad-free tier to unlock.
 > This patch empties the client-side ad-break timeline, which removes **on-demand
 > (VOD)** ad breaks entirely: ad video, timeline markers, overlays, and tracking
-> beacons. **LIVE TV** ads are real broadcast time in the linear feed and are not
-> removable. DNS filters do **not** help here.
+> beacons. **LIVE TV** ads are real broadcast time in the linear feed and cannot be
+> *removed* — but the separate **Mask live ad breaks** patch *hides* them (see below).
+> DNS filters do **not** help here.
 
 1. Open the **[Pluto TV (Android TV) listing on APKMirror](https://www.apkmirror.com/apk/pluto-inc/pluto-tv-android-tv/)** and select version **`5.66.0-leanback`**
 2. ⚠️ Use this **Android TV** listing and pick a **`-leanback`** build — not the phone or Fire TV build
 3. Download the `.apkm` file
 4. Select it in Morphe Manager
 5. Apply the patch
+
+> 📺 **Mask live ad breaks (black screen + mute).** Live/linear Pluto ads occupy real
+> broadcast time and can't be deleted like VOD ads, so this optional patch **masks** the
+> break instead: during a live commercial it covers the player with a **black screen** and
+> **mutes** the audio, then restores both the instant the show returns — so gambling,
+> drinking, or any other live ad is blanked and silenced. It reads Pluto's own ad-state
+> signal, so it needs no polling and works alongside the main **Skip ads** patch. It's
+> **opt-out** (leave it off to watch live ads normally). Runtime tweaks via marker files in
+> the app's external files dir (`Android/data/tv.pluto.android/files/`): create **`slate_off`**
+> to disable it on-device without re-patching, or **`pluto_slate_mode`** containing `black`
+> (cover only) or `mute` (mute only) instead of the default both.
 
 ---
 
