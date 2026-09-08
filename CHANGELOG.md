@@ -1,3 +1,10 @@
+# [1.35.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.34.1...v1.35.0) (2026-09-08)
+
+
+### Features
+
+* **pluto:** mask live commercial breaks with black screen + mute ([#152](https://github.com/ajstrick81/morphe-androidtv-patches/issues/152)) ([d4c122c](https://github.com/ajstrick81/morphe-androidtv-patches/commit/d4c122cd8c2946cdf749415961b97da41262f40c))
+
 ## [1.34.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.34.0...v1.34.1) (2026-09-07)
 
 
