@@ -1,3 +1,10 @@
+## [1.35.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.35.0...v1.35.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* **pluto:** mute live ad breaks at stream level so audio can't survive the mask ([#152](https://github.com/ajstrick81/morphe-androidtv-patches/issues/152)) ([4a904fc](https://github.com/ajstrick81/morphe-androidtv-patches/commit/4a904fc6dda49d26438f6fe792294a3bd5b16798))
+
 # [1.35.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.34.1...v1.35.0) (2026-09-08)
 
 
