@@ -1,7 +1,9 @@
 package ajstrick81.morphe.extension.pluto.ads
 
 import android.app.Activity
+import android.content.Context
 import android.graphics.Color
+import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -68,6 +70,10 @@ object PlutoLiveSlateHelper {
     private var shown = false
     private var muted = false
     private var savedVolume = 1.0f
+    // Stream-level mute state (belt for ad audio that bypasses the content ExoPlayer — e.g.
+    // a separate live-ad player on some channels; see issue #152 field report).
+    private var streamMuted = false
+    private var savedStreamVolume = -1
 
     private enum class Mode { BOTH, BLACK, MUTE }
 
@@ -181,21 +187,39 @@ object PlutoLiveSlateHelper {
     // restore exactly (the player normally runs at full volume; TV/system controls the
     // rest). Reflected by name to avoid compiling against Avia/media3-exoplayer.
     private fun mute() {
+        // Belt-and-suspenders: silence the media STREAM first (covers ad audio that plays
+        // through a separate pipeline from the content ExoPlayer — the #152 field failure),
+        // then also mute the content ExoPlayer we hold (cheap, and restores exact gain).
+        muteStream()
+        muteExo()
+    }
+
+    private fun unmute() {
+        unmuteExo()
+        unmuteStream()
+    }
+
+    private fun muteExo() {
         if (muted) return
-        val exo = resolveExo() ?: return
+        val exo = resolveExo() ?: run {
+            Log.w(TAG, "muteExo: no ExoPlayer resolved (aviaPlayer=${aviaPlayer?.javaClass?.name})")
+            return
+        }
         try {
             val get = mGetVolume ?: exo.javaClass.getMethod("getVolume").also { mGetVolume = it }
             val set = mSetVolume ?: exo.javaClass.getMethod("setVolume", Float::class.javaPrimitiveType)
                 .also { mSetVolume = it }
             savedVolume = (get.invoke(exo) as? Float) ?: 1.0f
             set.invoke(exo, 0.0f)
+            val after = (get.invoke(exo) as? Float)
             muted = true
+            Log.i(TAG, "muteExo: OK exo=${exo.javaClass.name} saved=$savedVolume after=$after")
         } catch (t: Throwable) {
-            if (DEBUG) Log.w(TAG, "mute failed: $t")
+            Log.w(TAG, "muteExo failed on ${exo.javaClass.name}: $t")
         }
     }
 
-    private fun unmute() {
+    private fun unmuteExo() {
         if (!muted) return
         val exo = resolveExo() ?: run { muted = false; return }
         try {
@@ -203,20 +227,71 @@ object PlutoLiveSlateHelper {
                 .also { mSetVolume = it }
             set.invoke(exo, savedVolume)
         } catch (t: Throwable) {
-            if (DEBUG) Log.w(TAG, "unmute failed: $t")
+            if (DEBUG) Log.w(TAG, "unmuteExo failed: $t")
         }
         muted = false
+    }
+
+    // Stream-level mute of STREAM_MUSIC (the app's media output). Instance- and pipeline-
+    // agnostic: silences whatever player produces the ad audio. Save/restore the exact level
+    // so we return the user to their prior volume; the failsafe/host-destroy teardown lifts
+    // this too, so a missed unmute never leaves the device muted for long.
+    private fun muteStream() {
+        if (streamMuted) return
+        val am = audioManager() ?: return
+        try {
+            savedStreamVolume = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+            am.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0)
+            streamMuted = true
+            Log.i(TAG, "muteStream: OK saved=$savedStreamVolume now=${am.getStreamVolume(AudioManager.STREAM_MUSIC)}")
+        } catch (t: Throwable) {
+            Log.w(TAG, "muteStream failed: $t")
+        }
+    }
+
+    private fun unmuteStream() {
+        if (!streamMuted) return
+        val am = audioManager()
+        if (am != null && savedStreamVolume >= 0) {
+            try {
+                am.setStreamVolume(AudioManager.STREAM_MUSIC, savedStreamVolume, 0)
+                Log.i(TAG, "unmuteStream: restored=$savedStreamVolume")
+            } catch (t: Throwable) {
+                if (DEBUG) Log.w(TAG, "unmuteStream failed: $t")
+            }
+        }
+        streamMuted = false
+        savedStreamVolume = -1
+    }
+
+    private fun audioManager(): AudioManager? {
+        val ctx = activityRef.get() ?: return null
+        return try {
+            ctx.applicationContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        } catch (t: Throwable) {
+            if (DEBUG) Log.w(TAG, "audioManager unavailable: $t")
+            null
+        }
     }
 
     // AviaPlayer.player is a public field of type androidx.media3.exoplayer.ExoPlayer.
     private fun resolveExo(): Any? {
         exoPlayer?.let { return it }
-        val avia = aviaPlayer ?: return null
+        val avia = aviaPlayer ?: run {
+            Log.w(TAG, "resolveExo: aviaPlayer is null (init hook never fired?)")
+            return null
+        }
+        // Try the public `player` field first; if absent, dump candidate fields so we can
+        // see what the ExoPlayer is actually stored as on this build/content.
         return try {
             val f = avia.javaClass.getField("player")
             f.get(avia)?.also { exoPlayer = it }
         } catch (t: Throwable) {
-            if (DEBUG) Log.w(TAG, "resolveExo failed: $t")
+            Log.w(TAG, "resolveExo: no public `player` field on ${avia.javaClass.name}: $t")
+            try {
+                avia.javaClass.declaredFields.joinToString { "${it.name}:${it.type.simpleName}" }
+                    .let { Log.w(TAG, "resolveExo: declaredFields = $it") }
+            } catch (_: Throwable) {}
             null
         }
     }
