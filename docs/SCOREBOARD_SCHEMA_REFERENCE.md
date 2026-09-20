@@ -125,6 +125,19 @@ status        : { period:4, displayClock:"0:00" }
 > datacenter IPs (it 403s from this dev box) but is reachable from the TV's home
 > network; `sports.core.api.espn.com` answered 200 even from the dev box.
 
+## 4b. Break-slate UI (as built)
+
+Rendered as a full-screen **WebView card** (`SlateMode.SCORECARD`) built from an
+HTML string — team logos load straight from `a.espncdn.com`, nothing bundled.
+The break-slate picker is trimmed to **two options: Scoreboard and Blank**, and
+Scoreboard is the default.
+
+**Rotation:** the card shows **your game first** (pinned, matched by
+`ProgramData.eventId`), then rotates through every other in-progress game in the
+league every ~8s (`CARD_ROTATE_MS`), looping. Scores re-fetch every ~2 rotations
+(~16s). A dot row shows position in the rotation. If the exact game isn't found it
+falls back to rotating all live games.
+
 ## 5. Status
 
 Recon + schema complete; helper `onProgramData` seam and structural fingerprint
