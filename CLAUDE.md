@@ -113,6 +113,26 @@ Learned during the 2026-09 cleanup (PR #191); keep the repo this way.
   Netflix, and Pluto TV (PRs #199/#200). Archive to preserve history; never
   silently delete an old post.
 
+**Guard hooks & repo checks**
+- `.claude/hooks/` holds two `PreToolUse` guards (fetch-exec, commit-secret),
+  both offline and fail-open; see `docs/SECURITY_PRACTICES.md` (Enforcement).
+  A pattern change needs a labelled case in the matching `test_*.py`.
+- Before pushing docs, run `python3 scripts/check_docs.py` (relative links,
+  anchors, Mermaid structure). CI's `Repo checks` job runs it, the hook tests,
+  and a secret scan of the branch.
+- Test fixtures that look like credentials are assembled from fragments at
+  runtime, never written literally.
+
+**Jev compaction (not in this repo)**
+- The maintainer runs the third-party `fast-jev-compaction` plugin (a patched
+  fork routed through the Vercel AI Gateway) at **user scope on their Windows
+  machine**. It is not in this repo and not in cloud sessions: a cloud
+  container starts with no plugins and no `TYPESAFE_API_KEY`, so "can't find
+  it" there is expected, not a broken install.
+- It sends conversation text and truncated tool inputs (not tool results)
+  to the gateway, unredacted. Keep that in mind before enabling it anywhere
+  that reads keystores or credentials.
+
 **Browsing the web (Playwright MCP)**
 - `.mcp.json` registers a `playwright` MCP server (`scripts/playwright-mcp.sh`,
   pinned `@playwright/mcp` version) so Claude can drive a real headless browser:

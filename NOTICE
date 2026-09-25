@@ -64,3 +64,35 @@ Modifications:
 - Adapted to morphe-androidtv-patches Fingerprint/bytecodePatch framework
 
 All original authors retain credit for their contributions.
+
+- jev-kit (jonathanavis96/jev-kit), MIT, Copyright (c) 2026 Jonathan Avis
+  scripts/check_docs.py is adapted from its tools/check_docs.py, and
+  .claude/hooks/secret_belt.py from its airlock/belt.py. The guard-hook test
+  corpus follows its labelled-case approach.
+  Source: https://github.com/jonathanavis96/jev-kit
+
+- jev-commit (valentynkit/jev-commit), MIT, Copyright (c) 2026 Valentyn Kit
+  The credential patterns and placeholder suppression in
+  .claude/hooks/secret_belt.py originate in its jev_commit/belt.py (via
+  jev-kit).
+  Source: https://github.com/valentynkit/jev-commit
+
+  Both are distributed under the MIT License:
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+    THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
