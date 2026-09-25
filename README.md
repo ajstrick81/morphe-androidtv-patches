@@ -55,21 +55,34 @@ That line is the reason this project exists. If you own the TV and pay for the s
 All patches follow the same general workflow using **Morphe Manager**:
 
 1. Download the correct **Android TV** `.apkm` from APKMirror — use the direct links below
-2. Open Morphe Manager and select the `.apkm` file
-3. Apply the patch
+2. In Morphe Manager, make sure **Optimize for device architecture is OFF** (see below)
+3. Open Morphe Manager and select the `.apkm` file
+4. Apply the patch
 
 > ⚠️ **Get the Android TV build, not the phone or Fire TV build.** Each direct
-> link below points at the app's **Android TV** listing on APKMirror. Several of
+> link below goes to the **exact Android TV release** on APKMirror. Several of
 > these apps ship a separate phone build and/or a Fire TV build under the *same*
-> package name — those will patch incorrectly or not at all. On the listing,
-> match the **exact version** named below and download the **`.apkm`** (App
-> Bundle), not a single-arch `.apk`.
+> package name — those will patch incorrectly or not at all. Match the **exact
+> version** named below and download the **`.apkm`** (App Bundle), not a
+> single-arch `.apk`. When a release lists more than one bundle, pick the one
+> whose architecture column includes **`armeabi-v7a`**.
+
+> 🛑 **Turn OFF "Optimize for device architecture" before patching.**
+> It's an Expert-mode setting in Morphe Manager (off by default). When it's on,
+> Manager keeps only the CPU architecture of **the device doing the patching** and
+> throws the rest away. If you patch on a phone (arm64) and install on a TV box,
+> the result can be missing the **`armeabi-v7a`** native libraries that many TV
+> apps — and several of these patches (Prime Video, Netflix) — depend on. Typical
+> symptoms: the app won't install, closes immediately on launch, or runs with the
+> ad patch silently doing nothing. If that happens, turn the option off and patch
+> again. (Patching on the TV itself is unaffected, but leaving it off is always safe.)
 
 ---
 
 ### 🎬 Disney+
 
-1. Open the **[Disney+ (Android TV) listing on APKMirror](https://www.apkmirror.com/apk/disney/disney-android-tv/)** and select version **`26.16.0+rc2-2026.09.08`**
+1. Open the **[Disney+ (Android TV) 26.16.0+rc2-2026.09.08 release on APKMirror](https://www.apkmirror.com/apk/disney/disney-android-tv/disney-android-tv-26-16-0rc2-2026-09-08-release/)** (version **`26.16.0+rc2-2026.09.08`**)
+   > ⚠️ APKMirror also lists **`26.16.0+rc1`** — that is a different build. Use **rc2**.
 2. Download the `.apkm` file
 3. Select it in Morphe Manager
 4. Apply the patch
@@ -83,13 +96,13 @@ All patches follow the same general workflow using **Morphe Manager**:
 2. Download the `.apkm` file
 3. Select it in Morphe Manager
 4. Apply the patch
-   > 💡 **Want ads gone completely?** The default **Disable Ads** patch strips ad markers/UI, but on the ad-supported tier the ad *video* is server-side stitched (SSAI) and still plays. Also enable the opt-in **Block SSAI Ad Origins** patch to remove it entirely — it fails the SSAI ad origins (`*-free.prd.media.max.com`, GMSS, FreeWheel) so the app falls back to the clean, ad-free stream, reproducing the AdGuard DNS block in-app. Experimental / opt-in; expect a slightly longer initial load while the ad origin is refused.
+   > 💡 **Keep the defaults.** Since v1.30.0 the default **Prefer Ad-Free Stream** patch loads HBO's own ad-free stream, which removes the stitched (SSAI) ad video too. Leave the legacy opt-in **Block SSAI Ad Origins** patch **off** — it is superseded, and turning it on can make mid-roll breaks fail with error `39999`.
 
 ---
 
 ### ▶️ Prime Video
 
-1. Open the **[Prime Video (Android TV) listing on APKMirror](https://www.apkmirror.com/apk/amazon-mobile-llc/prime-video-android-tv-android-tv/)** and select version **`6.23.23+v15.5.0.70-armv7a`**
+1. Open the **[Prime Video (Android TV) 6.23.23+v15.5.0.70-armv7a release on APKMirror](https://www.apkmirror.com/apk/amazon-mobile-llc/prime-video-android-tv-android-tv/prime-video-android-tv-6-23-23v15-5-0-70-armv7a-release/)** (version **`6.23.23+v15.5.0.70-armv7a`** — `armeabi-v7a` only, so **Optimize for device architecture must be OFF**)
 2. Download the `.apkm` file
 3. Select it in Morphe Manager
 4. Apply the patch
@@ -144,8 +157,8 @@ All patches follow the same general workflow using **Morphe Manager**:
 > auto-update is fine). Log into the **clone** and use that. Don't disable or
 > uninstall stock Netflix, or the clone won't start.
 
-1. Open the **[Netflix (Android TV) listing on APKMirror](https://www.apkmirror.com/apk/netflix-inc/netflix-android-tv/)** (publisher **Netflix, Inc.**, package `com.netflix.ninja`) and select version **`13.0.1 build 25028`**
-2. ⚠️ **Netflix is the exception to the "download the .apkm bundle" rule above.** This listing has **no App Bundle** — download the single **`armeabi-v7a`** APK (APKMirror may name the file differently, but the variant row is labeled `armeabi-v7a`). Match **`13.0.1 build 25028`**; Morphe Manager will show it as **Recommended**.
+1. Open the **[Netflix (Android TV) 13.0.1 build 25028 release on APKMirror](https://www.apkmirror.com/apk/netflix-inc/netflix-android-tv/netflix-android-tv-13-0-1-build-25028-release/)** (publisher **Netflix, Inc.**, package `com.netflix.ninja`, version **`13.0.1 build 25028`**)
+2. Download the `.apkm` bundle — it is the only variant, **`armeabi-v7a`** only (base + one arch split), so **Optimize for device architecture must be OFF**. Morphe Manager will show it as **Recommended**. Don't pick a newer `13.1.x` release — the patch targets `13.0.1 build 25028`.
 3. Select the `.apk` in Morphe Manager
 4. Apply the patch — leave **Clone Netflix** and the **Remove Netflix ads** patches enabled (both on by default). Optionally enable **Minimize Network Fingerprint** for the privacy pass (blanks local IP/MAC/SSID + advertising ID).
 5. Install the result **without uninstalling stock Netflix**, then open the new **Netflix clone** app and sign in.
@@ -188,7 +201,8 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 ### 🌐 ViX
 
-1. Open the **[ViX (Fire TV / Android TV) listing on APKMirror](https://www.apkmirror.com/apk/univision-communications-inc/vix-tv-deportes-y-noticias-fire-tv-android-tv/)** and select version **`4.47.2_tv`** (or the fallback `4.46.0_tv`)
+1. Open the **[ViX: TV, Deportes y Noticias (Android TV) 4.47.2_tv release on APKMirror](https://www.apkmirror.com/apk/univision-communications-inc/vix-cine-y-tv-en-espanol-android-tv/vix-tv-deportes-y-noticias-android-tv-4-47-2_tv-release/)** (version **`4.47.2_tv`**, package `com.univision.prendetv`)
+   > ⚠️ APKMirror files ViX under **two** Android TV listings. `4.47.2_tv` is only on the one linked above — the "ViX (Fire TV) (Android TV)" listing skips it. The fallback **`4.46.0_tv`** is on [that other listing](https://www.apkmirror.com/apk/univision-communications-inc/vix-tv-deportes-y-noticias-fire-tv-android-tv/vix-movies-tv-and-sports-in-spanish-fire-tv-android-tv-4-46-0_tv-release/) as a single universal `.apk` (no bundle).
 2. Download the `.apkm` file
 3. Select it in Morphe Manager
 4. Apply the patch
@@ -206,7 +220,7 @@ All patches follow the same general workflow using **Morphe Manager**:
 > *removed* — but the separate **Mask live ad breaks** patch *hides* them (see below).
 > DNS filters do **not** help here.
 
-1. Open the **[Pluto TV (Android TV) listing on APKMirror](https://www.apkmirror.com/apk/pluto-inc/pluto-tv-android-tv/)** and select version **`5.66.0-leanback`**
+1. Open the **[Pluto TV (Android TV) 5.66.0-leanback download on APKMirror](https://www.apkmirror.com/apk/pluto-inc/pluto-tv-android-tv/plutotv-stream-free-movies-tv-android-tv-5-66-0-release/plutotv-stream-free-movies-tv-android-tv-5-66-0-leanback-android-apk-download/)** (version **`5.66.0-leanback`**) — the listing now also shows newer `17.x` releases; the patch targets `5.66.0-leanback`
 2. ⚠️ Use this **Android TV** listing and pick a **`-leanback`** build — not the phone or Fire TV build
 3. Download the `.apkm` file
 4. Select it in Morphe Manager
@@ -231,6 +245,7 @@ All patches follow the same general workflow using **Morphe Manager**:
 ### 🦚 Peacock
 
 1. Open the **[Peacock TV (Android TV) 7.8.100 release on APKMirror](https://www.apkmirror.com/apk/peacock-tv-llc/peacock-tv-android-tv/peacock-tv-stream-tv-movies-android-tv-7-8-100-apk-release/)** directly (this is version **`7.8.100`** — use this link rather than searching, which can land on a similarly-named build). Versions **`7.5.102`** and **`7.6.100`** are also supported.
+   > This release has three bundles — pick **`arm64-v8a + armeabi-v7a`** (Android 6.0+). The `armeabi-v7a`-only bundle needs Android 12L+, and the `arm64-v8a`-only one won't run on 32-bit TV boxes.
 2. Download the `.apkm` file
 3. Select it in Morphe Manager
 4. Apply the patch
@@ -266,7 +281,7 @@ All patches follow the same general workflow using **Morphe Manager**:
 > covered.
 
 1. Open the **[Twitch: Live Streaming (Android TV) 13.0.0.2 release on APKMirror](https://www.apkmirror.com/apk/twitch-interactive-inc/twitch-android-tv/twitch-live-streaming-android-tv-13-0-0-2-release/)** (version **`13.0.0.2`**)
-2. ⚠️ Use this **Android TV** listing and the exact **`13.0.0.2`** "Starshot" build — not the phone or Fire TV build (the patch targets this TV build specifically)
+2. ⚠️ Use this **Android TV** listing and the exact **`13.0.0.2`** "Starshot" build — not the phone or Fire TV build (the patch targets this TV build specifically). The release has two bundles; either works — **`arm64-v8a + armeabi-v7a`** is the safe pick.
 3. Download the `.apkm` file
 4. Select it in Morphe Manager
 5. Apply the patch
@@ -303,7 +318,7 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 ### 📺 RTÉ Player
 
-1. Open the **[RTÉ Player (Android TV) listing on APKMirror](https://www.apkmirror.com/apk/rte/rte-player-android-tv/)** and select version **`3.160.3`**
+1. Open the **[RTÉ Player (Android TV) 3.160.3 release on APKMirror](https://www.apkmirror.com/apk/rte/rte-player-android-tv/rte-player-android-tv-3-160-3-release/)** (version **`3.160.3`**)
 2. Download the `.apkm` file
 3. Select it in Morphe Manager
 4. Apply the patch
