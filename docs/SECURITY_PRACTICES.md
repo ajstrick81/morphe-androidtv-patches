@@ -53,16 +53,47 @@ as decisions for a human.
 
 ## Enforcement
 
-A `PreToolUse` hook blocks the Rule 1 patterns on every `Bash` and `PowerShell`
-tool call:
+Two `PreToolUse` hooks run on every `Bash` and `PowerShell` tool call
+(config: [`.claude/settings.json`](../.claude/settings.json)). Both are
+stdlib Python, never touch the network, stay silent when there is nothing to
+say, and **fail open**: a malformed event or an internal error allows the call.
+The design (labelled cases, code-only rules, fail-open) is borrowed from
+[jev-kit](https://github.com/jonathanavis96/jev-kit)'s Airlock guard.
 
-- Hook config: [`.claude/settings.json`](../.claude/settings.json)
-- Logic: [`.claude/hooks/guard_fetch_exec.py`](../.claude/hooks/guard_fetch_exec.py)
+**Rule 1: fetch-exec guard**
+([`guard_fetch_exec.py`](../.claude/hooks/guard_fetch_exec.py)). Denies
+network- or DNS-fetched content run through a shell or interpreter:
+`curl … | bash` (including `sudo -E`, `env X=1`, and pass-through stages like
+`| tee f | sh`), pipes into `python3`/`perl`/`node`/`ruby`/`php`,
+`bash <(curl …)`, `source <(curl …)`, `eval "$(curl …)"`,
+`python3 -c "$(curl …)"`, `bash <<< "$(curl …)"`, `dig … TXT … | sh`, the
+PowerShell `iwr … | iex` family, and any of these inside a heredoc fed to a
+shell. Downloads to a file, `curl … | jq`, and text that merely mentions
+`curl | bash` (a grep, a commit message, a heredoc written to a file) are
+allowed. The labelled cases live in
+[`test_guard_fetch_exec.py`](../.claude/hooks/test_guard_fetch_exec.py); add a
+case with any pattern change.
 
-It denies commands that pipe network- or DNS-fetched content into a shell/eval,
-while allowing ordinary downloads-to-file. If you have a legitimate command it
-blocks, restructure it (download → inspect → run), or review the patterns in the
-script rather than disabling the hook.
+**Rule 3: commit-secret guard**
+([`guard_commit_secrets.py`](../.claude/hooks/guard_commit_secrets.py) +
+[`secret_belt.py`](../.claude/hooks/secret_belt.py)). On `git commit` it scans
+the lines being added (staged, plus `commit -a` and `git add … &&` in the same
+command) for high-precision credential shapes (GitHub, AWS, Anthropic, OpenAI,
+Google, Slack, npm, Stripe, Vercel and TypeSafe keys, PEM private keys, JWTs,
+`user:pass@` URLs) and denies commits of signing keystores (`.jks`,
+`.keystore`, `.p12`, ...). Placeholders (`your_token_here`,
+`${{ secrets.X }}`, `$VAR`) are ignored. Only the first four characters of a
+match are ever printed. A deliberate, reviewed exception is marked on the line
+itself with `secret-belt: allow`, so it is visible in the diff.
+
+**CI backstop.** The `Repo checks` job in
+[`ci.yml`](../.github/workflows/ci.yml) runs both test suites and
+`guard_commit_secrets.py --range origin/main...HEAD`, which catches commits
+made outside Claude Code (web edits, local git).
+
+If a hook blocks a legitimate command, restructure it (download, inspect,
+run) or fix the pattern and add a labelled case, rather than disabling the
+hook.
 
 ## If you suspect a compromise
 
