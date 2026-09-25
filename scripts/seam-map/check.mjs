@@ -3,11 +3,16 @@
 // seam would miss. For a renamed class it proposes candidates (same method signature,
 // or the fingerprint's strings).
 //
-// Usage: node scripts/seam-map/check.mjs <app> <apktool-dir> [--json]
+// Usage: node scripts/seam-map/check.mjs <app> <apktool-dir> [--json] [--deep] [--ref <known-good-apktool-dir>]
 // Statuses: OK · SIGNATURE_CHANGED · FLAGS_CHANGED · STRINGS_MISSING · METHOD_MISSING
 //           CLASS_MISSING (+ candidates) · UNVERIFIABLE (custom matcher, no class/name)
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+// Classes are looked up by their `.class` line through an index cached in
+// <apktool-dir>/.seam-map-class-index.json (safe on case-insensitive disks; rebuilt when the
+// decompile's file count changes). --deep searches every class for rename candidates — use it
+// for R8-renamed top-level packages (e.g. LPo/C$c; -> LAp/C$c;), which the default
+// package-scoped search can't reach.
+import { closeSync, existsSync, openSync, readdirSync, readFileSync, readSync, writeFileSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -25,16 +30,89 @@ if (!gen) {
 
 // ---------------------------------------------------------------- smali index
 
-const smaliRoots = readdirSync(dir).filter((d) => /^smali(_classes\d+)?$/.test(d)).map((d) => join(dir, d));
-if (!smaliRoots.length) {
-  console.error(`no smali*/ folders under ${dir}`);
-  process.exit(2);
-}
-const classFile = (descriptor) => {
-  const relPath = descriptor.replace(/^L/, '').replace(/;$/, '') + '.smali';
-  for (const r of smaliRoots) if (existsSync(join(r, relPath))) return join(r, relPath);
-  return null;
+const smaliRootsOf = (root) => {
+  const roots = readdirSync(root).filter((d) => /^smali(_classes\d+)?$/.test(d)).map((d) => join(root, d));
+  if (!roots.length) {
+    console.error(`no smali*/ folders under ${root}`);
+    process.exit(2);
+  }
+  return roots;
 };
+const smaliRoots = smaliRootsOf(dir);
+
+// Class descriptor -> smali file, read from each file's own `.class` line — never derived
+// from the path. R8 emits names that differ only by case (Tubi 10.36: 10,858 groups such as
+// Lsf/c; vs LSf/c;). On a case-insensitive disk (Windows/NTFS, macOS default) apktool writes
+// the second one to a renamed folder (sf.1/), and a path lookup for sf/c.smali silently opens
+// Sf/c.smali — the wrong class. Built once per decompile and cached beside it.
+const INDEX_NAME = '.seam-map-class-index.json';
+const INDEX_VERSION = 1;
+function readClassLine(file) {
+  const fd = openSync(file, 'r');
+  try {
+    const buf = Buffer.alloc(512);
+    const n = readSync(fd, buf, 0, buf.length, 0);
+    const m = /^\.class\s+.*?(L[^;\s]+;)/m.exec(buf.toString('utf8', 0, n));
+    return m ? m[1] : null;
+  } finally {
+    closeSync(fd);
+  }
+}
+function loadClassIndex(root, roots) {
+  const indexFile = join(root, INDEX_NAME);
+  const files = [];
+  const walk = (d) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.name.endsWith('.smali')) files.push(p);
+    }
+  };
+  roots.forEach(walk);
+  if (existsSync(indexFile)) {
+    try {
+      const cached = JSON.parse(readFileSync(indexFile, 'utf8'));
+      if (cached.version === INDEX_VERSION && cached.fileCount === files.length) {
+        return new Map(Object.entries(cached.classes).map(([k, rel]) => [k, join(root, rel)]));
+      }
+    } catch {
+      // stale or corrupt: rebuild below
+    }
+  }
+  const classes = new Map();
+  for (const f of files) {
+    const d = readClassLine(f);
+    if (d) classes.set(d, f);
+  }
+  try {
+    const rel = Object.fromEntries([...classes].map(([k, f]) => [k, relative(root, f)]));
+    writeFileSync(indexFile, JSON.stringify({ version: INDEX_VERSION, fileCount: files.length, classes: rel }));
+  } catch {
+    // read-only decompile: fine, just not cached
+  }
+  return classes;
+}
+const classIndex = loadClassIndex(dir, smaliRoots);
+
+// --ref <known-good apktool dir>: the decompile the current pins were made for. R8 renames a
+// class but keeps its `.source "File.kt"` line, so candidates from the same source file as the
+// pinned class there are almost certainly the renamed class (Tubi 10.26: TvWebFragment.kt ->
+// LKo/C$c; ranked #3 among look-alike WebViewClients without this, #1 with it).
+const refAt = process.argv.indexOf('--ref');
+const refDir = refAt > 0 ? process.argv[refAt + 1] : null;
+const refIndex = refDir ? loadClassIndex(refDir, smaliRootsOf(refDir)) : null;
+const sourceOf = (text) => /^\.source "([^"]*)"/m.exec(text)?.[1] ?? null;
+const refSources = new Map();
+function refSourceOf(descriptor) {
+  if (!refIndex || !descriptor) return null;
+  if (!refSources.has(descriptor)) {
+    const f = refIndex.get(descriptor);
+    refSources.set(descriptor, f ? sourceOf(readFileSync(f, 'utf8')) : null);
+  }
+  return refSources.get(descriptor);
+}
+const descriptorByFile = new Map([...classIndex].map(([d, f]) => [f, d]));
+const classFile = (descriptor) => classIndex.get(descriptor) ?? null;
 
 /** `.method <flags> name(params)ret` entries of one smali file. */
 function methods(text) {
@@ -56,29 +134,15 @@ const deep = process.argv.includes('--deep');
  * slow drive. `--deep` scans every class.
  */
 function everySmali(scopeDescriptor) {
-  const files = [];
-  const walk = (d) => {
-    if (!existsSync(d)) return;
-    for (const e of readdirSync(d)) {
-      const p = join(d, e);
-      if (statSync(p).isDirectory()) walk(p);
-      else if (e.endsWith('.smali')) files.push(p);
-    }
-  };
-  if (deep || !scopeDescriptor) {
-    smaliRoots.forEach(walk);
-    return files;
-  }
+  if (deep || !scopeDescriptor) return [...classIndex.values()];
   const parts = scopeDescriptor.replace(/^L/, '').replace(/;$/, '').split('/');
   const pkg = parts.slice(0, -1);
   const scope = pkg.length > 2 ? pkg.slice(0, -1) : pkg; // package + parent
-  for (const r of smaliRoots) walk(join(r, ...scope));
-  return files;
+  // Match on the real (case-sensitive) descriptor, not the folder path.
+  const prefix = 'L' + scope.join('/') + '/';
+  return [...classIndex].filter(([d]) => d.startsWith(prefix)).map(([, f]) => f);
 }
-const descriptorOf = (file) => {
-  const r = smaliRoots.find((root) => file.startsWith(root));
-  return 'L' + file.slice(r.length + 1).replace(/\\/g, '/').replace(/\.smali$/, '') + ';';
-};
+const descriptorOf = (file) => descriptorByFile.get(file);
 
 // ---------------------------------------------------------------- matching
 
@@ -113,7 +177,7 @@ function buildIndex(scopeDescriptor) {
   for (const file of everySmali(scopeDescriptor)) {
     const text = readFileSync(file, 'utf8');
     const consts = new Set([...text.matchAll(/const-string(?:\/jumbo)? [vp]\d+, "((?:[^"\\]|\\.)*)"/g)].map((m) => m[1]));
-    index.push({ descriptor: descriptorOf(file), methods: methods(text).map(({ flags, name, params, ret }) => ({ flags, name, params, ret })), consts });
+    index.push({ descriptor: descriptorOf(file), source: sourceOf(text), methods: methods(text).map(({ flags, name, params, ret }) => ({ flags, name, params, ret })), consts });
   }
   return index;
 }
@@ -127,10 +191,13 @@ function candidates(fp, scope = fp.definingClass, { nameOptional = false } = {})
   if (!scope && !deep) return ['(no class to scope the search — rerun with --deep)'];
   const w = want(fp);
   const nameRequired = !nameOptional && fp.name && fp.name.length > 3;
+  const refSource = refSourceOf(fp.definingClass);
   const scored = [];
   for (const c of buildIndex(scope)) {
     if (fp.strings?.length && !fp.strings.every((s) => c.consts.has(s))) continue;
     for (const m of c.methods) {
+      // A hook needs a body: skip interface/abstract declarations of the same signature.
+      if (m.flags.includes('abstract')) continue;
       const sigOk = (!w.ret || m.ret === w.ret) && (w.params === null || m.params === w.params);
       if (!sigOk) continue;
       const nameMatch = !fp.name || m.name === fp.name;
@@ -139,8 +206,9 @@ function candidates(fp, scope = fp.definingClass, { nameOptional = false } = {})
       // Their stable part is the source name before the first `$` (e.g. `adEventListener_delegate`).
       const base = (s) => s.split('$')[0];
       const shapeMatch = !!fp.name && fp.name.includes('$') && base(m.name) === base(fp.name);
-      const score = (nameMatch ? 4 : 0) + (shapeMatch ? 3 : 0) + (fp.strings?.length ? 2 : 0) + (w.flags && w.flags.every((f) => m.flags.includes(f)) ? 1 : 0);
-      scored.push({ score, text: `${c.descriptor}->${m.name}(${m.params})${m.ret}` });
+      const sameSource = !!refSource && c.source === refSource;
+      const score = (sameSource ? 8 : 0) + (nameMatch ? 4 : 0) + (shapeMatch ? 3 : 0) + (fp.strings?.length ? 2 : 0) + (w.flags && w.flags.every((f) => m.flags.includes(f)) ? 1 : 0);
+      scored.push({ score, text: `${c.descriptor}->${m.name}(${m.params})${m.ret}${sameSource ? `  (same .source "${refSource}" as the --ref class)` : ''}` });
     }
   }
   scored.sort((a, b) => b.score - a.score);
@@ -167,14 +235,22 @@ for (const fp of gen.fingerprints) {
     continue;
   }
   const text = readFileSync(file, 'utf8');
-  const ms = methods(text).filter((m) => !fp.name || m.name === fp.name);
+  const all = methods(text);
+  // R8 also renames members (Tubi 10.36: ImagePauseAds.l -> m). Same-class methods with the
+  // fingerprint's exact signature are the first place to look when the name is gone or moved.
+  const w = want(fp);
+  const sameClass = all
+    .filter((m) => m.name !== fp.name && !m.flags.includes('abstract'))
+    .filter((m) => (!w.ret || m.ret === w.ret) && w.params !== null && m.params === w.params)
+    .map((m) => `${fp.definingClass}->${m.name}(${m.params})${m.ret}  (same class, renamed member?)`);
+  const ms = all.filter((m) => !fp.name || m.name === fp.name);
   if (!ms.length) {
-    results.push({ ...r, status: 'METHOD_MISSING', issues: [`no method ${fp.name} in class`], candidates: candidates(fp, fp.definingClass, { nameOptional: true }) });
+    results.push({ ...r, status: 'METHOD_MISSING', issues: [`no method ${fp.name} in class`], candidates: [...sameClass, ...candidates(fp, fp.definingClass, { nameOptional: true })] });
     continue;
   }
   const judged = ms.map((m) => judgeMethod(fp, text, m));
   const best = judged.find((j) => j.status === 'OK') ?? judged[0];
-  results.push({ ...r, status: best.status, issues: best.issues, note: fp.hasCustomMatcher ? 'also has a custom matcher (not evaluated here)' : undefined });
+  results.push({ ...r, status: best.status, issues: best.issues, candidates: best.status === 'SIGNATURE_CHANGED' ? sameClass : undefined, note: fp.hasCustomMatcher ? 'also has a custom matcher (not evaluated here)' : undefined });
 }
 
 if (asJson) {
