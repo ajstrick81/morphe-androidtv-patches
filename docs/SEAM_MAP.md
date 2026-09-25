@@ -4,7 +4,7 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 
 - **Code facts** (packages, targets, patches, fingerprints, runtime log lines) come from the sources via `node scripts/seam-map/extract.mjs`.
 - **Mechanism notes** (engine, delivery, seam, device signature, drift) live in `docs/seam-map/overlay.json`.
-- **Drift check** a new APK before building: `node scripts/seam-map/check.mjs <app> <apktool-output-dir>`.
+- **Drift check** a new APK before building: `node scripts/seam-map/check.mjs <app> <apktool-output-dir>`. After an R8 rename, add `--deep --ref <last-good-apktool-dir>` to rank the renamed class first (it keeps its `.source` file name).
 - Rebuild this page: `node scripts/seam-map/extract.mjs && node scripts/seam-map/render.mjs`.
 
 **The four layers.** A seam is only understood when all four line up: *delivery* (how ads reach the player) → *code seam* (the fingerprint we match) → *patch evidence* (the log line our code prints when it acts) → *device signature* (what logcat shows when an ad actually plays). After an app update, patch evidence going quiet while the device signature appears is the fastest drift alarm.
