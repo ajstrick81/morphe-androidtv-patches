@@ -2,6 +2,7 @@ package ajstrick81.morphe.patches.netflix.nativehook
 
 import app.morphe.patcher.patch.resourcePatch
 import ajstrick81.morphe.patches.netflix.shared.Constants
+import ajstrick81.morphe.patches.shared.arch.requireNativeLib
 
 // ─────────────────────────────────────────────────────────────────────────────
 // THE AD REMOVER (delivery half). Bundles a frida-gadget into com.netflix.ninja
@@ -36,6 +37,10 @@ val bundleGadgetPatch = resourcePatch(
     compatibleWith(Constants.COMPATIBILITY)
 
     execute {
+        // Fail clearly on an architecture-optimized input (no armeabi-v7a engine lib)
+        // instead of producing an APK that crashes on the TV.
+        requireNativeLib(appName = "Netflix", mainLib = "libnetflix.so")
+
         val abi = "armeabi-v7a"
 
         // ── 1. Copy the supplied frida-gadget into lib/<abi>/ ────────────────

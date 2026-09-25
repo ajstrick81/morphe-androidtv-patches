@@ -2,6 +2,7 @@ package ajstrick81.morphe.patches.primevideo.nativehook
 
 import app.morphe.patcher.patch.resourcePatch
 import ajstrick81.morphe.patches.primevideo.shared.Constants
+import ajstrick81.morphe.patches.shared.arch.requireNativeLib
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Bundles the prebuilt native ad-strip library into the APK.
@@ -36,6 +37,10 @@ val bundleNativeHookPatch = resourcePatch(
     compatibleWith(Constants.COMPATIBILITY)
 
     execute {
+        // Fail clearly on an architecture-optimized input (no armeabi-v7a engine lib)
+        // instead of producing an APK that crashes on the TV.
+        requireNativeLib(appName = "Prime Video", mainLib = "libignite.so")
+
         // ── 1. Copy the prebuilt .so into lib/armeabi-v7a/ ───────────────────
         // Read the bundled binary from the patch classpath. object{}.javaClass
         // resolves through the patches classloader; the leading '/' anchors to
