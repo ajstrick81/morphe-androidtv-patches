@@ -52,8 +52,9 @@ apktool b yttv_dec -o yttv.patched.apk
 ```
 
 **Route B — as a resourcePatch (repo-consistent):** drafted at
-[`patches/.../youtubetv/misc/security/CertificatePinningPatch.kt`](../../patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/security/CertificatePinningPatch.kt)
-(+ [`shared/Constants.kt`](../../patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/shared/Constants.kt)).
+[`patches/.../youtubetv/misc/security/CertificatePinningPatch.kt`](https://github.com/ajstrick81/morphe-androidtv-patches/blob/archive/claude/scte35-youtube-tv-signaling-vyy0cy/patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/security/CertificatePinningPatch.kt)
+(+ [`shared/Constants.kt`](https://github.com/ajstrick81/morphe-androidtv-patches/blob/archive/claude/scte35-youtube-tv-signaling-vyy0cy/patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/shared/Constants.kt)),
+never merged to `main`; preserved in the `archive/claude/scte35-youtube-tv-signaling-vyy0cy` tag.
 It writes the authoritative NSC above and repoints the manifest
 `android:networkSecurityConfig`, modeled on the vix patch. **Before building,
 confirm the two placeholders in `Constants.kt`** (package id + a real
