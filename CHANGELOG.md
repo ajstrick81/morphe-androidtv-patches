@@ -1,3 +1,10 @@
+## [1.37.6](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.37.5...v1.37.6) (2026-09-25)
+
+
+### Bug Fixes
+
+* fail clearly when Morphe Manager stripped the armeabi-v7a libraries ([26d8e2a](https://github.com/ajstrick81/morphe-androidtv-patches/commit/26d8e2aa06a26804530db2eaf4d030d23ea6f388))
+
 ## [1.37.5](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.37.4...v1.37.5) (2026-09-24)
 
 
