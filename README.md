@@ -24,6 +24,9 @@ That line is the reason this project exists. If you own the TV and pay for the s
 - **Local and transparent.** Everything runs on your TV, inside the patched app. The source is open, and the [seam map](docs/SEAM_MAP.md) shows what each patch changes.
 - **No data collection.** The patches don't phone home, and nothing is sent to this project. Several of them cut the apps' own ad-tracking calls.
 - **No dark patterns.** Optional features stay optional and are clearly labeled.
+- **No weakened security by default.** Anything that lowers the app's own protections (such as trusting user-installed CAs for HTTPS inspection) is off by default unless an ad-removal method needs it (today only ViX live, with AdGuard Premium), and its description says so.
+
+**What the patches can't reach.** They work inside the patched app only. The TV's own operating system can still watch and report on its own: TV-level Automatic Content Recognition (ACR), voice data, ad IDs and home-network scanning ([AdGuard's write-up on LG TVs](https://adguard-dns.io/en/blog/lg-smart-tv-spying-privacy.html) shows how far that goes). For that layer, turn off ACR / "viewing information" and personalized ads in the TV's settings, filter the TV's DNS (AdGuard DNS or AdGuard Home), and keep the TV on its own network or VLAN, away from your computers and phones.
 
 ---
 

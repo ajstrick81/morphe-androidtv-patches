@@ -2002,7 +2002,8 @@
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/pluto/misc/security/CertificatePinningPatch.kt",
           "line": 41,
           "name": "Override certificate pinning",
-          "description": "Edits Pluto's network_security_config to trust user CAs (system + user, overridePins) on both a new base-config and every existing domain-config — including the pluto.tv entry that is otherwise system-only — so an HTTPS-filtering proxy can inspect the HLS manifest. Optional adjunct to the manifest-rewrite ad approach.",
+          "description": "Edits Pluto's network_security_config to trust user CAs (system + user, overridePins) on both a new base-config and every existing domain-config — including the pluto.tv entry that is otherwise system-only — so an HTTPS-filtering proxy can inspect the HLS manifest. Optional adjunct: removes no ads by itself and is not needed for the in-app ad removal. Opt-in. Security trade-off: the app will also trust ANY user-installed CA, so leave it off unless you run an HTTPS-filtering proxy.",
+          "default": false,
           "uses": []
         },
         {
@@ -2345,7 +2346,8 @@
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/primevideo/misc/security/CertificatePinningPatch.kt",
           "line": 50,
           "name": "Override certificate pinning",
-          "description": "Adds a network_security_config trusting user CAs (no pin sets) so AdGuard Premium can inspect the app's platform-stack HTTPS. Optional adjunct: Prime Video's ad plane is largely native libcurl, so DNS blocking is the primary tool.",
+          "description": "Adds a network_security_config trusting user CAs (no pin sets) so AdGuard Premium can inspect the app's platform-stack HTTPS. Optional adjunct: removes no ads by itself and is not needed for the native in-app ad strip. Opt-in. Security trade-off: the app will also trust ANY user-installed CA, so leave it off unless you run an HTTPS-filtering proxy.",
+          "default": false,
           "uses": []
         },
         {
@@ -2863,7 +2865,8 @@
           "hasCustomMatcher": false,
           "note": "Hook 7 — Po/C$c.shouldInterceptRequest(WebView, WebResourceRequest) Intercepts WebView XHR/fetch requests and blocks ad domains. Cannot intercept media element (<video> src) requests — those are blocked at DNS layer via AGH rules. Class is the TvWebFragment.kt WebViewClient (source-confirmed). R8 renames its outer prefix each release: xo (10.20) → yo (10.21) → Po (10.28). NOTE a second class (Ml/w1$c, WebViewFragment.kt) also has this exact signature, so a pure signature match would be ambiguous — keep the class pinned.",
           "usedBy": [
-            "Skip ads"
+            "Skip ads",
+            "Block analytics & tracking"
           ]
         },
         {
@@ -2908,6 +2911,66 @@
           "usedBy": [
             "Skip ads"
           ]
+        },
+        {
+          "id": "AdjustInitSdkFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/tubi/privacy/Fingerprints.kt",
+          "line": 13,
+          "definingClass": "Lcom/adjust/sdk/Adjust;",
+          "name": "initSdk",
+          "returnType": "V",
+          "parameters": [
+            "Lcom/adjust/sdk/AdjustConfig;"
+          ],
+          "accessFlags": [
+            "PUBLIC",
+            "STATIC"
+          ],
+          "hasCustomMatcher": false,
+          "note": "Adjust 5.x — the SDK never starts, so it never reads ANDROID_ID / GAID or sends attribution events. Later Adjust.trackEvent() etc. only log \"SDK not initialised\".",
+          "usedBy": [
+            "Block analytics & tracking"
+          ]
+        },
+        {
+          "id": "AdjustOnCreateFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/tubi/privacy/Fingerprints.kt",
+          "line": 22,
+          "definingClass": "Lcom/adjust/sdk/Adjust;",
+          "name": "onCreate",
+          "returnType": "V",
+          "parameters": [
+            "Lcom/adjust/sdk/AdjustConfig;"
+          ],
+          "accessFlags": [
+            "PUBLIC",
+            "STATIC"
+          ],
+          "hasCustomMatcher": false,
+          "note": "Adjust 4.x equivalent of initSdk, for older Tubi builds.",
+          "usedBy": [
+            "Block analytics & tracking"
+          ]
+        },
+        {
+          "id": "OkHttpClientInitFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/tubi/privacy/Fingerprints.kt",
+          "line": 32,
+          "definingClass": "Lokhttp3/OkHttpClient;",
+          "name": "<init>",
+          "returnType": "V",
+          "parameters": [
+            "Lokhttp3/OkHttpClient$Builder;"
+          ],
+          "accessFlags": [
+            "PUBLIC",
+            "CONSTRUCTOR"
+          ],
+          "hasCustomMatcher": false,
+          "note": "OkHttpClient(Builder) — both Builder.build() and the no-arg OkHttpClient() construct through here, so hooking it covers every OkHttp client.",
+          "usedBy": [
+            "Block analytics & tracking"
+          ]
         }
       ],
       "patches": [
@@ -2942,12 +3005,12 @@
             {
               "fingerprint": "FoxImaVodStreamRequestFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const-string v0, "
+              "smali": "\n                const-string v0, "
             },
             {
               "fingerprint": "FoxImaLiveStreamRequestFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const-string v0, "
+              "smali": "\n                const-string v0, "
             },
             {
               "fingerprint": "TubiWebClientInterceptFingerprint",
@@ -2956,19 +3019,64 @@
             {
               "fingerprint": "TubiWebClientPageFinishedFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const-string v0, "
+              "smali": "\n                const-string v0, "
             },
             {
               "fingerprint": "QfcSuspendGetAdBreaksFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                new-instance v0, Ljava/io/IOException;\r\n                const-string v1, "
+              "smali": "\n                new-instance v0, Ljava/io/IOException;\n                const-string v1, "
+            }
+          ]
+        },
+        {
+          "id": "blockAnalyticsPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/tubi/privacy/BlockAnalyticsPatch.kt",
+          "line": 86,
+          "name": "Block analytics & tracking",
+          "description": "Stops Tubi's analytics and tracking: Adjust, Branch, Braze, Nielsen, Conviva, NPAW/Youbora, Mux, Firebase/Google Analytics, Meta app events, and Tubi's own analytics endpoint (which receives your advertiser ID, device ID and ZIP/location fields). Blocking happens on the device, inside the app. Crash reporting, feature flags, sign-in and playback are left alone. Recommendations may be less personalised. Opt-in / experimental; test on-device.",
+          "default": false,
+          "uses": [
+            {
+              "fingerprint": "AdjustInitSdkFingerprint",
+              "call": "addInstructions",
+              "smali": "return-void"
+            },
+            {
+              "fingerprint": "AdjustOnCreateFingerprint",
+              "call": "addInstructions",
+              "smali": "return-void"
+            },
+            {
+              "fingerprint": "OkHttpClientInitFingerprint",
+              "call": "addInstructions",
+              "smali": "invoke-static { p1 }, $EXTENSION->install(Lokhttp3/OkHttpClient\\$Builder;)V"
+            },
+            {
+              "fingerprint": "TubiWebClientInterceptFingerprint",
+              "call": "addInstructions"
             }
           ]
         }
       ],
       "runtime": {
-        "tags": [],
-        "messages": []
+        "tags": [
+          "MORPHE-TUBI-PRIVACY"
+        ],
+        "messages": [
+          {
+            "level": "I",
+            "text": "blocked ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/tubi/privacy/TrackerBlocker.java",
+            "line": 106
+          },
+          {
+            "level": "W",
+            "text": "install failed: ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/tubi/privacy/TrackerBlocker.java",
+            "line": 130
+          }
+        ]
       },
       "packages": [
         "com.tubitv"
@@ -2977,10 +3085,10 @@
         "10.28.5000"
       ],
       "summary": {
-        "patches": 1,
-        "fingerprints": 9,
+        "patches": 2,
+        "fingerprints": 12,
         "unusedFingerprints": [],
-        "runtimeMessages": 0
+        "runtimeMessages": 2
       }
     },
     "twitchatv": {
@@ -3131,7 +3239,7 @@
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/vix/misc/security/CertificatePinningPatch.kt",
           "line": 52,
           "name": "Override certificate pinning",
-          "description": "Allows HTTPS traffic inspection tools like AdGuard Premium to intercept app connections. Enables ViX live (Lura SSAI) ad suppression when used alongside AdGuard Premium.",
+          "description": "Allows HTTPS traffic inspection tools like AdGuard Premium to intercept app connections. Enables ViX live (Lura SSAI) ad suppression when used alongside AdGuard Premium. Security trade-off: the app will also trust ANY user-installed CA; turn it off if you don't use an HTTPS-filtering proxy.",
           "uses": []
         }
       ],
