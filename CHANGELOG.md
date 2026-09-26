@@ -1,3 +1,10 @@
+## [1.37.7](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.37.6...v1.37.7) (2026-09-26)
+
+
+### Bug Fixes
+
+* **netflix:** suppress household prompt on both profile-select and playback routes ([45609ef](https://github.com/ajstrick81/morphe-androidtv-patches/commit/45609ef40ca5fecb812f99ef65d5fa4738d60c0a)), closes [#168](https://github.com/ajstrick81/morphe-androidtv-patches/issues/168)
+
 ## [1.37.6](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.37.5...v1.37.6) (2026-09-25)
 
 
