@@ -139,3 +139,4 @@ local.properties
 patches/src/main/resources/netflix/native/**/*.so
 !patches/src/main/resources/netflix/native/armeabi-v7a/libgadget.so
 scratchmlb/
+.playwright-mcp/
