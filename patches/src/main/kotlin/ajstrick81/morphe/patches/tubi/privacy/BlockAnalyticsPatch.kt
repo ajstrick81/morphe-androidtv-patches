@@ -1,9 +1,12 @@
 package ajstrick81.morphe.patches.tubi.privacy
 
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
+import app.morphe.patcher.util.smali.ExternalLabel
 import ajstrick81.morphe.patches.tubi.ads.TubiWebClientInterceptFingerprint
 import ajstrick81.morphe.patches.tubi.shared.Constants
 import com.android.tools.smali.dexlib2.Opcode
@@ -114,17 +117,22 @@ val blockAnalyticsPatch = bytecodePatch(
 
         // Layer 3b — the SPA WebView. Same method the Skip ads patch hooks; its
         // v0-v4 usage there shows the method has the locals this needs.
-        TubiWebClientInterceptFingerprint.methodOrNull?.addInstructions(
-            0,
-            """
-                invoke-static { p2 }, $EXTENSION->blockWebRequest(Landroid/webkit/WebResourceRequest;)Landroid/webkit/WebResourceResponse;
-                move-result-object v0
-                if-eqz v0, :privacy_pass
-                return-object v0
-                :privacy_pass
-                nop
-            """,
-        )
+        // Branch to the method's current first instruction via ExternalLabel, not
+        // an internal label: an internal label's target is fixed at insert time,
+        // so when Skip ads later prepends its own block the branch lands
+        // mid-instruction (VerifyError "invalid branch target" at launch).
+        TubiWebClientInterceptFingerprint.methodOrNull?.let { method ->
+            method.addInstructionsWithLabels(
+                0,
+                """
+                    invoke-static { p2 }, $EXTENSION->blockWebRequest(Landroid/webkit/WebResourceRequest;)Landroid/webkit/WebResourceResponse;
+                    move-result-object v0
+                    if-eqz v0, :privacy_pass
+                    return-object v0
+                """,
+                ExternalLabel("privacy_pass", method.getInstruction(0)),
+            )
+        }
 
         // Layer 3c — route every URL.openConnection() in the app through the
         // blocklist. Collect first, mutate after: mutableClassDefBy swaps the
