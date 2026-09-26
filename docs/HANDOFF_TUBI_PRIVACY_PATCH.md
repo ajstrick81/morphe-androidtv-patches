@@ -3,6 +3,56 @@
 _State as of 2026-09-26. Written by the cloud session that built the patch, for a
 local Claude Code session on the PC that has the Onn TV and `E:\Morphe`._
 
+## Device test results (2026-09-26) — PASSED after a fix
+
+Onn 4K Plus "coffey" (Android 14, `192.168.12.210`), Tubi **10.28.5000**
+(APKMirror `.apkm`), installed in place with `adb install -r` (same Morphe key,
+so the sign-in was kept).
+
+**First run (commit `b8d0fef`) crashed at launch** with Skip ads + Block analytics
+both enabled:
+
+```
+java.lang.VerifyError: Verifier rejected class Po.C$c: WebResourceResponse
+Po.C$c.shouldInterceptRequest(WebView, WebResourceRequest): invalid branch target -95 (-> 0x7) at 0x66
+```
+
+Cause: both patches prepend code to `Po/C$c.shouldInterceptRequest`. A branch to an
+internal smali label keeps the address it had at insert time, so when Skip ads
+prepended its block after this patch, the privacy branch landed mid-instruction.
+Each patch works on its own (confirmed: privacy-only build launched and played),
+and CI only compiles, so neither caught it.
+
+**Fix (commit `ecd9f58`):** both WebView blocks now branch only to the method's
+original first instruction via `ExternalLabel`; Skip ads ORs its host matches into
+one register instead of jumping to an internal label. Disassembly of the combined
+method confirmed every branch lands on an instruction boundary.
+
+**Retest with both patches:**
+
+| Check | Result |
+|---|---|
+| 1–3: listed/off by default, applies cleanly, 6 manifest switches once each | ✅ |
+| Cold launch | ✅ |
+| Sign-in kept | ✅ |
+| TV show and movie playback, ads removed | ✅ |
+| Pause, resume, seek | ✅ |
+| Continue watching after relaunch | ✅ history unaffected by the `analytics-ingestion` block |
+| Live TV | ✅ no delay, clean playback |
+| Crash / ANR / VerifyError | none |
+
+Blocked hosts seen (deduplicated, across runs):
+`okhttp` → `analytics-ingestion-v3.main-production-custom.production.k8s.tubi.io`,
+`analytics-ingestion.production-public.tubi.io`, `secure-gl.imrworldwide.com`;
+`urlconnection` → `sdk.iad-01.braze.com`; `webview` → both `analytics-ingestion` hosts.
+
+**Lesson for the rollout to other apps:** when a new hook prepends code to a method
+another patch already hooks, don't use internal labels, and device-test with both
+patches enabled.
+
+Minor harness note: `testing/scripts/build.sh`'s patch listing calls `list-patches`
+without `--patches=` and fails; the build itself is fine.
+
 ## Your job
 
 Build this branch, patch Tubi **10.28.5000** with the new opt-in patch, install
