@@ -43,6 +43,13 @@ screen. Every patch should serve that, so when designing or reviewing one:
 - **No dark patterns.** Anything that changes behavior beyond ad removal
   (clones, household prompts, origin blocks) stays opt-in and clearly
   labeled.
+- **Don't weaken the device by default.** Patches that lower an app's own
+  protections (TLS trust overrides for HTTPS inspection, and the like) stay
+  opt-in unless ad removal truly needs them, and their descriptions state the
+  trade-off.
+- **Be honest about reach.** The patches work inside the app only. They don't
+  touch TV-level ACR, voice capture or the OS's own network scanning, so docs
+  should never imply they do.
 
 # Repository Conventions
 

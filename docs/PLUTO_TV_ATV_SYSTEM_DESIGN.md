@@ -175,7 +175,7 @@ Runtime switches (marker files in the app's external files directory): `slate_of
 
 ## 6. Security & anti-tamper posture
 
-* **Certificate pinning** exists but can be overridden in bytecode. The patch set ships an "Override certificate pinning" hook; it made the HTTPS session inspectable during analysis and is harmless to leave on.
+* **Certificate pinning** exists but can be overridden in bytecode. The patch set ships an "Override certificate pinning" hook; it made the HTTPS session inspectable during analysis. It is **opt-in (off by default)**: the in-app ad removal does not need it, and turning it on makes the app trust any user-installed CA, so only enable it if you run an HTTPS-filtering proxy such as AdGuard Premium.
 * **No manifest hash-pinning** on the client for the stitched `.mpd`. Unlike Prime Video's hash-pinned, encrypted-at-rest JS bundle, Pluto hands media3 a plain DASH manifest and trusts its own parse. That trust is the opening.
 * Content is often Widevine-DRM'd, but **not always**, and one ad bumper *is* DRM'd. DRM status is not an ad signal (§5.1).
 

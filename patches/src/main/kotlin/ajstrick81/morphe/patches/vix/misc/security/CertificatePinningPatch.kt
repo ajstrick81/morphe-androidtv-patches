@@ -51,7 +51,7 @@ import ajstrick81.morphe.patches.vix.shared.Constants
 @Suppress("unused")
 val certificatePinningPatch = resourcePatch(
     name = "Override certificate pinning",
-    description = "Allows HTTPS traffic inspection tools like AdGuard Premium to intercept app connections. Enables ViX live (Lura SSAI) ad suppression when used alongside AdGuard Premium.",
+    description = "Allows HTTPS traffic inspection tools like AdGuard Premium to intercept app connections. Enables ViX live (Lura SSAI) ad suppression when used alongside AdGuard Premium. Security trade-off: the app will also trust ANY user-installed CA; turn it off if you don't use an HTTPS-filtering proxy.",
 ) {
     compatibleWith(Constants.COMPATIBILITY)
 

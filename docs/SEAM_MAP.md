@@ -351,7 +351,7 @@ Runtime evidence (tags `MORPHE-PCK-WV`; first 12 of 6):
 | Skip ads | `DashManifestParserParseFingerprint` | `manifest/DashManifestParser`.`parse` | `Landroidx/media3/exoplayer/dash/manifest/DashManifest;` |  | apply `skipAdsPatch Hook 5: no return-object in parse()` |
 | Skip ads | `AviaStartExoplayerFingerprint` | `core/AviaPlayer`.`startExoplayer` | `V` |  | apply |
 | Clone Pluto TV _(opt-in)_ | — | — | — |  |  |
-| Override certificate pinning | — | — | — |  |  |
+| Override certificate pinning _(opt-in)_ | — | — | — |  |  |
 | Disable auto-updates | — | — | — |  |  |
 
 Runtime evidence (tags `MORPHE-DASH-MF`, `MORPHE-PLUTO-SLATE`; first 12 of 26):
@@ -397,7 +397,7 @@ Runtime evidence (tags `MORPHE-DASH-MF`, `MORPHE-PLUTO-SLATE`; first 12 of 26):
 | Skip ads | `BasicNetworkPerformRequestFingerprint` | `toolbox/BasicNetwork`.`performRequest` | `Lcom/android/volley/NetworkResponse;` |  | addInstructions |
 | Clone Prime Video _(opt-in)_ | — | — | — |  |  |
 | Prime Video extension | — | — | — |  |  |
-| Override certificate pinning | — | — | — |  |  |
+| Override certificate pinning _(opt-in)_ | — | — | — |  |  |
 | Disable auto-updates | — | — | — |  |  |
 | Bundle native ad-strip hook | — | — | — |  |  |
 | Load native ad-strip hook | `ApplicationOnCreateFingerprint` | `primevideo/PrimeVideoApplication`.`onCreate` | `V` |  | addInstructions |
