@@ -32,7 +32,7 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 | [pluto](#pluto) | Server-side stitching (SSAI) via manifest | 5.66.0-leanback | 5 | 10 | yes (26 lines) | yes |
 | [primevideo](#primevideo) | Proprietary native / JS ad engine | 6.23.23+v15.5.0.70-armv7a | 7 | 5 | yes (37 lines) | yes |
 | [rte](#rte) | Google IMA / DAI client SDK | 3.160.3 | 1 | 3 | **no** | **no** |
-| [tubi](#tubi) | Google IMA / DAI client SDK | 10.28.5000 | 1 | 9 | **no** | **no** |
+| [tubi](#tubi) | Google IMA / DAI client SDK | 10.28.5000 | 2 | 12 | yes (2 lines) | **no** |
 | [twitchatv](#twitchatv) | Proprietary native / JS ad engine | 13.0.0.2 | 1 | 1 | yes (5 lines) | **no** |
 | [vix](#vix) | Google IMA / DAI client SDK | 4.46.0_tv, 4.47.2_tv | 2 | 2 | **no** | **no** |
 
@@ -469,11 +469,20 @@ Runtime evidence (tags `SkipAdsPatch`, `PVNativeHook`; first 12 of 37):
 | Skip ads | `FoxImaAdsLoadedListenerFingerprint` | `listeners/FoxImaAdListeners`.`adsLoadedListener_delegate$lambda$4$lambda$3` | — | `onAdsManagerLoaded` | addInstructions `return-void` |
 | Skip ads | `FoxPlayerClearVodAdsFingerprint` | `player/FoxPlayer`.`clearVodAds` | — |  | addInstructions `return-void` |
 | Skip ads | `TubiPauseAdsFingerprint` | `pauseads/ImagePauseAds`.`l` | `V` |  | addInstructions `return-void` |
-| Skip ads | `FoxImaVodStreamRequestFingerprint` | `loaders/FoxImaStreamIdLoader`.`requestVODDAIUrl` | `V` | `requestVODDAIUrl() BEGIN...` | addInstructions `                 const-string v0, ` |
-| Skip ads | `FoxImaLiveStreamRequestFingerprint` | `loaders/FoxImaStreamIdLoader`.`requestImaStreamId` | `V` | `requestImaStreamId BEGIN...` | addInstructions `                 const-string v0, ` |
+| Skip ads | `FoxImaVodStreamRequestFingerprint` | `loaders/FoxImaStreamIdLoader`.`requestVODDAIUrl` | `V` | `requestVODDAIUrl() BEGIN...` | addInstructions `                 const-string v0, ` |
+| Skip ads | `FoxImaLiveStreamRequestFingerprint` | `loaders/FoxImaStreamIdLoader`.`requestImaStreamId` | `V` | `requestImaStreamId BEGIN...` | addInstructions `                 const-string v0, ` |
 | Skip ads | `TubiWebClientInterceptFingerprint` | `Po/C$c`.`shouldInterceptRequest` | `Landroid/webkit/WebResourceResponse;` |  | addInstructions |
-| Skip ads | `TubiWebClientPageFinishedFingerprint` | `Po/C$c`.`onPageFinished` | `V` |  | addInstructions `                 const-string v0, ` |
-| Skip ads | `QfcSuspendGetAdBreaksFingerprint` | `sf/c`.`suspendGetAdBreaks` | `Ljava/lang/Object;` |  | addInstructions `                 new-instance v0, Ljava/io/IOException;                 const-string v1, ` |
+| Skip ads | `TubiWebClientPageFinishedFingerprint` | `Po/C$c`.`onPageFinished` | `V` |  | addInstructions `                 const-string v0, ` |
+| Skip ads | `QfcSuspendGetAdBreaksFingerprint` | `sf/c`.`suspendGetAdBreaks` | `Ljava/lang/Object;` |  | addInstructions `                 new-instance v0, Ljava/io/IOException;                 const-string v1, ` |
+| Block analytics & tracking _(opt-in)_ | `AdjustInitSdkFingerprint` | `sdk/Adjust`.`initSdk` | `V` |  | addInstructions `return-void` |
+| Block analytics & tracking _(opt-in)_ | `AdjustOnCreateFingerprint` | `sdk/Adjust`.`onCreate` | `V` |  | addInstructions `return-void` |
+| Block analytics & tracking _(opt-in)_ | `OkHttpClientInitFingerprint` | `okhttp3/OkHttpClient`.`<init>` | `V` |  | addInstructions `invoke-static { p1 }, $EXTENSION->install(Lokhttp3/OkHttpClient\$Builder;)V` |
+| Block analytics & tracking _(opt-in)_ | `TubiWebClientInterceptFingerprint` | `Po/C$c`.`shouldInterceptRequest` | `Landroid/webkit/WebResourceResponse;` |  | addInstructions |
+
+Runtime evidence (tags `MORPHE-TUBI-PRIVACY`; first 12 of 2):
+
+- I `blocked ` — TrackerBlocker.java:106
+- W `install failed: ` — TrackerBlocker.java:130
 
 </details>
 
