@@ -1,3 +1,16 @@
+# [1.38.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.37.7...v1.38.0) (2026-09-26)
+
+
+### Bug Fixes
+
+* **privacy:** make unneeded TLS trust overrides opt-in ([81ab2fc](https://github.com/ajstrick81/morphe-androidtv-patches/commit/81ab2fc04d529294757da5802026610201547c61))
+* **tubi:** make WebView hooks label-free so Skip ads and Block analytics can stack ([ecd9f58](https://github.com/ajstrick81/morphe-androidtv-patches/commit/ecd9f58f7282739081926b4630e75806958860c0))
+
+
+### Features
+
+* **tubi:** add opt-in "Block analytics & tracking" patch ([b8d0fef](https://github.com/ajstrick81/morphe-androidtv-patches/commit/b8d0feff0a5c59ed50ab7bc0585ceaa57cba2b85))
+
 ## [1.37.7](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.37.6...v1.37.7) (2026-09-26)
 
 
