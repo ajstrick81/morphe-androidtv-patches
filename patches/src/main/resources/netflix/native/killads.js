@@ -131,19 +131,30 @@ function patchA2(rs){ if(a2Done)return; var p=pat(A2_ANCHOR);
 //       enrichAdsWithEmbeddedExtension iterates [] -> attaches nothing -> function returns valid [])
 // Source-dumped + both bodies confirmed 2026-08-24 (experimental/netflix-native-adstrip/REANCHOR_13.0.1.md).
 // Supersedes drifted A2/ADV/DAI on 13.0.1+; older anchors kept (scan-miss here, cover pre-refactor).
+// v3 (2026-09-26, #212): the body grew a THIRD branch between the two:
+//     if(c){..getAds breaks..}else if(a.adverts&&a.adverts.adBreaks.length)b=a.adverts.adBreaks.map(..);else return;
+// With M1 flipped, if(0) fell INTO that branch and rebuilt the breaks from adverts.adBreaks, so ads
+// played whenever ADV/ADVw also missed (#212: MASTER=1w, ADV=0, pods played). The local also renamed
+// d->c, so the exact M1 missed and only M2 landed (MASTER stayed 0). Fix: M2 now writes
+//     else return;  ->  else{};b=[];      (12->12)
+// The `b=[]` sits AFTER the whole if/else-if/else chain, so it runs whichever branch fired (and any
+// branch Netflix adds later): the enrich chain always sees [] and returns a valid [] (never undefined,
+// so no v1 crash). M2 alone is now the kill; M1 is best-effort (skips building the breaks at all) and
+// is ONLY written after M2 has landed, so M1-without-M2 (the v1 crash state) can't happen.
 var M1_ANCHOR='getAds(a);if(d){var e=', M1_OFF=13, M1_EXP='d';         // the 'd' inside if(d)
-var M2_ANCHOR='else return;b=this.adBreakHydrator', M2_OLD='else return;', M2_NEW='else b=[]  ;'; // 12->12
+var M2_ANCHOR='else return;b=this.adBreakHydrator', M2_OLD='else return;', M2_NEW='else{};b=[];'; // 12->12
 var m1Done=false, m2Done=false, masterDone=false;
 function patchMASTER(rs){ if(masterDone)return;
+  if(!m2Done){ var p2=pat(M2_ANCHOR);
+    for(var i2=0;i2<rs.length;i2++){var r2=rs[i2];if(r2.size>128*1024*1024)continue;
+      try{var h2=Memory.scanSync(r2.base,r2.size,p2);for(var j2=0;j2<h2.length;j2++){var t2=h2[j2].address;var cur2=null;try{cur2=t2.readCString(M2_OLD.length);}catch(e){}if(cur2!==M2_OLD)continue;Memory.protect(t2,M2_NEW.length,'rw-');t2.writeByteArray(bytesOf(M2_NEW));m2Done=true;L('PATCH M2: getAdMetadata else return;->else{};b=[]; (unconditional empty, every branch) @'+t2);}}catch(e){}}
+  }
+  if(!m2Done)return;
   if(!m1Done){ var p1=pat(M1_ANCHOR);
     for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
       try{var h=Memory.scanSync(r.base,r.size,p1);for(var j=0;j<h.length;j++){var t=h[j].address.add(M1_OFF);var cur=null;try{cur=t.readCString(1);}catch(e){}if(cur!==M1_EXP)continue;Memory.protect(t,1,'rw-');t.writeByteArray([0x30]);m1Done=true;L('PATCH M1: getAdMetadata if(d)->if(0) @'+t);}}catch(e){}}
   }
-  if(!m2Done){ var p2=pat(M2_ANCHOR);
-    for(var i2=0;i2<rs.length;i2++){var r2=rs[i2];if(r2.size>128*1024*1024)continue;
-      try{var h2=Memory.scanSync(r2.base,r2.size,p2);for(var j2=0;j2<h2.length;j2++){var t2=h2[j2].address;var cur2=null;try{cur2=t2.readCString(M2_OLD.length);}catch(e){}if(cur2!==M2_OLD)continue;Memory.protect(t2,M2_NEW.length,'rw-');t2.writeByteArray(bytesOf(M2_NEW));m2Done=true;L('PATCH M2: getAdMetadata else return;->else b=[] (valid empty, no crash) @'+t2);}}catch(e){}}
-  }
-  if(m1Done&&m2Done){ masterDone=true; L('PATCH MASTER: getAdMetadata neutralised (empty ad-break list) — stable v2'); }
+  masterDone=true; L('PATCH MASTER: getAdMetadata neutralised (empty ad-break list, m1='+m1Done+') — v3');
 }
 // Tight early MASTER scanner — win the FIRST-TITLE race. getAdMetadata builds ALL breaks (pre+mid)
 // for a title in ONE call at playback start; the 2s apply() poll can land AFTER that call on a fast
@@ -166,23 +177,22 @@ function fastMASTER(){ if(masterDone)return; if(hhYield()){ setTimeout(fastMASTE
 // avoid the v1 wrong-var crash. Length-preserving, verify-before-write.
 function isAlpha(cc){ return (cc>=97&&cc<=122)||(cc>=65&&cc<=90); }   // a-z A-Z (minified local)
 var mwDone=false, mwDumped=false;
-// ATOMIC: locate BOTH the M1 (if-guard) and M2 (else-return) edit sites BEFORE writing EITHER, so we
+// M2 is the kill (see v3 above); M1 is best-effort. M1 is ONLY written in the same pass as M2, so we
 // can never leave M1 flipped without M2 (that is the v1 `if(0)...else return;`->undefined crash).
-// If M1 is found but M2 is not, we write NOTHING (getAdMetadata stays intact = crash-safe; A2/DAI
-// still provide ad coverage) and dump the region after M1 ONCE so M2 can be re-anchored precisely.
+// If M1 is found but M2 is not, we write NOTHING (getAdMetadata stays intact = crash-safe) and dump
+// the region after M1 ONCE so M2 can be re-anchored precisely.
 function patchMASTERw(rs){ if(masterDone||mwDone)return;
   // --- locate M1: getAds( <arg> );if( <cond> ){var  -> the <cond> byte (offset 13) ---
   var p1=pat('getAds(')+' ?? '+pat(');if(')+' ?? '+pat('){var '), m1off=13;
   var m1addr=null,m1cc=-1;
   for(var i=0;i<rs.length&&!m1addr;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
     try{var h=Memory.scanSync(r.base,r.size,p1);for(var j=0;j<h.length;j++){var t=h[j].address.add(m1off);var cc=-1;try{cc=t.readU8();}catch(e){}if(!isAlpha(cc))continue;m1addr=t;m1cc=cc;break;}}catch(e){}}
-  if(!m1addr)return;   // getAdMetadata body not resident yet — try again next pass
   // --- locate M2: else return; [gap] <acc> =this.adBreakHydrator ---
   // The accumulator sits just before '=this.adBreakHydrator'. Older builds had NO gap
   // (else return;b=this...); the 2026-09 build inserted a newline (else return;\nb=this...). Try
   // gap sizes 1 and 2 so both layouts match; <acc> is the alpha byte right before '=this.'.
-  // Overwrite the 12-byte 'else return;' with 'else <acc>=[]  ;' so the else path yields a VALID
-  // empty array (never undefined) that flows through the enrich chain -> returns [] (no v1 crash).
+  // Overwrite the 12-byte 'else return;' with 'else{};<acc>=[];' so <acc> is reset to a VALID empty
+  // array after the whole branch chain -> the enrich chain returns [] (no v1 crash).
   var m2addr=null,m2vc=-1;
   var gaps=[1,2];
   for(var gi=0;gi<gaps.length&&!m2addr;gi++){ var gap=gaps[gi];
@@ -192,15 +202,16 @@ function patchMASTERw(rs){ if(masterDone||mwDone)return;
       try{var h2=Memory.scanSync(r2.base,r2.size,p2);for(var j2=0;j2<h2.length;j2++){var vc=-1;try{vc=h2[j2].address.add(accOff).readU8();}catch(e){}if(!isAlpha(vc))continue;m2addr=h2[j2].address;m2vc=vc;break;}}catch(e){}}
   }
   if(m2addr){
-    var vch=String.fromCharCode(m2vc), neu='else '+vch+'=[]  ;';
+    var vch=String.fromCharCode(m2vc), neu='else{};'+vch+'=[];';
     if(neu.length===12){
-      Memory.protect(m1addr,1,'rw-');m1addr.writeByteArray([0x30]);
       Memory.protect(m2addr,12,'rw-');m2addr.writeByteArray(bytesOf(neu));
+      if(m1addr){ Memory.protect(m1addr,1,'rw-');m1addr.writeByteArray([0x30]); }
       mwDone=true;masterDone=true;
-      L('PATCH MASTERw: getAdMetadata if('+String.fromCharCode(m1cc)+')->if(0) @'+m1addr+' + else return;->else '+vch+'=[] @'+m2addr+' (atomic, rename-tolerant) — string-drift recovered');
+      L('PATCH MASTERw: getAdMetadata else return;->else{};'+vch+'=[]; @'+m2addr+(m1addr?' + if('+String.fromCharCode(m1cc)+')->if(0) @'+m1addr:' (M1 not found, M2 alone suffices)')+' (rename-tolerant, v3)');
     }
     return;
   }
+  if(!m1addr)return;   // getAdMetadata body not resident yet — try again next pass
   // M1 found, M2 not -> CRASH-SAFE: write nothing; dump the region after M1 once for re-anchor.
   if(!mwDumped){ mwDumped=true; var ctx=null; try{ctx=m1addr.sub(24).readCString(700);}catch(e){}
     L('MASTERw M2-MISS (no write, crash-safe) dump@'+m1addr+' cond="'+String.fromCharCode(m1cc)+'" ctx='+JSON.stringify(ctx)); }
@@ -527,7 +538,10 @@ function observe(){ if(hhYield()){ setTimeout(observe,1000); return; } cyc++;
   var tag=(kill>1?'  <<<MANIFEST-KILL':'')+(disp>0?'  <<<server-pauseAd(x'+disp+')':'')+(real>0?'  <<<rawRealPod(x'+real+')':'');
   // Drift alarm: raw pods present but nothing killed -> report which anchors installed so we can tell
   // string-drift (MASTER=0: anchor scan-missed) from semantic-drift (MASTER=1: matched but ineffective).
-  if(real>0 && kill===0){ tag+='  <<<DRIFT[A='+(aDone?1:0)+' A2='+(a2Done?1:0)+' ADV='+(advDone?1:0)+' DAI='+(daiDone?1:0)+' MASTER='+(masterDone?1:0)+(mwDone?'w':'')+']'; }
+  // On 13.0.1+ MASTER leaves the raw manifest JSON resident (it empties the BUILT breaks), so raw pods
+  // with MASTER applied are expected, not drift. Only alarm when MASTER is not in place.
+  if(real>0 && kill===0 && masterDone){ tag+='  (raw pods resident; MASTER v3 kill active)'; }
+  else if(real>0 && kill===0){ tag+='  <<<DRIFT[A='+(aDone?1:0)+' A2='+(a2Done?1:0)+' ADV='+(advDone?1:0)+' DAI='+(daiDone?1:0)+' MASTER='+(masterDone?1:0)+(mwDone?'w':'')+']'; }
   L('OBS'+cyc+': KILLMARK='+kill+' rawRealPods='+real+' rawDisplayAd='+disp+' bookmarks='+JSON.stringify(bks)+tag);
   if(cyc<560) setTimeout(observe,3000);   // ~28 min coverage
 }
