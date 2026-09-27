@@ -1,3 +1,10 @@
+# [1.39.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.38.0...v1.39.0) (2026-09-27)
+
+
+### Features
+
+* **raiplay:** add Skip ads patch for RaiPlay Android TV ([#217](https://github.com/ajstrick81/morphe-androidtv-patches/issues/217)) ([d19408b](https://github.com/ajstrick81/morphe-androidtv-patches/commit/d19408bd552f60e246f502c9b73a5c639d1bdc3e))
+
 # [1.38.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.37.7...v1.38.0) (2026-09-26)
 
 
