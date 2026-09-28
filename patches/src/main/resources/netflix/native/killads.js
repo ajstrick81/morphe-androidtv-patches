@@ -137,7 +137,7 @@ var m1Done=false, m2Done=false, masterDone=false;
 function patchMASTER(rs){ if(masterDone)return;
   if(!m1Done){ var p1=pat(M1_ANCHOR);
     for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
-      try{var h=Memory.scanSync(r.base,r.size,p1);for(var j=0;j<h.length;j++){var t=h[j].address.add(M1_OFF);var cur=null;try{cur=t.readCString(1);}catch(e){}if(cur!==M1_EXP)continue;Memory.protect(t,1,'rw-');t.writeByteArray([0x30]);m1Done=true;L('PATCH M1: getAdMetadata if(d)->if(0) @'+t);}}catch(e){}}
+      try{var h=Memory.scanSync(r.base,r.size,p1);for(var j=0;j<h.length;j++){var t=h[j].address.add(M1_OFF);var cur=null;try{cur=t.readCString(1);}catch(e){}if(cur!==M1_EXP)continue;if(!(advDone||advwDone))continue;/* CRASH-GATE #212: flip M1 only after ADV emptied adverts.adBreaks (else under-enriched middle branch -> pod-resolve crash) */Memory.protect(t,1,'rw-');t.writeByteArray([0x30]);m1Done=true;L('PATCH M1: getAdMetadata if(d)->if(0) (ADV-gated) @'+t);}}catch(e){}}
   }
   if(!m2Done){ var p2=pat(M2_ANCHOR);
     for(var i2=0;i2<rs.length;i2++){var r2=rs[i2];if(r2.size>128*1024*1024)continue;
@@ -184,10 +184,18 @@ function patchMASTERw(rs){ if(masterDone||mwDone)return;
   // 'else return;' string -> the 25028 'MASTERw M2-MISS' with rawRealPods leaking from the still-live
   // if(<cond>) first branch). Flip M1 and finish.
   if(m2Done){
+    // CRASH-GATE (2026-09-28, #212 reopen): only flip M1 once ADV has emptied adverts.adBreaks.
+    // If ADV/ADVw hasn't landed, flipping M1 skips the getAds first branch (its applyDaiPrefetch/
+    // mergeReplacedAds enrichment) and routes to the UNDER-enriched middle branch built from the
+    // still-populated adverts.adBreaks — the native player then dies resolving the pod (rodawg71's
+    // title: DRIFT[ADV=0 MASTER=1w] -> "Crash report file written", clone pid died fg TOP). Not
+    // flipping M1 leaves the fully-enriched first branch intact -> ads may play but no crash
+    // (consistent). fastMASTER keeps retrying, so M1 flips as soon as ADV lands.
+    if(!(advDone||advwDone)) return;
     Memory.protect(m1addr,1,'rw-'); m1addr.writeByteArray([0x30]);
     var vb=-1; try{vb=m1addr.readU8();}catch(e){}   // read-back: confirm the flip actually took
     mwDone=true; masterDone=true;
-    L('PATCH MASTERw: getAdMetadata if('+String.fromCharCode(m1cc)+')->if(0) @'+m1addr+' (M1-only; exact M2 already landed else b=[]) verify='+(vb===0x30?'OK(now 0)':'FAIL(byte='+vb+')')+' — rename-drift recovered, v2.1');
+    L('PATCH MASTERw: getAdMetadata if('+String.fromCharCode(m1cc)+')->if(0) @'+m1addr+' (M1-only; exact M2 already landed else b=[]) verify='+(vb===0x30?'OK(now 0)':'FAIL(byte='+vb+')')+' — rename-drift recovered, ADV-gated, v2.2');
     return;
   }
   // --- locate M2: else return; [gap] <acc> =this.adBreakHydrator ---
@@ -205,12 +213,17 @@ function patchMASTERw(rs){ if(masterDone||mwDone)return;
       try{var h2=Memory.scanSync(r2.base,r2.size,p2);for(var j2=0;j2<h2.length;j2++){var vc=-1;try{vc=h2[j2].address.add(accOff).readU8();}catch(e){}if(!isAlpha(vc))continue;m2addr=h2[j2].address;m2vc=vc;break;}}catch(e){}}
   }
   if(m2addr){
+    // CRASH-GATE (#212 reopen): hold the atomic M1+M2 write until ADV emptied adverts.adBreaks —
+    // flipping M1 while the source is still populated routes to the under-enriched middle branch
+    // and crashes the player on pod resolution. Write nothing (getAdMetadata intact = crash-safe,
+    // ads may play); retry next pass once ADV lands.
+    if(!(advDone||advwDone)) return;
     var vch=String.fromCharCode(m2vc), neu='else '+vch+'=[]  ;';
     if(neu.length===12){
       Memory.protect(m1addr,1,'rw-');m1addr.writeByteArray([0x30]);
       Memory.protect(m2addr,12,'rw-');m2addr.writeByteArray(bytesOf(neu));
       mwDone=true;masterDone=true;
-      L('PATCH MASTERw: getAdMetadata if('+String.fromCharCode(m1cc)+')->if(0) @'+m1addr+' + else return;->else '+vch+'=[] @'+m2addr+' (atomic, rename-tolerant) — string-drift recovered');
+      L('PATCH MASTERw: getAdMetadata if('+String.fromCharCode(m1cc)+')->if(0) @'+m1addr+' + else return;->else '+vch+'=[] @'+m2addr+' (atomic, rename-tolerant, ADV-gated) — string-drift recovered');
     }
     return;
   }
