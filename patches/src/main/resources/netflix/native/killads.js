@@ -151,7 +151,7 @@ function patchMASTER(rs){ if(masterDone)return;
 // materialising (~+25s), before the first getAdMetadata runs. Write-once (masterDone guard) — stops
 // as soon as both edits land. Mirrors fastHH.
 var _fastMn=0;
-function fastMASTER(){ if(masterDone)return; _fastMn++;
+function fastMASTER(){ if(masterDone)return; if(hhYield()){ setTimeout(fastMASTER,250); return; } _fastMn++;
   try{ var _rm=Process.enumerateRanges('rw-'); patchMASTER(_rm); if(!masterDone) patchMASTERw(_rm); }catch(e){}
   if(masterDone){ L('fastMASTER: applied by pass '+_fastMn+(mwDone?' (wildcard fallback)':'')); return; }
   if(_fastMn<500) setTimeout(fastMASTER, 120);   // ~60s of tight scanning
@@ -395,7 +395,12 @@ var CLCS_MARKERS=[
 // (price-change/upsell — desired); verify no load-bearing gate (maturity/PIN) shares the type on-device.
 var CLCS_ANCHORS=[
   {a:'case"clcsInterstitialGate":case"clcsInterstitialPreProfileGate"', off:5, chr:'c', to:'x',
-   lbl:'dispatch:clcsInterstitialGate-case-break'}
+   lbl:'dispatch:clcsInterstitialGate-case-break'},
+  // 2026-09-24 (.210, live challenge): the HOUSEHOLD prompt raised at profile select is fetched with
+  // QueryType.ProfileGate, and the fetch builder labels it componentName:"clcsInterstitialPreProfileGate"
+  // (not "clcsInterstitialGate"), so the label above never saw it. Break this label too, same 1-byte flip.
+  {a:'case"clcsInterstitialPreProfileGate":', off:5, chr:'c', to:'x',
+   lbl:'dispatch:clcsInterstitialPreProfileGate-case-break'}
 ];
 var clcsFlipped={},clcsDone=false;
 function patchCLCS(rs){ if(clcsDone||!HH_ENABLED)return; if(!CLCS_ANCHORS.length)return;
@@ -406,6 +411,54 @@ function patchCLCS(rs){ if(clcsDone||!HH_ENABLED)return; if(!CLCS_ANCHORS.length
       try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(off);var cur=null;try{cur=t.readCString(1);}catch(e){}if(cur!==exp)continue;Memory.protect(t,1,'rw-');t.writeByteArray([nb]);clcsFlipped[AN.lbl]=true;L('PATCH CLCS: '+AN.lbl+' '+exp+'->'+(AN.to||'1')+' @'+t);}}catch(e){}}
   }
   if(all)clcsDone=true;
+}
+// fastCLCS (2026-09-24): race-win for the gate dispatcher. On .210 both labels were broken at +55s via
+// apply() (which runs ~15 full scans per pass) and the household gate STILL routed — the ProfileGate
+// interstitial is fetched + pushed while the profile screen loads, before apply() lands. This loop scans
+// ONE combined pattern every 150ms from launch and flips both case-label bytes the instant the dispatcher
+// source is resident, so V8 compiles the already-broken labels on the first call. Write-once.
+var FC_ANCHOR='case"clcsInterstitialGate":case"clcsInterstitialPreProfileGate":', FC_OFFS=[5,32];
+// ROUTE 2 (2026-09-24): clicking PLAY re-fetches an interstitial (the ATV twin of Nikflix's
+// CLCSInterstitialPlaybackAndPostPlayback) and doRouteOnFetchedInterstitial pushes the household gate
+// DIRECTLY (pushClcsInterstitialGate / replaceWithClcsInterstitialGate), never touching the dispatcher.
+// Its first guard is `...fetchDgsData"}),!v){p.next=24;break}` = "no interstitial -> exit to playback".
+// Flip the var byte to '0' (`!v` -> `!0`, always true) so every fetched playback interstitial is
+// treated as absent -> straight to playback. Same effect as Nikflix returning {data:{}}.
+// Anchored on Netflix's own debug string (stable across re-minify); verify var+`){` before writing.
+// NOTE: also skips UMS notices fetched at playback (payment-hold etc.) — acceptable for this opt-in.
+var FR_ANCHOR='doRouteOnFetchedInterstitial:fetchDgsData"}),!';
+var frDone=false;
+var _fcN=0, _fcT0=Date.now();
+// Cold-start priority (2026-09-24): on a cold boot every full-memory scanner (fastMASTER, apply, observe)
+// queued ahead of fastCLCS and its 2nd pass slipped to +52s — after the profile gate had already routed.
+// While the household dispatcher is still unpatched (household opt-in only, max 30s), the other scanners
+// step aside so fastCLCS owns the JS thread. Nothing can play before profile select, so the ad-kill loses
+// no coverage; the 30s cap bounds the delay if the dispatcher anchor ever drifts.
+function hhYield(){ return HH_ENABLED && !clcsDone && (Date.now()-_fcT0)<30000; }
+function fastCLCS(){ if(!HH_ENABLED||(clcsDone&&frDone))return; _fcN++;
+  var rs=Process.enumerateRanges('rw-');
+  if(!clcsDone){ var p=pat(FC_ANCHOR), hit=0;
+    for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
+      try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){ var a=h[j].address;
+        for(var k=0;k<FC_OFFS.length;k++){ var t=a.add(FC_OFFS[k]); if(t.readU8()!==0x63)continue; Memory.protect(t,1,'rw-'); t.writeU8(0x78); }
+        hit++; }}catch(e){}}
+    if(hit){ clcsDone=true; for(var ai=0;ai<CLCS_ANCHORS.length;ai++) clcsFlipped[CLCS_ANCHORS[ai].lbl]=true;
+      L('PATCH CLCS(fast): both gate case-labels broken x'+hit+' at +'+(Date.now()-_fcT0)+'ms (pass '+_fcN+')'); }
+  }
+  if(!frDone){ var p2=pat(FR_ANCHOR), hit2=0;
+    for(var i2=0;i2<rs.length;i2++){var r2=rs[i2];if(r2.size>128*1024*1024)continue;
+      try{var h2=Memory.scanSync(r2.base,r2.size,p2);for(var j2=0;j2<h2.length;j2++){ var t2=h2[j2].address.add(FR_ANCHOR.length);
+        var vc=t2.readU8(), c1=t2.add(1).readU8(), c2=t2.add(2).readU8();
+        if(vc===0x30){ hit2++; continue; }                       // already '0'
+        if(!isAlpha(vc)||c1!==0x29||c2!==0x7b) continue;         // expect <var>){
+        Memory.protect(t2,1,'rw-'); t2.writeU8(0x30); hit2++;
+        L('PATCH CLCS(route2): doRouteOnFetchedInterstitial !'+String.fromCharCode(vc)+'->!0 (playback interstitial -> exit) @'+t2); }}catch(e){}}
+    if(hit2){ frDone=true; L('PATCH CLCS(route2): done x'+hit2+' at +'+(Date.now()-_fcT0)+'ms (pass '+_fcN+')'); }
+  }
+  if(clcsDone&&frDone) return;
+  // tight while the dispatcher is pending (~2 min), then a light 1s cadence for route 2 (~10 min)
+  if(!clcsDone&&_fcN<800) setTimeout(fastCLCS,150);
+  else if(_fcN<1400) setTimeout(fastCLCS,1000);
 }
 // Read-only diagnostic: find each CLCS_MARKERS string in the JS heap and dump ~100 chars of context
 // per hit so the runtime consumer site can be identified from logcat. Runs only while HH_ENABLED and
@@ -444,7 +497,7 @@ function clcsProbe(){ if(!CLCS_PROBE_ENABLED||clcsProbeDone)return; _clcsProbeN+
 }
 
 var tries=0;
-function apply(){ tries++; var rs=Process.enumerateRanges('rw-');
+function apply(){ if(hhYield()){ setTimeout(apply,500); return; } tries++; var rs=Process.enumerateRanges('rw-');
   var loaded=false,gp=pat('nrdp.gibbon');
   for(var i=0;i<rs.length&&!loaded;i++){if(rs[i].size>128*1024*1024)continue;try{if(Memory.scanSync(rs[i].base,rs[i].size,gp).length)loaded=true;}catch(e){}}
   if(loaded){patchA(rs);patchA2(rs);patchADV(rs);if(!advDone)patchADVw(rs);patchDAI(rs);patchMASTER(rs);if(!masterDone)patchMASTERw(rs);patchB(rs);patchFP(rs);patchGAID(rs);patchHH(rs);neuterMhuRenders(rs);patchCLCS(rs);}
@@ -463,7 +516,7 @@ function apply(){ tries++; var rs=Process.enumerateRanges('rw-');
 var KILLMARK=pat('__adkill'),REALPOD=pat('ads":[{'),DISPAD=pat('displayAd":{'),BM=pat('"bookmark":');
 function readNumAfter(addr,skip){ try{var s=addr.add(skip).readCString(14);var m=/^([0-9]{1,12})/.exec(s);return m?parseInt(m[1],10):-1;}catch(e){return -1;} }
 var cyc=0;
-function observe(){ cyc++;
+function observe(){ if(hhYield()){ setTimeout(observe,1000); return; } cyc++;
   var rs=Process.enumerateRanges('rw-');var kill=0,real=0,disp=0;var bset={};
   for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>64*1024*1024||r.size<256)continue;
     try{ kill+=Memory.scanSync(r.base,r.size,KILLMARK).length; real+=Memory.scanSync(r.base,r.size,REALPOD).length; disp+=Memory.scanSync(r.base,r.size,DISPAD).length;
@@ -499,3 +552,8 @@ setTimeout(dumpMASTER,2000);
 if(HH_ENABLED){ L('fastHH armed (household prompt suppression, early race-win scanner)'); setTimeout(fastHH,200);
 }
 if(CLCS_PROBE_ENABLED){ L('clcsProbe armed (DEV recon: locate runtime CLCS interstitial consumer — Nikflix seam)'); setTimeout(clcsProbe,200); }
+if(HH_ENABLED){ L('fastCLCS armed (gate dispatcher race-win)'); setTimeout(fastCLCS,100); }
+
+// LATE-ARM: don't attach until +40s. The hot eval callback isn't hooked during the heavy early boot
+// (so no boot stall), but we're armed before the ~+60s route2/menu eval fires on play. We already have
+// the appboot arg path (implicit_args_[0]); this run is to CATCH the late route2/dispatcher source eval.

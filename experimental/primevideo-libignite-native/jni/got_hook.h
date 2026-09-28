@@ -9,8 +9,9 @@
 //   * ByteHook would be the textbook tool, but on this Onn 4K ROM its mandatory
 //     dl-init/fini monitor is wired (arm, API >= 21, Android 14) to
 //     ShadowHook's `register_dl_init_callback`, which depends on the linker
-//     constructor hook (`sh_linker_init`) that FAILS on this ROM (errno 12 —
-//     see shadowhook/VENDORED.md). So ByteHook aborts every hook with
+//     constructor hook (`sh_linker_init`) that FAILS on this ROM (errno 12,
+//     observed on-device while ShadowHook was vendored during research; it has
+//     since been removed). So ByteHook aborts every hook with
 //     INITERR_DLMTR here.
 //
 // This hooks libignite's *import slot* for a symbol: when libignite calls

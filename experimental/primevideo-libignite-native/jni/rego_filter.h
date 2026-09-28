@@ -1,8 +1,9 @@
 // rego_filter.h — pure, host-unit-testable helpers for the regolith getVideoAds
 // ad-decision response (PATH 2). Extracted from hooks.cpp so the same code the
 // hook runs is exercised by test_remote_strip.cpp — no drift between test and
-// ship. Header-only, no allocation, no Android/zlib deps, exactly like
-// manifest_filter.h / prs_filter.h.
+// ship. Header-only, no allocation, no Android/zlib deps (the same style as the
+// research-era manifest_filter.h / prs_filter.h, now kept in
+// experimental/native-adstrip-toolkit/examples/primevideo/jni/).
 //
 // Two operations, both same-length and string/escape aware:
 //   json_match_bracket()       — matched ']'/'}' for an opener, or -1 if the

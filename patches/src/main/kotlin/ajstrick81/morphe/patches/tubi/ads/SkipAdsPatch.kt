@@ -1,7 +1,10 @@
 package ajstrick81.morphe.patches.tubi.ads
 
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.patcher.extensions.InstructionExtensions.getInstruction
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.util.smali.ExternalLabel
 import ajstrick81.morphe.patches.tubi.shared.Constants
 
 @Suppress("unused")
@@ -50,9 +53,17 @@ val skipAdsPatch = bytecodePatch(
         // WebView-layer ad domain interception. Blocks XHR/fetch requests from
         // the Tubi SPA to ad orchestration endpoints. Cannot intercept media
         // element (<video> src) requests — those require AGH DNS rules.
-        TubiWebClientInterceptFingerprint.method.addInstructions(
-            0,
-            """
+        //
+        // No internal labels: an internal label's branch target is fixed at
+        // insert time, so if another patch (e.g. Block analytics & tracking)
+        // later prepends code to this method the branches land mid-instruction
+        // (VerifyError at launch). Matches are OR-ed into v4 and every branch
+        // targets the method's original first instruction via ExternalLabel.
+        TubiWebClientInterceptFingerprint.method.let { method ->
+            method.addInstructionsWithLabels(
+                0,
+                """
+                const/4 v4, 0x0
                 if-eqz p2, :intercept_skip
                 invoke-interface {p2}, Landroid/webkit/WebResourceRequest;->getUrl()Landroid/net/Uri;
                 move-result-object v0
@@ -63,37 +74,36 @@ val skipAdsPatch = bytecodePatch(
                 const-string v2, "dai.google.com"
                 invoke-virtual {v1, v2}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
                 move-result v3
-                if-nez v3, :intercept_block
+                or-int/2addr v4, v3
                 const-string v2, "imasdk.googleapis.com"
                 invoke-virtual {v1, v2}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
                 move-result v3
-                if-nez v3, :intercept_block
+                or-int/2addr v4, v3
                 const-string v2, "doubleclick.net"
                 invoke-virtual {v1, v2}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
                 move-result v3
-                if-nez v3, :intercept_block
+                or-int/2addr v4, v3
                 const-string v2, "googletagmanager.com"
                 invoke-virtual {v1, v2}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
                 move-result v3
-                if-nez v3, :intercept_block
+                or-int/2addr v4, v3
                 const-string v2, "googlesyndication.com"
                 invoke-virtual {v1, v2}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
                 move-result v3
-                if-nez v3, :intercept_block
+                or-int/2addr v4, v3
                 const-string v2, "adrise.tv"
                 invoke-virtual {v1, v2}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
                 move-result v3
-                if-nez v3, :intercept_block
+                or-int/2addr v4, v3
                 const-string v2, "ads.production-public.tubi.io"
                 invoke-virtual {v1, v2}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
                 move-result v3
-                if-nez v3, :intercept_block
+                or-int/2addr v4, v3
                 const-string v2, "rainmaker.production-public.tubi.io"
                 invoke-virtual {v1, v2}, Ljava/lang/String;->contains(Ljava/lang/CharSequence;)Z
                 move-result v3
-                if-nez v3, :intercept_block
-                goto :intercept_skip
-                :intercept_block
+                or-int/2addr v4, v3
+                if-eqz v4, :intercept_skip
                 new-instance v0, Landroid/webkit/WebResourceResponse;
                 const-string v1, "text/plain"
                 const-string v2, "utf-8"
@@ -103,10 +113,10 @@ val skipAdsPatch = bytecodePatch(
                 invoke-direct {v4, v3}, Ljava/io/ByteArrayInputStream;-><init>([B)V
                 invoke-direct {v0, v1, v2, v4}, Landroid/webkit/WebResourceResponse;-><init>(Ljava/lang/String;Ljava/lang/String;Ljava/io/InputStream;)V
                 return-object v0
-                :intercept_skip
-                nop
-            """
-        )
+                """,
+                ExternalLabel("intercept_skip", method.getInstruction(0)),
+            )
+        }
 
         // Hook 8 — xo/C$c.onPageFinished(WebView, String)
         //

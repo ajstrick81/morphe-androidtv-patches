@@ -1,0 +1,274 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Netflix ATV: how the ad strip works",
+    "locale": "en",
+    "output": "netflix-ad-path.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "why-in-heap",
+        "label": "Why in-heap",
+        "focus": [
+          "oca",
+          "msl",
+          "js",
+          "getad",
+          "screen"
+        ],
+        "note": "TLS, MSL and the appboot signature are load-time gates. The manifest decrypts in-process, so ad data and code are plaintext in the heap."
+      },
+      {
+        "id": "the-kill",
+        "label": "The kill",
+        "focus": [
+          "js",
+          "getad",
+          "gadget",
+          "screen"
+        ],
+        "note": "MASTER: getAdMetadata builds every break. if(d)->if(0), else return->else b=[] — the server's own empty-break shape, played cleanly."
+      },
+      {
+        "id": "clone-gate",
+        "label": "Clone + tamper",
+        "focus": [
+          "stock",
+          "clone",
+          "gadget",
+          "js"
+        ],
+        "note": "The clone runs only past DexGuard CertCheck and native RJni_SignatureCheck (<queries> reads stock's signature). Keep stock installed."
+      },
+      {
+        "id": "drift",
+        "label": "Drift + fallback",
+        "focus": [
+          "oca",
+          "js",
+          "getad",
+          "gadget"
+        ],
+        "note": "Ad logic is downloaded JS, re-minified server-side (#166). Wildcard MASTERw/ADVw re-anchor by stable tokens; <<<DRIFT alarms on a miss."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "stock",
+      "type": "external",
+      "label": "Stock Netflix",
+      "sublabel": "system app, Netflix-signed",
+      "pos": [
+        40,
+        120
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "keep installed"
+    },
+    {
+      "id": "oca",
+      "type": "cloud",
+      "label": "Open Connect",
+      "sublabel": "oca.nflxvideo.net — SSAI",
+      "pos": [
+        40,
+        300
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "clone",
+      "type": "security",
+      "label": "Clone Netflix",
+      "sublabel": "com.netflix.ninja.clone",
+      "pos": [
+        300,
+        120
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "tag": "2 anti-tampers"
+    },
+    {
+      "id": "msl",
+      "type": "backend",
+      "label": "MSL",
+      "sublabel": "decrypts manifest (JS)",
+      "pos": [
+        300,
+        300
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "gadget",
+      "type": "security",
+      "label": "libgadget + killads.js",
+      "sublabel": "in-process, script mode",
+      "pos": [
+        560,
+        120
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "tag": "the patch"
+    },
+    {
+      "id": "js",
+      "type": "backend",
+      "label": "V8 JS engine",
+      "sublabel": "appboot / player bundle",
+      "pos": [
+        560,
+        300
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "getad",
+      "type": "backend",
+      "label": "getAdMetadata",
+      "sublabel": "builds every ad break",
+      "pos": [
+        830,
+        300
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "tag": "MASTER seam"
+    },
+    {
+      "id": "screen",
+      "type": "frontend",
+      "label": "Playback",
+      "sublabel": "empty break, no ad",
+      "pos": [
+        1090,
+        300
+      ],
+      "size": [
+        150,
+        64
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Netflix services",
+      "wraps": [
+        "oca"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Device (libnetflix.so in-process)",
+      "wraps": [
+        "clone",
+        "msl",
+        "gadget",
+        "js",
+        "getad"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "sig",
+      "from": "clone",
+      "to": "stock",
+      "label": "reads genuine signature",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "top"
+    },
+    {
+      "id": "manifest",
+      "from": "oca",
+      "to": "msl",
+      "label": "encrypted manifest"
+    },
+    {
+      "id": "decrypt",
+      "from": "msl",
+      "to": "js",
+      "label": "plaintext adBreaks"
+    },
+    {
+      "id": "arm",
+      "from": "clone",
+      "to": "gadget",
+      "label": "loads at launch"
+    },
+    {
+      "id": "patch",
+      "from": "gadget",
+      "to": "getad",
+      "label": "if(0) / else b=[]",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "build",
+      "from": "js",
+      "to": "getad",
+      "label": "ad-break build"
+    },
+    {
+      "id": "empty",
+      "from": "getad",
+      "to": "screen",
+      "label": "empty list"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "What ships (v1.37.4)",
+      "items": [
+        "MASTER: getAdMetadata → empty ad-break list",
+        "ADV/A2/DAI backups + pause-ad hook (B)",
+        "In-process, one edit, pre-playback"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Safety rules",
+      "items": [
+        "Return a valid [], never undefined (atomic M1+M2)",
+        "One edit pre-playback; never re-patch in a loop",
+        "Measure ads:[] vs ads:[{ }], not the screen"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Hard parts",
+      "items": [
+        "Clone must pass 2 anti-tampers; keep stock installed",
+        "Ad JS re-minifies server-side → drift (#166)",
+        "Load-hook (#168) is the drift-proof endgame, unshipped"
+      ]
+    }
+  ]
+}

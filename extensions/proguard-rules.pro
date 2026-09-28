@@ -147,3 +147,13 @@
 -keep class kotlin.coroutines.CoroutineContext { *; }
 -keep class kotlin.coroutines.EmptyCoroutineContext { *; }
 -keep class kotlin.coroutines.jvm.internal.** { *; }
+
+# Tubi — "Block analytics & tracking" (opt-in). openConnection / install /
+# blockWebRequest are called only from injected smali via invoke-static, and
+# BlockInterceptor is matched by instanceof, so R8 must keep all of them.
+-keep class ajstrick81.morphe.extension.tubi.privacy.TrackerBlocker {
+    public static *** openConnection(java.net.URL);
+    public static void install(okhttp3.OkHttpClient$Builder);
+    public static *** blockWebRequest(android.webkit.WebResourceRequest);
+}
+-keep class ajstrick81.morphe.extension.tubi.privacy.TrackerBlocker$BlockInterceptor { *; }

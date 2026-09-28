@@ -1,0 +1,213 @@
+{
+  "about": "Hand-curated half of the seam map: what code can't tell us. Keys match the app folders in the generated JSON. Keep factual; mark unknowns as null + an entry in `gaps`. Render with: node scripts/seam-map/render.mjs",
+  "engines": {
+    "ima-dai": {
+      "label": "Google IMA / DAI client SDK",
+      "shape": "The app's player asks Google's IMA SDK (client-side) or DAI (server-stitched pods) for ad breaks. The ad schedule surfaces in Java/Kotlin as cue points, ad-break lists or an AdsManager.",
+      "portable_seams": "Empty the cue-point / ad-break accessor; neuter AdsManager.start; null the SSAI AdsLoader getter; redirect live pods to a slate. Seams found in one IMA app usually port to the next (Fox One = Tubi-class)."
+    },
+    "ssai-manifest": {
+      "label": "Server-side stitching (SSAI) via manifest",
+      "shape": "The CDN stitches ads into the stream itself. The only client-visible trace is the manifest (ad periods, DateRanges, ID3/beacon tags) and the host names that serve it.",
+      "portable_seams": "Force a clean manifest (origin block, CDN fallback, ad-free URL swap); strip ad periods; or, for live passthrough SSAI, detect the break and MASK it (slate + mute)."
+    },
+    "proprietary": {
+      "label": "Proprietary native / JS ad engine",
+      "shape": "The ad decision lives in the app's own runtime — a native library, a JS VM inside a .so, or a WebView — not in a standard SDK.",
+      "portable_seams": "Find where the ad schedule crosses into the player (a response buffer, a JS function, an insertion-point accessor) and empty it there; native seams need re-pointing per version."
+    }
+  },
+  "apps": {
+    "primevideo": {
+      "engine": "proprietary",
+      "runtime": "libignite = WAMR AoT WASM runtime; player/timeline in QuickJS. v16 (6.24.x) moved the whole ad pipeline native (Java ad surface gone); the Megablast Rust ad client is a DOWNLOADED .so.br blob, updatable server-side.",
+      "delivery": "Client-stitched: the app fetches an ad schedule (regolith / SGAI `getVideoAds` response, intraTitlePlaylist) and stitches ad pods into playback itself.",
+      "seam": "The regolith ad-playlist response inside libignite — intercepted by a native GOT/PLT hook (memcpy) and emptied; intraTitlePlaylist PATH1 skipped.",
+      "action": "Empty the ad playlist before the player sees it → the break is never scheduled.",
+      "patch_evidence": "`[rego] emptied playlist (~N ad(s), interior X bytes blanked)` + `PVKILL path=tv ads=N` at the moment each pod is fetched (2026-09-24 live: 1 pre-roll, 4 + 3 mid-roll ads emptied).",
+      "device_signature": "When an ad DOES play (6.24.7 capture): decoder reconfigure (`Discard frames from previous generation`, `VideoResolutionChange`) + crop switch (title-specific, e.g. letterbox 960 → ad 1080) + ~27 `I/f Successfully uploaded metrics` in ~2 s from the app process. With the patch working: none of these at the marker, 0 metrics uploads.",
+      "drift": "v16 loader never fired because onCreate became `public final` vs an exact accessFlags match (fix: drop accessFlags). 6.24.7 = minor bump, seam re-pointed (declared target still in progress). High-ad-region mid-roll truncation (#120) fixed in v1.37.4.",
+      "gaps": [
+        "Timeline-action native symbols unresolved (Native_StartTimelineAction not in NativeSymbol table)."
+      ]
+    },
+    "netflix": {
+      "engine": "proprietary",
+      "runtime": "JS VM inside libnetflix.so (V8 13.2, 32-bit).",
+      "delivery": "Ad metadata is produced and consumed in the app's JavaScript layer.",
+      "seam": "`getAdMetadata` in the JS bundle (wildcard MASTER re-anchor), plus the ad-kill script.",
+      "action": "Strip ad metadata so no ad is scheduled; household prompt handled separately (opt-in).",
+      "patch_evidence": null,
+      "device_signature": null,
+      "drift": "Anchor drift on 13.0.1 (re-anchored at getAdMetadata); #166 re-minify drift fixed v1.36.0 (wildcard MASTER) and v1.37.1. Household prompt is a TIMING wall for string patches — needs a load-hook.",
+      "gaps": [
+        "Pause-ad slips past PATCH B.",
+        "No runtime log line proves the seam fired — add one.",
+        "Device signature not captured."
+      ]
+    },
+    "disney": {
+      "engine": "proprietary",
+      "runtime": "Disney media player (legacy DSS SDK and new com.disney.dmp).",
+      "delivery": "SGAI (server-guided ad insertion): the player receives insertion points / ranges that say where ads go.",
+      "seam": "Insertion accessors `getPoints()` / `getRanges()` (legacy + DMP variants).",
+      "action": "Return empty insertion points/ranges → no breaks scheduled. 26.16: obfuscated MEL pause layer → pause ad made optional.",
+      "patch_evidence": null,
+      "device_signature": null,
+      "drift": "Verified through 26.12.1; 26.16 pause-ad needed an optional patch (#167).",
+      "gaps": [
+        "Re-anchor the 26.16 pause-ad seam.",
+        "No runtime log line.",
+        "Device signature not captured."
+      ]
+    },
+    "hbomax": {
+      "engine": "ssai-manifest",
+      "runtime": "WBD/Discovery player (`com.discovery.player.*`).",
+      "delivery": "SSAI: ads stitched server-side; manifests from media.max.com / gmss / fwmrm (FreeWheel).",
+      "seam": "Network origins (in-app block on media.max.com/gmss/fwmrm → clean `_fallback.mpd`) and the CDN-fallback coordinator (`isUsingAlternateCdn()` → true).",
+      "action": "Force the ad-free fallback manifest; Prefer Ad-Free Stream fixes the mid-roll 39999 fatal.",
+      "patch_evidence": null,
+      "device_signature": null,
+      "drift": "7.5.12 package rename; 7.7.0.78 dynamic-register fix (P2). Household prompt = server-side ExtraMember wall (not bytecode-beatable).",
+      "gaps": [
+        "Keep the opt-in origin-block OFF (fatals mid-roll).",
+        "Device signature not captured."
+      ]
+    },
+    "paramount": {
+      "engine": "ima-dai",
+      "runtime": "AVIA player (com.paramount.android.avia) + Google IMA / DAI.",
+      "delivery": "VOD: client ad decision. Live: full-service IMA-DAI → one stitched stream (no CDN-fallback seam).",
+      "seam": "VOD `shouldPlayAd()`; live: pod requests.",
+      "action": "VOD: shouldPlayAd → false. Live: pure slate-redirect (accepted ceiling — in-interceptor PTS alignment crashed weak hardware).",
+      "patch_evidence": null,
+      "device_signature": null,
+      "drift": "16.17 ANR fixed in v1.19.0; fingerprints hardened for 16.19.",
+      "gaps": [
+        "Device signature not captured."
+      ]
+    },
+    "pluto": {
+      "engine": "ssai-manifest",
+      "runtime": "Paramount's AVIA player (AviaPlayer.startExoplayer) over media3/ExoPlayer; Pluto stitcher sessions.",
+      "delivery": "SSAI via Pluto's stitcher: VOD sessions carry ad breaks; live streams carry ID3 ad beacons.",
+      "seam": "VOD: `StitcherSession.getAdBreaks()` + DASH ad-period strip + beacon/pause/clickable-ad binders. Live: `ID3AdsBeaconTracker.consumeID3` as the break DETECTOR.",
+      "action": "VOD: remove ad breaks entirely. Live: mask the break (black cover + mute), lifted when the show returns.",
+      "patch_evidence": "`muteStream: OK` + `muteExo: OK` + `showCover` + `live ad break -> mask ON (mode=BOTH)` ~0.1 s after the first beacon; `live ad break -> mask OFF (last ad ended (QUARTILE_END, no next ad))` ~1.2 s after the last ad's QUARTILE_END (6.5 s no-tick fallback remains) (tag MORPHE-PLUTO-SLATE).",
+      "device_signature": "Live (2026-09-24 captures, 5.66.0): the app's OWN verbose log `V/ID3AdsBeaconTracker consumeID3: ID3Tag(creativeId=…, currentIndexSec=N, maximumIndexSec=30|15, typeFlags=[…])` every ~5 s per ad; `START_OF_MEDIA` = ad start, `QUARTILE_END` = ad end, creativeId changes per ad, next ad starts 80–104 ms after the previous QUARTILE_END. A decoder re-init at each splice. NOT a signature: resolution changes — HLS adaptive bitrate switches 720/360 all the time without ads.",
+      "drift": "#144 fixed (positive ad-detect + <40% guard); #147 resume fixed; #152 live mask shipped, mute fixed v1.35.1.",
+      "gaps": []
+    },
+    "espn": {
+      "engine": "ssai-manifest",
+      "runtime": "ESPN player (MediaPlayerViewModel) with passthrough SSAI on live.",
+      "delivery": "Live: passthrough SSAI, breaks marked by DateRanges in the manifest. VOD: client flag.",
+      "seam": "Live: DateRanges × playhead → break detector. VOD: `isAdDisabled`. `ProgramData.eventId` feeds the scoreboard slate.",
+      "action": "Live: mask (animated slate + mute). VOD: ads disabled.",
+      "patch_evidence": "Tag MORPHE-ESPN-SLATE (slate on/off, mute, scoreboard).",
+      "device_signature": null,
+      "drift": "onProgramData needs an R8 -keep or NoSuchMethodError bounces live games.",
+      "gaps": [
+        "Device signature not captured."
+      ]
+    },
+    "mlbtv": {
+      "engine": "ima-dai",
+      "runtime": "MLB.tv player.",
+      "delivery": "Live: Google DAI pod serving (same shape as Paramount live).",
+      "seam": "Pod requests (slate-redirect near drop-in).",
+      "action": "Redirect live ad pods to a slate.",
+      "patch_evidence": "Tag MORPHE-MLB-ADBREAK.",
+      "device_signature": null,
+      "drift": null,
+      "gaps": [
+        "Early (recon-stage) seam.",
+        "Device signature not captured."
+      ]
+    },
+    "peacock": {
+      "engine": "ssai-manifest",
+      "runtime": "Peacock player with WebView + XTV client + OkHttp networking.",
+      "delivery": "DAI manifests via WebView (`/dai/pub/` paths).",
+      "seam": "Manifest URL (`/dai/pub/` → `/pub/`), XTV client setters, OkHttp builder.",
+      "action": "Swap to the ad-free manifest path; block ad hosts in OkHttp.",
+      "patch_evidence": "Extension log lines (see generated section).",
+      "device_signature": null,
+      "drift": null,
+      "gaps": [
+        "Live not covered.",
+        "Device signature not captured."
+      ]
+    },
+    "tubi": {
+      "engine": "ima-dai",
+      "runtime": "Fox IMA-DAI SDK.",
+      "delivery": "Client-side ad decisions through the Fox SDK.",
+      "seam": "SDK ad hooks 1/2/3/5/6 (per-version R8 class renames).",
+      "action": "Skip ads at the SDK boundary.",
+      "patch_evidence": null,
+      "device_signature": null,
+      "drift": "R8 renames classes each version → per-version re-pin map (10.28.5000 shipped; newer re-pins in progress).",
+      "gaps": [
+        "No runtime log line.",
+        "Device signature not captured."
+      ]
+    },
+    "foxone": {
+      "engine": "ima-dai",
+      "runtime": "Same Fox IMA-DAI SDK as Tubi.",
+      "delivery": "Client-side via the Fox SDK.",
+      "seam": "Tubi hooks 1/2/3/5/6 are near drop-in; auto-skip-by-seek (dispatchAdPodStart + seekTo) explored.",
+      "action": "Skip ads.",
+      "patch_evidence": null,
+      "device_signature": null,
+      "drift": null,
+      "gaps": [
+        "Auto-skip-by-seek 3-patch WIP uncommitted.",
+        "Device signature not captured."
+      ]
+    },
+    "rte": {
+      "engine": "ima-dai",
+      "runtime": "24i player on media3 + IMA (VOD).",
+      "delivery": "Client-side IMA VOD ads.",
+      "seam": "Cue-points `long[]` (Hook3) and `AdsManager.start`.",
+      "action": "Empty cue points; neuter AdsManager.start. ⚠️ Neutering onAdsManagerLoaded HANGS.",
+      "patch_evidence": null,
+      "device_signature": null,
+      "drift": null,
+      "gaps": [
+        "No runtime log line.",
+        "Device signature not captured."
+      ]
+    },
+    "vix": {
+      "engine": "ima-dai",
+      "runtime": "IMA DAI pod serving (baked SSAI).",
+      "delivery": "Server-stitched pods via IMA DAI.",
+      "seam": "Cue-empty (+ clone build).",
+      "action": "Empty cues; clone to avoid keystore mismatch.",
+      "patch_evidence": null,
+      "device_signature": null,
+      "drift": "Device's ViX key ≠ CLI key → uninstall or clone.",
+      "gaps": [
+        "Parked; cue-empty built but unverified.",
+        "Device signature not captured."
+      ]
+    },
+    "twitchatv": {
+      "engine": "proprietary",
+      "runtime": "Starshot WebView player (Android TV build only).",
+      "delivery": "HLS with server-inserted ad segments + X-TV-TWITCH-AD-* signal tags; native IVS pre-roll.",
+      "seam": "WebView `shouldInterceptRequest` on playlists/segments.",
+      "action": "Blank-substitute ad segments with PTS smoothing (the client ceiling; zero-ads blocked by native pre-roll).",
+      "patch_evidence": "Extension log lines (see generated section).",
+      "device_signature": null,
+      "drift": "v9.0.0 is a native ExoPlayer build that predates Starshot → incompatible (#164).",
+      "gaps": [
+        "Device signature not captured."
+      ]
+    }
+  }
+}

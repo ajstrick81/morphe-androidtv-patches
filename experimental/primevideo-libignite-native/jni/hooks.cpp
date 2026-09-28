@@ -2,11 +2,18 @@
 //
 // Strategy (see got_hook.h for the full rationale): hook libignite's *import
 // slots* (PLT/GOT) for memcpy / memmove / __memcpy_chk / __memmove_chk. Each
-// proxy runs pvfilter::strip_remote_items() on the SOURCE buffer (before the
-// real copy proceeds) then calls through to the real libc function. This
-// mirrors the verified Frida bench (cmod-strip2.js mutates `src` in onEnter
-// before the wrapped call runs) — see remote_strip.h for the strip logic and
-// its safety invariant (never touch a truncated array).
+// proxy calls through to the real libc function FIRST, then runs maybe_strip()
+// on the DESTINATION buffer, which now holds decompressed plaintext:
+//   - maybe_empty_regolith(): TV — empty the getVideoAds/regolith response
+//     `playlist` (PV_EMPTY_REGOLITH), with the truncated-chunk salvage (#120).
+//   - pvfilter::strip_remote_items(): movies — blank Remote items in a complete
+//     PRS intraTitlePlaylist, leaving getVideoAds-backed ones for the regolith
+//     path (PV_SKIP_GVA_REMOTES, #14).
+// Never the source: editing the source can hit libcurl's CRC-checked gzip
+// buffer (CURL 61) — see the note above proxy_memcpy. (The original Frida bench,
+// cmod-strip2.js, mutated `src` in onEnter; that is exactly what caused the
+// intermittent CURL 61s.) See remote_strip.h / rego_filter.h for the strip logic
+// and its safety invariant (never touch a truncated element).
 //
 // Why GOT and not an inline libc hook: libignite reaches memcpy through an
 // IFUNC that resolves to __memcpy_a55 on this Cortex-A55. Hooking a libc body
@@ -292,21 +299,21 @@ void log_manifest_url(const char* s, size_t n) {
 }
 #endif
 
-void maybe_strip(const void* src, size_t n, const void* caller) {
+void maybe_strip(const void* buf, size_t n, const void* caller) {
     g_calls_total.fetch_add(1, std::memory_order_relaxed);
-    if (src == nullptr || n < kMinScanLen || n > kMaxScanLen) return;
+    if (buf == nullptr || n < kMinScanLen || n > kMaxScanLen) return;
     if (is_decompress_chunk(n)) { g_skipped_chunk.fetch_add(1, std::memory_order_relaxed); return; }
-    maybe_empty_regolith(const_cast<void*>(src), n);   // TV: empty regolith ad-decision response (dst-side)
+    maybe_empty_regolith(const_cast<void*>(buf), n);   // TV: empty regolith ad-decision response (dst-side)
     g_calls_in_gate.fetch_add(1, std::memory_order_relaxed);
 #if defined(PV_LOG_MANIFEST) && PV_LOG_MANIFEST
-    log_manifest_url(static_cast<const char*>(src), n);
+    log_manifest_url(static_cast<const char*>(buf), n);
 #endif
 
     uint64_t prev_max = g_max_n.load(std::memory_order_relaxed);
     if (n > prev_max) g_max_n.store(n, std::memory_order_relaxed);
 
     pvfilter::RemoteStripResult r =
-        pvfilter::strip_remote_items(const_cast<char*>(static_cast<const char*>(src)), n,
+        pvfilter::strip_remote_items(const_cast<char*>(static_cast<const char*>(buf)), n,
                                      /*blank_truncated_complete=*/false,
                                      /*apply=*/kApplyWrites);
 

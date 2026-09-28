@@ -125,9 +125,6 @@ decompiled/
 # Dependency directories
 node_modules/
 
-# gradle properties, due to Github token
-./gradle.properties
-
 # Ignore IDEA files
 .idea/
 local.properties
@@ -139,4 +136,6 @@ local.properties
 patches/src/main/resources/netflix/native/**/*.so
 !patches/src/main/resources/netflix/native/armeabi-v7a/libgadget.so
 scratchmlb/
+
+# Playwright MCP output (browser logs, screenshots, snapshots)
 .playwright-mcp/

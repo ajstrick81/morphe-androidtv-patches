@@ -10,7 +10,7 @@ _State as of 2026-09-07._
 - README ESPN section documents all patch options (docs-only)
 - `main` is current; Onn 4K (`.211`) running latest, `slate_mode=overlay`
 
-## ESPN patch = FOUR selectable patches (pkg `app.morphe.patches.espn`)
+## ESPN patch = FOUR selectable patches (pkg `ajstrick81.morphe.patches.espn`)
 - **ESPN Android TV** (core, always on) — DMP SGAI `isAdDisabled` → true; kills VOD/scheduled ads.
   File: `EspnAdsPatch.kt`. Compat: `AppCompatibilities.ESPN_TV` (`com.espn.score_center` 6.11.1).
 - **ESPN live commercial-break slate** (default on, deselectable) — `dependsOn` core; injects the

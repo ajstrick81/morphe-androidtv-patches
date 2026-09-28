@@ -20,11 +20,11 @@ If you encounter a bug while using Morphe Patches template, open an issue using 
 
 1. Before contributing, it is recommended to open an issue to discuss your change
 with the maintainers of Morphe Patches template
-2. Development happens on the `dev` branch. Fork the repository and create your branch from `dev`
+2. Development happens on `main`. Fork the repository and create your branch from `main`
 3. Commit your changes
-4. Submit a pull request to the `dev` branch of the repository and reference issues
+4. Submit a pull request to the `main` branch of the repository and reference issues
 that your pull request closes in the description of your pull request
 5. Our team will review your pull request and provide feedback. Once your pull request is approved,
-it will be merged into the `dev` branch and will be included in the next release of Morphe Patches template
+it will be merged into `main` and will be included in the next release of Morphe Patches template
 
 ❤️ Thank you for considering contributing to Morphe Patches template

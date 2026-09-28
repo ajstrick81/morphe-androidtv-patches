@@ -1,0 +1,103 @@
+# Monthly stale-branch report. Report-only: it never deletes anything.
+#
+# Lists every branch (except main) with no commits in the last N days (30 by
+# default) and keeps ONE open issue, labelled `stale-branches`, up to date with
+# the list. When nothing is stale, that issue is closed. To act on the report,
+# run the "Archive branches" workflow with the branch names you want archived.
+name: Stale branch report
+
+on:
+  schedule:
+    - cron: "0 14 1 * *" # 14:00 UTC on the 1st of every month
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Report branches with no commits in this many days"
+        default: "30"
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Build report and update issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DAYS: ${{ inputs.days || '30' }}
+        run: |
+          set -euo pipefail
+          label=stale-branches
+          case "$DAYS" in ''|*[!0-9]*) echo "::error::days must be a whole number"; exit 1;; esac
+
+          # Commits only (no file contents): enough for dates and ahead-counts.
+          git fetch -q --filter=blob:none --no-tags origin '+refs/heads/*:refs/remotes/origin/*'
+
+          now=$(date +%s)
+          cutoff=$((now - DAYS * 86400))
+          open_prs=$(gh pr list --state open --limit 200 --json number,headRefName \
+                       --jq '.[] | "\(.headRefName)\t\(.number)"')
+
+          rows=""; names=""; n=0
+          while read -r ts name; do
+            case "$name" in main|HEAD) continue;; esac
+            [ "$ts" -lt "$cutoff" ] || continue
+            age=$(( (now - ts) / 86400 ))
+            last=$(date -u -d "@$ts" +%F)
+            ahead=$(git rev-list --count "origin/main..origin/$name")
+            if [ "$ahead" -eq 0 ]; then state="✅ fully merged, safe to delete"; else state="⚠️ $ahead commit(s) not on main"; fi
+            pr=$(awk -F'\t' -v b="$name" '$1 == b { print "#" $2 }' <<<"$open_prs")
+            rows+="| \`$name\` | $last | ${age}d | $state | ${pr:-none} |"$'\n'
+            [ -n "$pr" ] || names+="$name "
+            n=$((n + 1))
+          done < <(git for-each-ref --sort=committerdate \
+                     --format='%(committerdate:unix) %(refname:lstrip=3)' refs/remotes/origin)
+
+          gh label create "$label" --color BFD4F2 \
+            --description "Monthly stale branch report" --force >/dev/null
+          existing=$(gh issue list --label "$label" --state open --limit 1 \
+                       --json number --jq '.[0].number // empty')
+
+          if [ "$n" -eq 0 ]; then
+            echo "No branches older than $DAYS days. 🎉" | tee -a "$GITHUB_STEP_SUMMARY"
+            if [ -n "$existing" ]; then
+              gh issue close "$existing" --comment "No branches older than $DAYS days on $(date -u +%F); closing. 🎉"
+            fi
+            exit 0
+          fi
+
+          {
+            echo "**$n branch(es) with no commits in $DAYS+ days** (report of $(date -u +%F))."
+            echo
+            echo "| Branch | Last commit | Age | Status | Open PR |"
+            echo "|---|---|---|---|---|"
+            printf '%s' "$rows"
+            echo
+            echo "### What to do"
+            echo "- **Keep working on it?** Push a commit and it drops off next month's report."
+            echo "- **Anything worth keeping?** Copy docs/research into \`main\` first (see CLAUDE.md, \"Where research goes\")."
+            echo "- **Archive it:** Actions → **Archive branches** → Run workflow, paste the names, run on \`dry-run\` and then \`execute\`. Each branch becomes an \`archive/<branch>\` tag before it's deleted, so it can always be restored. Add a row to \`docs/archive/BRANCH_ARCHIVE.md\`."
+            echo
+            echo "Stale branches without an open PR, ready to paste:"
+            echo
+            echo '```'
+            echo "${names% }"
+            echo '```'
+            echo
+            echo "_This issue is updated by the monthly **Stale branch report** workflow and closes itself when nothing is stale._"
+          } > report.md
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -n "$existing" ]; then
+            gh issue edit "$existing" --body-file report.md
+            gh issue comment "$existing" --body "Report refreshed on $(date -u +%F): $n stale branch(es)."
+          else
+            gh issue create --title "Stale branch report" --label "$label" --body-file report.md
+          fi

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  YouTube TV (Unplugged) — capture-time trust override.
+
+  Purpose: let an HTTPS-filtering proxy (mitmproxy/AdGuard) with its own CA on
+  the device inspect YouTube TV's *platform TLS* traffic, so we can read the DASH
+  manifest and InnerTube adSlotRenderer/cuepoint payloads (see
+  docs/YOUTUBE_TV_DASH_CAPTURE_PROCEDURE.md).
+
+  IMPORTANT — this only opens the *Java/platform* TLS stack. YouTube's media +
+  player-response fetches go through *native Cronet*, which does NOT consult this
+  file. For those you also need the BoringSSL unpin in frida/yttv_tap.js. Ship
+  both together.
+
+  This is CAPTURE tooling, not a shipping patch. See README.md for how to apply
+  it (edit-in-place vs create-and-wire) via a resourcePatch, matching
+  pluto/.../CertificatePinningPatch.kt.
+-->
+<network-security-config>
+    <!-- Fallback for every host without an explicit domain-config (CDN/segment
+         hosts). Keep cleartext disabled; we only add user-CA trust. -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" overridePins="true" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Explicit entries for the hosts we most want to intercept. overridePins
+         defeats any <pin-set> a future build adds. includeSubdomains covers the
+         *.googlevideo.com segment/manifest fleet and youtubei API edges. -->
+    <domain-config>
+        <domain includeSubdomains="true">googlevideo.com</domain>
+        <domain includeSubdomains="true">youtube.com</domain>
+        <domain includeSubdomains="true">googleapis.com</domain>
+        <domain includeSubdomains="true">google.com</domain>
+        <domain includeSubdomains="true">ytimg.com</domain>
+        <domain includeSubdomains="true">doubleclick.net</domain>
+        <domain includeSubdomains="true">googlesyndication.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" overridePins="true" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>

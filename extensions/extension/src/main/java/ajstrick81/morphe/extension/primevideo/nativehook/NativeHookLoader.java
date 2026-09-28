@@ -6,7 +6,8 @@ import android.util.Log;
  * Prime Video ATV — native ad-strip hook loader.
  *
  * The whole in-process ad strip lives in the native library libpvhook.so
- * (SSL_read / inflate interception + manifest filtering). This class is the
+ * (a PLT/GOT hook on libignite's memcpy/memmove imports that blanks PRS Remote
+ * items and empties getVideoAds/regolith ad responses). This class is the
  * only Java surface: it loads that library early in Application.onCreate so
  * JNI_OnLoad installs the hooks before the first playback session builds its
  * native MediaPipelineBackend.

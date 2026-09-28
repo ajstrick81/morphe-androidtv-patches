@@ -49,7 +49,8 @@ import ajstrick81.morphe.patches.primevideo.shared.Constants
 @Suppress("unused")
 val certificatePinningPatch = resourcePatch(
     name = "Override certificate pinning",
-    description = "Adds a network_security_config trusting user CAs (no pin sets) so AdGuard Premium can inspect the app's platform-stack HTTPS. Optional adjunct: Prime Video's ad plane is largely native libcurl, so DNS blocking is the primary tool.",
+    description = "Adds a network_security_config trusting user CAs (no pin sets) so AdGuard Premium can inspect the app's platform-stack HTTPS. Optional adjunct: removes no ads by itself and is not needed for the native in-app ad strip. Opt-in. Security trade-off: the app will also trust ANY user-installed CA, so leave it off unless you run an HTTPS-filtering proxy.",
+    default = false,
 ) {
     compatibleWith(Constants.COMPATIBILITY)
 

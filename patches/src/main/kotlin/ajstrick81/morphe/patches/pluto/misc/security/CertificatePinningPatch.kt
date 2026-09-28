@@ -32,7 +32,7 @@ import org.w3c.dom.Element
 //     2. EVERY existing <domain-config>  (covers pluto.tv itself)
 //   `overridePins="true"` is added defensively in case a future build adds pins.
 //
-// Optional adjunct: independent of the Skip ads patch. It does not remove any
+// Optional adjunct (OPT-IN, default OFF): independent of the Skip ads patch. It does not remove any
 // ads by itself — it only opens the platform TLS stack so the proxy layer can
 // see and rewrite the HLS manifest.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -43,7 +43,9 @@ val certificatePinningPatch = resourcePatch(
     description = "Edits Pluto's network_security_config to trust user CAs (system + user, " +
         "overridePins) on both a new base-config and every existing domain-config — including " +
         "the pluto.tv entry that is otherwise system-only — so an HTTPS-filtering proxy can " +
-        "inspect the HLS manifest. Optional adjunct to the manifest-rewrite ad approach.",
+        "inspect the HLS manifest. Optional adjunct: removes no ads by itself and is not needed " +
+        "for the in-app ad removal. Opt-in. Security trade-off: the app will also trust ANY user-installed CA, so leave it off unless you run an HTTPS-filtering proxy.",
+    default = false,
 ) {
     compatibleWith(Constants.COMPATIBILITY)
 

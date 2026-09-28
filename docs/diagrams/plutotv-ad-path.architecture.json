@@ -1,0 +1,314 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Pluto TV ATV: how the ad strip works",
+    "locale": "en",
+    "output": "plutotv-ad-path.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "vod-strip",
+        "label": "VOD strip",
+        "focus": [
+          "mpd",
+          "parser",
+          "probe",
+          "avia",
+          "screen"
+        ],
+        "note": "Hook 5 drops _ad/creative and _ad_bumper periods and re-bases the rest. Live passes untouched."
+      },
+      {
+        "id": "ad-chrome",
+        "label": "Ad chrome",
+        "focus": [
+          "stitcher",
+          "session",
+          "chrome",
+          "screen"
+        ],
+        "note": "session.json drives markers, beacons and overlays, not video. Hooks 1-4 silence them."
+      },
+      {
+        "id": "resume",
+        "label": "Resume fix",
+        "focus": [
+          "probe",
+          "avia",
+          "screen"
+        ],
+        "note": "Bookmarks use the ad-inclusive timeline; subtract removed ad time or resume overshoots."
+      },
+      {
+        "id": "live-mask",
+        "label": "Live mask",
+        "focus": [
+          "mpd",
+          "id3",
+          "slate",
+          "screen"
+        ],
+        "note": "Live ads are broadcast time. Each ID3 ad tick holds a black cover + stream mute."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "stitcher",
+      "type": "cloud",
+      "label": "Stitcher",
+      "sublabel": "session.json",
+      "pos": [
+        40,
+        120
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "mpd",
+      "type": "cloud",
+      "label": "Manifest service",
+      "sublabel": "multi-period DASH",
+      "pos": [
+        40,
+        300
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "session",
+      "type": "backend",
+      "label": "StitcherSession",
+      "sublabel": "getAdBreaks()",
+      "pos": [
+        270,
+        120
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "chrome",
+      "type": "security",
+      "label": "Skip ads: hooks 1-4",
+      "sublabel": "empty adBreaks, no beacons",
+      "pos": [
+        510,
+        120
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "tag": "ad chrome"
+    },
+    {
+      "id": "parser",
+      "type": "backend",
+      "label": "DashManifestParser",
+      "sublabel": "parse() → DashManifest",
+      "pos": [
+        270,
+        300
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "probe",
+      "type": "security",
+      "label": "PlutoDashManifestProbe",
+      "sublabel": "strip ad periods, re-base",
+      "pos": [
+        510,
+        300
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "tag": "hook 5"
+    },
+    {
+      "id": "avia",
+      "type": "backend",
+      "label": "AviaPlayer",
+      "sublabel": "startExoplayer → seekTo",
+      "pos": [
+        760,
+        300
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "tag": "hook 6"
+    },
+    {
+      "id": "screen",
+      "type": "frontend",
+      "label": "Playback",
+      "sublabel": "content only",
+      "pos": [
+        1000,
+        300
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "id3",
+      "type": "backend",
+      "label": "ID3AdsBeaconTracker",
+      "sublabel": "consumeID3: ad tick",
+      "pos": [
+        510,
+        480
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "slate",
+      "type": "security",
+      "label": "Live slate",
+      "sublabel": "black screen + mute",
+      "pos": [
+        760,
+        480
+      ],
+      "size": [
+        160,
+        64
+      ],
+      "tag": "optional"
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Pluto services",
+      "wraps": [
+        "stitcher",
+        "mpd"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "tv.pluto.android (media3 + Avia)",
+      "wraps": [
+        "session",
+        "chrome",
+        "parser",
+        "probe",
+        "avia",
+        "id3",
+        "slate"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "session-json",
+      "from": "stitcher",
+      "to": "session",
+      "label": "adBreaks[]"
+    },
+    {
+      "id": "empty-breaks",
+      "from": "session",
+      "to": "chrome",
+      "label": "emptyList()",
+      "variant": "emphasis"
+    },
+    {
+      "id": "manifest",
+      "from": "mpd",
+      "to": "parser",
+      "label": ".mpd"
+    },
+    {
+      "id": "parsed",
+      "from": "parser",
+      "to": "probe",
+      "label": "periods",
+      "variant": "emphasis"
+    },
+    {
+      "id": "stripped",
+      "from": "probe",
+      "to": "avia",
+      "label": "content only",
+      "variant": "emphasis"
+    },
+    {
+      "id": "play",
+      "from": "avia",
+      "to": "screen",
+      "label": "remapped resume"
+    },
+    {
+      "id": "live-id3",
+      "from": "mpd",
+      "to": "id3",
+      "label": "live ID3 tags",
+      "variant": "dashed"
+    },
+    {
+      "id": "tick",
+      "from": "id3",
+      "to": "slate",
+      "label": "ad tick"
+    },
+    {
+      "id": "mask",
+      "from": "slate",
+      "to": "screen",
+      "label": "cover + mute"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "What ships (v1.37.4)",
+      "items": [
+        "VOD: ad periods removed, timeline re-based",
+        "Resume bookmarks remapped into the shorter timeline",
+        "Live: optional black screen + stream-level mute"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Safety rails",
+      "items": [
+        "Detect ads by URL marker; keep anything unknown",
+        "Live (dynamic) manifests pass through untouched",
+        "Keep <40% of the runtime? Pass through instead"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Dead ends",
+      "items": [
+        "Rewriting session.json clips[]: metadata only",
+        "Wrapping media3's HTTP client: black screen",
+        "Classifying by DRM: broke un-DRM'd shows (#144)"
+      ]
+    }
+  ]
+}

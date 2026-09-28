@@ -1,0 +1,30 @@
+// offsets.h — the ONE file you edit after the Ghidra pass (see docs/GHIDRA-OFFSETS.md).
+//
+// Everything else in jni/ consumes these. Values are PER-BUILD: the SHA-256
+// below is the guard — if the on-device library's SHA differs, re-derive.
+//
+// Replace every <PLACEHOLDER>. Delete the hooks you don't use.
+#pragma once
+
+// ── target identity ──────────────────────────────────────────────────────────
+#define TARGET_SONAME       "<lib-that-decrypts-or-copies.so>"  // e.g. "libignite.so"
+#define TARGET_APP_VERSION  "<app version string, for logs>"
+#define TARGET_SHA256       "<sha256 of the exact .so these offsets came from>"
+
+// Sentinel: an all-'?' mask means "signature not filled in yet" so the loader
+// can log a clear error instead of hooking garbage.
+#define SIG_IS_UNSET(mask)  ((mask)[0] == '?' )
+
+// ── seam 1 ───────────────────────────────────────────────────────────────────
+// The function whose output (or argument) carries the plaintext you strip.
+// Fill from docs/GHIDRA-OFFSETS.md: prologue bytes + mask ('x' must-match,
+// '?' wildcard) and a fallback file offset if the signature scan misses.
+static const unsigned char SEAM1_SIG[]  = { /* <hex prologue bytes> */ 0x00 };
+static const char*         SEAM1_MASK   = "?";                  // <-- all '?' until filled
+#define SEAM1_FALLBACK_OFFSET            0x0        /* image-relative entry, Ghidra */
+
+// ── seam 2 (optional, e.g. inflate for a gzip'd body) ────────────────────────
+#define ENABLE_SEAM2                     0
+static const unsigned char SEAM2_SIG[]  = { 0x00 };
+static const char*         SEAM2_MASK   = "?";
+#define SEAM2_FALLBACK_OFFSET            0x0

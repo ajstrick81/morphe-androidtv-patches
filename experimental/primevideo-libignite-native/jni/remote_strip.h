@@ -1,8 +1,10 @@
 // remote_strip.h — the proven in-place, same-length ad-strip, ported from the
-// verified Frida bench (frida/cmod-strip2.js: scanVal/parseComplete/blankRanges).
+// verified Frida bench (cmod-strip2.js: scanVal/parseComplete/blankRanges; kept in
+// experimental/primevideo-research/2026-07-25_interception-handoff/frida/).
 //
-// This is intentionally NOT the same algorithm as prs_filter.cpp. prs_filter.cpp
-// was written for the (now-dead) inflate/SSL_read seam: it rebuilds a shrunk
+// This is intentionally NOT the same algorithm as the research-era prs_filter.cpp
+// (now in experimental/native-adstrip-toolkit/examples/primevideo/jni/), which
+// was written for the abandoned inflate/SSL_read seam: it rebuilds a shrunk
 // copy and assumes the buffer holds one complete, well-formed body. The memcpy
 // seam is different in a way that makes that assumption unsafe: libignite
 // copies the intraTitlePlaylist array in TRUNCATED 4-16KB chunks as well as the
@@ -17,8 +19,8 @@
 // ASCII spaces — same length in, same length out, so the JSON stays
 // structurally valid and no length/offset bookkeeping is needed downstream.
 //
-// Pure, no allocation, no Android/zlib dependency — host-unit-testable exactly
-// like manifest_filter.h / prs_filter.h.
+// Pure, no allocation, no Android/zlib dependency — host-unit-testable
+// (test_remote_strip.cpp, run by CI before every build).
 #pragma once
 
 #include <cstddef>

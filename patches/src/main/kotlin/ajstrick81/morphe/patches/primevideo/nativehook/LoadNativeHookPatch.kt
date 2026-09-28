@@ -7,8 +7,11 @@ import ajstrick81.morphe.patches.primevideo.shared.Constants
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DEX-side half of the in-process native interception: load libpvhook.so at
-// startup so the native memcpy/memmove hooks (ShadowHook) install before the
-// first playback session.
+// startup so its PLT/GOT hooks on libignite's memcpy/memmove imports install
+// before the first playback session. The hook blanks PRS Remote items (movies)
+// and empties getVideoAds/regolith ad responses (TV) in place; see
+// docs/PRIME_VIDEO_ATV_SYSTEM_DESIGN.md and ../jni/ (experimental/
+// primevideo-libignite-native/jni/, production source despite the path).
 //
 // Three patches cooperate:
 //   bundleNativeHookPatch (resource) — writes libpvhook.so into lib/<abi>/
@@ -20,22 +23,15 @@ import ajstrick81.morphe.patches.primevideo.shared.Constants
 //
 // We call the extension's NativeHookLoader.load() rather than inlining
 // System.loadLibrary so the load is wrapped in try/catch + logcat ("fail loud"),
-// matching the SkipAdsPatch extension convention.
-//
-// SCAFFOLD — not registered in the build. To activate:
-//   1. Confirm ApplicationOnCreateFingerprint's definingClass (see Fingerprints.kt).
-//   2. Move NativeHookLoader.java into the extension module:
-//        extensions/extension/src/main/java/ajstrick81/morphe/extension/primevideo/nativehook/
-//   3. Add an R8 -keep for NativeHookLoader (load) to extensions/proguard-rules.pro
-//      so the merged method survives shrinking.
-//   4. Register bundleNativeHookPatch + loadNativeHookPatch and gate both on
-//      Constants.COMPATIBILITY.
+// matching the SkipAdsPatch extension convention. NativeHookLoader.load() has an
+// R8 -keep in extensions/proguard-rules.pro, since only injected smali calls it.
 // ─────────────────────────────────────────────────────────────────────────────
 @Suppress("unused")
 val loadNativeHookPatch = bytecodePatch(
     name = "Load native ad-strip hook",
-    description = "Loads libpvhook.so at startup to blank Remote (ad) items from the " +
-        "PRS intraTitlePlaylist in-process (libignite memcpy/memmove GOT/PLT import hook).",
+    description = "Loads libpvhook.so at startup to strip ads in-process: blanks Remote (ad) " +
+        "items in the PRS intraTitlePlaylist and empties getVideoAds ad responses " +
+        "(libignite memcpy/memmove GOT/PLT import hook).",
 ) {
     compatibleWith(Constants.COMPATIBILITY)
 

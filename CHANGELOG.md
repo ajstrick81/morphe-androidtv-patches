@@ -1,3 +1,44 @@
+# [1.39.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.38.0...v1.39.0) (2026-09-27)
+
+
+### Features
+
+* **raiplay:** add Skip ads patch for RaiPlay Android TV ([#217](https://github.com/ajstrick81/morphe-androidtv-patches/issues/217)) ([d19408b](https://github.com/ajstrick81/morphe-androidtv-patches/commit/d19408bd552f60e246f502c9b73a5c639d1bdc3e))
+
+# [1.38.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.37.7...v1.38.0) (2026-09-26)
+
+
+### Bug Fixes
+
+* **privacy:** make unneeded TLS trust overrides opt-in ([81ab2fc](https://github.com/ajstrick81/morphe-androidtv-patches/commit/81ab2fc04d529294757da5802026610201547c61))
+* **tubi:** make WebView hooks label-free so Skip ads and Block analytics can stack ([ecd9f58](https://github.com/ajstrick81/morphe-androidtv-patches/commit/ecd9f58f7282739081926b4630e75806958860c0))
+
+
+### Features
+
+* **tubi:** add opt-in "Block analytics & tracking" patch ([b8d0fef](https://github.com/ajstrick81/morphe-androidtv-patches/commit/b8d0feff0a5c59ed50ab7bc0585ceaa57cba2b85))
+
+## [1.37.7](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.37.6...v1.37.7) (2026-09-26)
+
+
+### Bug Fixes
+
+* **netflix:** suppress household prompt on both profile-select and playback routes ([45609ef](https://github.com/ajstrick81/morphe-androidtv-patches/commit/45609ef40ca5fecb812f99ef65d5fa4738d60c0a)), closes [#168](https://github.com/ajstrick81/morphe-androidtv-patches/issues/168)
+
+## [1.37.6](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.37.5...v1.37.6) (2026-09-25)
+
+
+### Bug Fixes
+
+* fail clearly when Morphe Manager stripped the armeabi-v7a libraries ([26d8e2a](https://github.com/ajstrick81/morphe-androidtv-patches/commit/26d8e2aa06a26804530db2eaf4d030d23ea6f388))
+
+## [1.37.5](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.37.4...v1.37.5) (2026-09-24)
+
+
+### Bug Fixes
+
+* **pluto:** lift the live ad mask when the last ad ends ([cce4172](https://github.com/ajstrick81/morphe-androidtv-patches/commit/cce417218d339446aab80a1bf476ff9f66647aed))
+
 ## [1.37.4](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.37.3...v1.37.4) (2026-09-20)
 
 

@@ -1,0 +1,92 @@
+# Archive branches: turn each listed branch into an `archive/<branch>` tag, then
+# delete the branch. Used for the 2026-09-23 cleanup and by the monthly
+# "Stale branch report" (which prints the names ready to paste). See
+# docs/archive/BRANCH_ARCHIVE.md for the archive index and how to restore.
+#
+# Run it from Actions → "Archive branches" → Run workflow. It defaults to a dry
+# run; pick "execute" to actually tag + delete. A branch is only deleted after
+# its archive tag is confirmed on GitHub at the same commit, so nothing can be
+# lost. It never touches main or a branch with an open PR. Safe to re-run.
+name: Archive branches
+
+on:
+  workflow_dispatch:
+    inputs:
+      branches:
+        description: "Branch names to archive, separated by spaces or new lines"
+        required: true
+      mode:
+        description: "dry-run only reports; execute tags + deletes"
+        type: choice
+        options: [dry-run, execute]
+        default: dry-run
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Tag and delete branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODE: ${{ inputs.mode }}
+          BRANCH_LIST: ${{ inputs.branches }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          read -r -a BRANCHES <<<"$(tr '\n,' '  ' <<<"$BRANCH_LIST")"
+          [ "${#BRANCHES[@]}" -gt 0 ] || { echo "::error::no branch names given"; exit 1; }
+          open_pr_heads=$(gh pr list --state open --limit 200 --json headRefName --jq '.[].headRefName')
+
+          archived=0; deleted=0; skipped=0
+          for b in "${BRANCHES[@]}"; do
+            if [ "$b" = main ] || [ "$b" = "$DEFAULT_BRANCH" ]; then
+              echo "::warning::refusing to archive the default branch ($b)"; skipped=$((skipped+1)); continue
+            fi
+            if grep -qxF -- "$b" <<<"$open_pr_heads"; then
+              echo "::warning::$b has an open PR; close or merge it first. Skipping"; skipped=$((skipped+1)); continue
+            fi
+            tag="archive/$b"
+            sha=$(git ls-remote origin "refs/heads/$b" | cut -f1)
+            tag_sha=$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)
+
+            if [ -z "$sha" ]; then
+              if [ -n "$tag_sha" ]; then echo "✓ $b: already archived + deleted"; else echo "::warning::$b: no such branch and no archive tag"; fi
+              skipped=$((skipped+1)); continue
+            fi
+
+            if [ -z "$tag_sha" ]; then
+              echo "→ $b @ ${sha:0:8}: create $tag"
+              if [ "$MODE" = execute ]; then
+                git fetch -q --no-tags origin "refs/heads/$b"
+                git tag -a "$tag" "$sha" -m "Archived branch $b ($(date -u +%F)). Restore: git push origin $tag:refs/heads/$b"
+                git push -q origin "refs/tags/$tag"
+                tag_sha=$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)
+              fi
+              archived=$((archived+1))
+            elif [ "$tag_sha" != "$sha" ]; then
+              echo "::warning::$b differs from its existing $tag (${tag_sha:0:8} vs ${sha:0:8}); leaving it alone"
+              skipped=$((skipped+1)); continue
+            fi
+
+            if [ "$MODE" = execute ]; then
+              [ "$tag_sha" = "$sha" ] || { echo "::error::$tag not confirmed at ${sha:0:8}; not deleting $b"; exit 1; }
+              git push -q origin --delete "$b"
+              echo "✗ deleted branch $b (kept as $tag)"
+            else
+              echo "  (dry run) would delete $b after tagging"
+            fi
+            deleted=$((deleted+1))
+          done
+
+          echo "mode=$MODE archived=$archived deleted=$deleted skipped=$skipped" | tee -a "$GITHUB_STEP_SUMMARY"

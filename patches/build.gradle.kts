@@ -3,7 +3,7 @@ group = "app.morphe"
 patches {
     about {
         name = "ajstrick81 Patches"
-        description = "Paramount+ and Disney+ Android TV ad blocking patches"
+        description = "Ad-blocking patches for Android TV streaming apps"
         source = "https://github.com/ajstrick81/morphe-androidtv-patches"
         author = "ajstrick81"
         contact = "https://github.com/ajstrick81"
@@ -27,7 +27,7 @@ tasks {
         description = "Build patch with patch list"
         dependsOn(build)
         classpath = sourceSets["main"].runtimeClasspath
-        mainClass.set("app.morphe.util.PatchListGeneratorKt")
+        mainClass.set("ajstrick81.morphe.util.PatchListGeneratorKt")
     }
     publish {
         dependsOn("generatePatchesList")

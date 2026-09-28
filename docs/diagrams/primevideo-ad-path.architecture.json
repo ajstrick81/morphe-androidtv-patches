@@ -1,0 +1,292 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Prime Video ATV: how the ad strip works",
+    "locale": "en",
+    "output": "primevideo-ad-path.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "movie-strip",
+        "label": "Movies: strip Remote",
+        "focus": [
+          "prs",
+          "curl",
+          "hook",
+          "handler",
+          "tailor",
+          "screen"
+        ],
+        "note": "PATH 1: in a complete PRS intraTitlePlaylist, non-getVideoAds Remote items become spaces before the player parses them."
+      },
+      {
+        "id": "tv-empty",
+        "label": "TV: empty ad list",
+        "focus": [
+          "handler",
+          "adbm",
+          "regolith",
+          "curl",
+          "hook",
+          "tailor"
+        ],
+        "note": "PATH 2: the resolved regolith playlist becomes [ ], so AdBreakManager takes its own empty-break branch."
+      },
+      {
+        "id": "why-slots-stay",
+        "label": "#14: why slots stay",
+        "focus": [
+          "handler",
+          "adbm",
+          "tailor",
+          "screen"
+        ],
+        "note": "Deleting a getVideoAds slot left a 246 s PeriodTailor gap and restarted the show. Emptying it keeps the gap at +0.58 ms."
+      },
+      {
+        "id": "truncated",
+        "label": "Truncated responses",
+        "focus": [
+          "regolith",
+          "curl",
+          "hook",
+          "adbm"
+        ],
+        "note": "Large responses split across copies. Blank only complete ad objects and media.urls; never touch a cut element."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "prs",
+      "type": "cloud",
+      "label": "PRS",
+      "sublabel": "GetVodPlaybackResources",
+      "pos": [
+        40,
+        300
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "regolith",
+      "type": "cloud",
+      "label": "regolith",
+      "sublabel": "getVideoAds (SGAI)",
+      "pos": [
+        40,
+        120
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "curl",
+      "type": "backend",
+      "label": "libcurl + zlib",
+      "sublabel": "decompress in-process",
+      "pos": [
+        270,
+        300
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "hook",
+      "type": "security",
+      "label": "libpvhook.so",
+      "sublabel": "GOT memcpy hook",
+      "pos": [
+        500,
+        300
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "the patch"
+    },
+    {
+      "id": "handler",
+      "type": "backend",
+      "label": "PRSResponseHandler",
+      "sublabel": "intraTitlePlaylist",
+      "pos": [
+        730,
+        300
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "adbm",
+      "type": "backend",
+      "label": "AdBreakManager",
+      "sublabel": "resolveAndInsert",
+      "pos": [
+        730,
+        120
+      ],
+      "size": [
+        160,
+        64
+      ]
+    },
+    {
+      "id": "tailor",
+      "type": "backend",
+      "label": "PeriodTailor",
+      "sublabel": "timeline boundaries",
+      "pos": [
+        970,
+        300
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "screen",
+      "type": "frontend",
+      "label": "Playback",
+      "sublabel": "Main | Main, no ads",
+      "pos": [
+        1200,
+        300
+      ],
+      "size": [
+        150,
+        64
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Amazon services",
+      "wraps": [
+        "prs",
+        "regolith"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Prime Video process (libignite.so + QuickJS player)",
+      "wraps": [
+        "curl",
+        "hook",
+        "handler",
+        "adbm",
+        "tailor"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "prs-body",
+      "from": "prs",
+      "to": "curl",
+      "label": "gzip JSON"
+    },
+    {
+      "id": "rego-body",
+      "from": "regolith",
+      "to": "curl",
+      "label": "ad list",
+      "toSide": "top"
+    },
+    {
+      "id": "copy",
+      "from": "curl",
+      "to": "hook",
+      "label": "memcpy dst",
+      "variant": "emphasis"
+    },
+    {
+      "id": "clean-prs",
+      "from": "hook",
+      "to": "handler",
+      "label": "Remote blanked",
+      "variant": "emphasis"
+    },
+    {
+      "id": "clean-rego",
+      "from": "hook",
+      "to": "adbm",
+      "label": "playlist:[ ]",
+      "variant": "emphasis",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "resolve",
+      "from": "adbm",
+      "to": "regolith",
+      "label": "RegolithClient.send",
+      "variant": "dashed"
+    },
+    {
+      "id": "pointer",
+      "from": "handler",
+      "to": "adbm",
+      "label": "Remote slot"
+    },
+    {
+      "id": "empty-break",
+      "from": "adbm",
+      "to": "tailor",
+      "label": "empty break"
+    },
+    {
+      "id": "timeline",
+      "from": "handler",
+      "to": "tailor"
+    },
+    {
+      "id": "play",
+      "from": "tailor",
+      "to": "screen"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "What ships (v1.37.4)",
+      "items": [
+        "Movies: blank Remote items in a complete PRS playlist",
+        "TV: empty the regolith playlist to [ ]",
+        "Same-length, in place, on the copy destination"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Safety rules",
+      "items": [
+        "Skip power-of-two copies (zlib chunks, CURL 61)",
+        "Never touch a truncated element",
+        "Leave getVideoAds slots in place (#14)"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Rejected and open",
+      "items": [
+        "JS count-gate: edits the gzip'd bundle, rejected",
+        "Rare large mid-roll freeze: Back, then Resume",
+        "v16 (6.24.x): ad pipeline moved native"
+      ]
+    }
+  ]
+}

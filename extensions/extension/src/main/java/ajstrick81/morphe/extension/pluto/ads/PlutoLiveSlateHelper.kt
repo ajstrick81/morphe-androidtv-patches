@@ -54,6 +54,10 @@ object PlutoLiveSlateHelper {
     // Ad-state ticks arrive at most ~5s apart; if none arrives for this long the break
     // is over. A little slack past the tick cadence so the mask never lifts mid-break.
     private const val HIDE_DELAY_MS = 6_500L
+    // After an ad's QUARTILE_END tick, the next ad's START_OF_MEDIA arrives within ~0.1s
+    // (80–104 ms on-device, 2026-09-24) and the show resumes ~0.1s after the LAST ad's
+    // QUARTILE_END. So a QUARTILE_END with no tick for this long means the break is over.
+    private const val END_GRACE_MS = 1_200L
     // Absolute backstop: never leave the mask up longer than this without a tick (guards
     // against a stuck state if teardown is missed).
     private const val FAILSAFE_MS = 15L * 60L * 1000L
@@ -78,6 +82,7 @@ object PlutoLiveSlateHelper {
     private enum class Mode { BOTH, BLACK, MUTE }
 
     private val hideRunnable = Runnable { lift("no ad ticks (break ended)") }
+    private val endRunnable = Runnable { lift("last ad ended (QUARTILE_END, no next ad)") }
     private val failsafeRunnable = Runnable { lift("failsafe") }
 
     // ───────────────────────── injected entry points ─────────────────────────
@@ -115,11 +120,33 @@ object PlutoLiveSlateHelper {
     /**
      * Injected at ID3AdsBeaconTracker.consumeID3(ID3Tag). Every call = an ad is on screen.
      * Shows the mask + mutes and (re)arms the hide timer; the timer lifts it when ticks stop.
+     * An ad's QUARTILE_END tick instead arms the short end-of-break timer, which the next
+     * ad's first tick cancels — so the mask lifts ~1s after the last ad, not ~6.5s.
      */
     @JvmStatic
     fun onAdTick(id3Tag: Any?) {
-        mainHandler.post { showOrKeep() }
+        val adEnded = isAdEnd(id3Tag)
+        mainHandler.post {
+            // Tuned in on an ad's final tick: don't flash the mask on for an ad that's ending.
+            if (adEnded && !shown) return@post
+            showOrKeep()
+            if (adEnded && shown) {
+                mainHandler.removeCallbacks(hideRunnable)
+                mainHandler.postDelayed(endRunnable, END_GRACE_MS)
+            }
+        }
     }
+
+    /**
+     * True for an ad's final tick. Reads the tag's own text form — Pluto logs it as
+     * `ID3Tag(creativeId=…, typeFlags=[QUARTILE_END])` — rather than a field name R8 may rename.
+     */
+    private fun isAdEnd(id3Tag: Any?): Boolean =
+        try {
+            id3Tag?.toString()?.contains("QUARTILE_END") == true
+        } catch (t: Throwable) {
+            false
+        }
 
     // ───────────────────────────── mask lifecycle ────────────────────────────
 
@@ -129,6 +156,8 @@ object PlutoLiveSlateHelper {
             if (shown) lift("opt-out marker")
             return
         }
+        // Any tick means an ad is (still) playing: cancel a pending end-of-break lift.
+        mainHandler.removeCallbacks(endRunnable)
         // Re-arm the timers on every tick.
         mainHandler.removeCallbacks(hideRunnable)
         mainHandler.postDelayed(hideRunnable, HIDE_DELAY_MS)
@@ -145,6 +174,7 @@ object PlutoLiveSlateHelper {
 
     private fun lift(reason: String) {
         mainHandler.removeCallbacks(hideRunnable)
+        mainHandler.removeCallbacks(endRunnable)
         mainHandler.removeCallbacks(failsafeRunnable)
         if (!shown) return
         removeCover()
