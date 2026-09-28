@@ -1,3 +1,10 @@
+# [1.40.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.39.0...v1.40.0) (2026-09-28)
+
+
+### Features
+
+* **espn:** rotating live scoreboard card for ad-break slate ([#221](https://github.com/ajstrick81/morphe-androidtv-patches/issues/221)) ([c7b1dff](https://github.com/ajstrick81/morphe-androidtv-patches/commit/c7b1dffde5c606849577652771a3711c26152b42))
+
 # [1.39.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.38.0...v1.39.0) (2026-09-27)
 
 
