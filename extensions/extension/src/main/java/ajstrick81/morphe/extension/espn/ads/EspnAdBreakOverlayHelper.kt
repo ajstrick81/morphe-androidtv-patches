@@ -77,8 +77,10 @@ object EspnAdBreakOverlayHelper {
     // internal (CARD is the silent fallback when video/overlay assets are
     // missing); ADS is marker-only (it releases the remote by design, so it must
     // not be a picker entry or it would strand the viewer).
+    // Viewer-facing break options: user Video, the live game SCORECARD, the
+    // animated "Be Right Back" OVERLAY, and a BLANK slate.
     private val PICKER_MODES = listOf(
-        SlateMode.VIDEO, SlateMode.VIDEO_SCORE, SlateMode.OVERLAY, SlateMode.BLANK,
+        SlateMode.VIDEO, SlateMode.SCORECARD, SlateMode.OVERLAY, SlateMode.BLANK,
     )
     private var adsHintPill: View? = null
     private val adsHintFade = Runnable { fadeAdsHint() }
@@ -135,7 +137,7 @@ object EspnAdBreakOverlayHelper {
     private const val ADS_HINT_MS = 5_000L   // ADS mode: how long the "slate options" pill lingers
     //   overlay      — animated WebView broadcast graphic (Be Right Back +
     //                  live countdown), loaded from files/espn_overlay/index.html
-    private enum class SlateMode { VIDEO, CARD, SCOREBOARD, VIDEO_SCORE, ADS, BLANK, OVERLAY }
+    private enum class SlateMode { VIDEO, CARD, SCOREBOARD, VIDEO_SCORE, ADS, BLANK, OVERLAY, SCORECARD }
     private const val OVERLAY_DIR = "espn_overlay"     // holds index.html + bg-three.js + three.min.js
     private const val OVERLAY_SECS_MARKER = "overlay_secs"  // optional countdown length (seconds)
 
@@ -147,12 +149,15 @@ object EspnAdBreakOverlayHelper {
         return when (explicit) {
             "card" -> SlateMode.CARD
             "scoreboard", "score" -> SlateMode.SCOREBOARD
-            "video+score", "video_score", "videoscore", "video-score" -> SlateMode.VIDEO_SCORE
+            // "video+score" retired → now resolves to the standalone scorecard.
+            "video+score", "video_score", "videoscore", "video-score" -> SlateMode.SCORECARD
             "video" -> SlateMode.VIDEO
             "overlay", "webview", "brb" -> SlateMode.OVERLAY
+            "scorecard", "gamecard", "card+score" -> SlateMode.SCORECARD
             "ads", "none", "off" -> SlateMode.ADS
             "blank", "black" -> SlateMode.BLANK
-            else -> if (scoreboardMarkerPresent(context)) SlateMode.VIDEO_SCORE else SlateMode.VIDEO
+            // Default (no marker): the live game scorecard — the headline break UI.
+            else -> SlateMode.SCORECARD
         }
     }
 
@@ -495,6 +500,7 @@ object EspnAdBreakOverlayHelper {
     private fun swapMode(container: ViewGroup, mode: SlateMode) {
         closePicker()
         stopScoreStrip()
+        stopCardRefresh()
         mainHandler.removeCallbacks(adsHintFade)
         adsHintPill = null
         releaseVideo()
@@ -562,6 +568,7 @@ object EspnAdBreakOverlayHelper {
         mainHandler.removeCallbacks(adsHintFade)
         adsHintPill = null
         stopScoreStrip()
+        stopCardRefresh()
         releaseVideo()
         releaseWebView()
         currentOverlay?.let { (it.parent as? ViewGroup)?.removeView(it) }
@@ -696,7 +703,7 @@ object EspnAdBreakOverlayHelper {
     private fun modeToken(m: SlateMode): String = when (m) {
         SlateMode.VIDEO -> "video"; SlateMode.CARD -> "card"
         SlateMode.SCOREBOARD -> "scoreboard"; SlateMode.VIDEO_SCORE -> "video+score"
-        SlateMode.OVERLAY -> "overlay"
+        SlateMode.OVERLAY -> "overlay"; SlateMode.SCORECARD -> "scorecard"
         SlateMode.ADS -> "ads"; SlateMode.BLANK -> "blank"
     }
 
@@ -704,6 +711,7 @@ object EspnAdBreakOverlayHelper {
         SlateMode.VIDEO -> "Video"; SlateMode.CARD -> "Card"
         SlateMode.SCOREBOARD -> "Scoreboard"; SlateMode.VIDEO_SCORE -> "Video + Score"
         SlateMode.OVERLAY -> "Be Right Back (ESPN Ad-Break Overlay)"
+        SlateMode.SCORECARD -> "Scoreboard"
         SlateMode.ADS -> "Ads (no slate)"; SlateMode.BLANK -> "Blank"
     }
 
@@ -1068,6 +1076,257 @@ object EspnAdBreakOverlayHelper {
         }
     }
 
+    // ───────────────────── live game SCORECARD (Tivra-style) ────────────────────
+    // A full-screen native-feeling scoreboard rendered in a WebView from an HTML
+    // string we build off ESPN's own public API, keyed by the EXACT playing game
+    // (ProgramData.eventId — see onProgramData). Team logos load straight from
+    // a.espncdn.com (WebViews allow network images; nothing is bundled). The card
+    // shows logos, records, big scores, game status/clock, and the per-period
+    // SCORE BY PERIOD grid. Data-model shape inspired by the Tivra TV app (credited
+    // in docs/SCOREBOARD_SCHEMA_REFERENCE.md). Refreshes on SCORE_REFRESH_MS.
+    // Rotation: YOUR game (pinned first) then each other live game in the league,
+    // looping. We pre-render every game's HTML body on each data refresh and just
+    // swap the visible one each tick, re-fetching scores every couple of rotations.
+    private const val CARD_ROTATE_MS = 8_000L
+    @Volatile private var cardBodies: List<String> = emptyList()
+    private var cardIndex = 0
+    private var cardTicks = 0
+
+    private val cardRefresh = object : Runnable {
+        override fun run() {
+            renderCurrentCard()
+            cardIndex++
+            if (cardTicks % 2 == 0) fetchCardBodies()   // refresh scores ~every 2 ticks (16s)
+            cardTicks++
+            if (overlayWebView != null && currentMode == SlateMode.SCORECARD) {
+                mainHandler.postDelayed(this, CARD_ROTATE_MS)
+            }
+        }
+    }
+
+    private fun renderCurrentCard() {
+        val bodies = cardBodies
+        val idx = if (bodies.isEmpty()) 0 else cardIndex % bodies.size
+        val dots = if (bodies.size > 1) dotsHtml(idx, bodies.size) else ""
+        val body = if (bodies.isEmpty()) cardLoadingBody() else bodies[idx] + dots
+        overlayWebView?.takeIf { currentMode == SlateMode.SCORECARD }
+            ?.loadDataWithBaseURL(CARD_BASE_URL, cardDocument(body), "text/html", "utf-8", null)
+    }
+
+    private fun fetchCardBodies() {
+        val eid = currentEventId
+        val leagues = (listOfNotNull(currentSportLeague) + activeLeagues).distinct().ifEmpty { DEFAULT_LEAGUES }
+        netExecutor.execute {
+            val bodies = try {
+                buildAllCardBodies(eid, leagues)
+            } catch (t: Throwable) {
+                Log.w(TAG, "scorecard fetch failed: $t"); emptyList()
+            }
+            mainHandler.post {
+                val wasEmpty = cardBodies.isEmpty()
+                if (bodies.isNotEmpty()) {
+                    cardBodies = bodies
+                    if (wasEmpty) { cardIndex = 0; renderCurrentCard() }   // show first card immediately
+                } else if (wasEmpty) {
+                    // Nothing live/available yet — replace the loading spinner with a message.
+                    overlayWebView?.takeIf { currentMode == SlateMode.SCORECARD }
+                        ?.loadDataWithBaseURL(CARD_BASE_URL, cardDocument(cardMessageBody("Scores are unavailable right now.")), "text/html", "utf-8", null)
+                }
+            }
+        }
+    }
+
+    // Build a rendered card body for YOUR game first (exact eventId), then every
+    // other in-progress game across the candidate leagues. De-dupes by event id.
+    private fun buildAllCardBodies(eventId: String?, leagues: List<String>): List<String> {
+        val yours = ArrayList<JSONObject>()
+        val others = ArrayList<JSONObject>()
+        val seen = HashSet<String>()
+        for (lg in leagues) {
+            val json = httpGet("https://site.api.espn.com/apis/site/v2/sports/$lg/scoreboard") ?: continue
+            val events = try { JSONObject(json).optJSONArray("events") } catch (_: Throwable) { null } ?: continue
+            for (i in 0 until events.length()) {
+                val ev = events.getJSONObject(i)
+                val id = ev.optString("id")
+                if (id.isBlank() || id in seen) continue
+                val comp = ev.optJSONArray("competitions")?.optJSONObject(0) ?: continue
+                val state = comp.optJSONObject("status")?.optJSONObject("type")?.optString("state")
+                if (eventId != null && id == eventId) { seen.add(id); yours.add(comp) }
+                else if (state == "in") { seen.add(id); others.add(comp) }
+            }
+        }
+        return (yours + others).map { renderScorecardBody(it) }
+    }
+
+    private fun dotsHtml(active: Int, total: Int): String {
+        val sb = StringBuilder("<div class=\"dots\">")
+        for (i in 0 until total) sb.append(if (i == active) "<span class=\"dot on\"></span>" else "<span class=\"dot\"></span>")
+        sb.append("</div>")
+        return sb.toString()
+    }
+
+    private fun buildScorecard(context: Context): FrameLayout {
+        activeLeagues = resolveLeagues(context)   // read once; refresh thread reuses it
+        val wv = android.webkit.WebView(context).apply {
+            setBackgroundColor(Color.parseColor("#0A0E14"))
+            settings.apply {
+                javaScriptEnabled = false
+                domStorageEnabled = false
+                loadsImagesAutomatically = true
+                blockNetworkImage = false
+            }
+            isFocusable = false; isFocusableInTouchMode = false
+        }
+        overlayWebView = wv
+        cardBodies = emptyList(); cardIndex = 0; cardTicks = 0   // fresh rotation each break
+        wv.loadDataWithBaseURL(CARD_BASE_URL, cardDocument(cardLoadingBody()), "text/html", "utf-8", null)
+        mainHandler.post(cardRefresh)   // fetch the real card ASAP, then keep refreshing
+        Log.d(TAG, "scorecard mode — leagues=$activeLeagues eventId=$currentEventId")
+        return FrameLayout(context).apply {
+            setBackgroundColor(Color.parseColor("#0A0E14")); isClickable = true; isFocusable = true
+            addView(wv, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        }
+    }
+
+    private fun stopCardRefresh() {
+        mainHandler.removeCallbacks(cardRefresh)
+        cardBodies = emptyList(); cardIndex = 0; cardTicks = 0
+    }
+
+    // ── HTML rendering ────────────────────────────────────────────────────────
+    private const val CARD_BASE_URL = "https://a.espncdn.com/"
+
+    private fun cardDocument(body: String): String = """
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { height:100%; background:#0A0E14; color:#fff;
+    font-family:-apple-system,Roboto,'Segoe UI',sans-serif; -webkit-font-smoothing:antialiased; }
+  .wrap { height:100%; display:flex; align-items:center; justify-content:center; }
+  .card { width:74%; max-width:940px; background:#12161F; border:1px solid #232a36;
+    border-radius:20px; padding:40px 48px; box-shadow:0 24px 60px rgba(0,0,0,.5); }
+  .eyebrow { text-align:center; color:#8b93a3; font-size:15px; letter-spacing:.32em;
+    text-transform:uppercase; margin-bottom:6px; }
+  .status { text-align:center; color:#fff; font-size:22px; font-weight:700;
+    letter-spacing:.02em; margin-bottom:26px; }
+  .live { color:#ff3b30; }
+  table { width:100%; border-collapse:collapse; }
+  th,td { text-align:center; padding:8px 6px; font-variant-numeric:tabular-nums; }
+  th { color:#8b93a3; font-size:14px; font-weight:600; letter-spacing:.1em;
+    border-bottom:1px solid #232a36; }
+  th.teamcol,td.teamcol { text-align:left; width:46%; }
+  td.per { color:#c7cdd6; font-size:22px; }
+  td.tot { font-size:34px; font-weight:800; }
+  tr.team td { border-bottom:1px solid #1b212c; }
+  .teamrow { display:flex; align-items:center; gap:16px; }
+  .teamrow img { width:52px; height:52px; object-fit:contain; }
+  .name { font-size:26px; font-weight:800; letter-spacing:.02em; }
+  .rec { color:#8b93a3; font-size:15px; margin-top:2px; }
+  .lead { color:#fff; } .trail { color:#9aa2b1; }
+  .accent { height:4px; width:120px; background:#ff3b30; border-radius:2px;
+    margin:22px auto 0; }
+  .msg { text-align:center; color:#c7cdd6; font-size:22px; padding:40px 0; }
+  .dots { display:flex; justify-content:center; gap:9px; margin-top:22px; }
+  .dot { width:8px; height:8px; border-radius:50%; background:#39424f; }
+  .dot.on { background:#ff3b30; }
+</style></head><body><div class="wrap"><div class="card">$body</div></div></body></html>
+""".trimIndent()
+
+    private fun cardLoadingBody(): String =
+        """<div class="eyebrow">Commercial Break</div><div class="msg">Loading scoreboard…</div>"""
+
+    private fun cardMessageBody(msg: String): String =
+        """<div class="eyebrow">Commercial Break</div><div class="msg">${esc(msg)}</div>"""
+
+    // Build the scorecard body from a competition JSON object (scoreboard shape).
+    private fun renderScorecardBody(comp: JSONObject): String {
+        val type = comp.optJSONObject("status")?.optJSONObject("type")
+        val state = type?.optString("state") ?: ""          // pre | in | post
+        val detail = type?.optString("detail").orEmpty().ifBlank { type?.optString("shortDetail").orEmpty() }
+        val cs = comp.optJSONArray("competitors") ?: return cardMessageBody("Scores are unavailable right now.")
+
+        var home: JSONObject? = null; var away: JSONObject? = null
+        for (j in 0 until cs.length()) {
+            val c = cs.getJSONObject(j)
+            if (c.optString("homeAway") == "home") home = c else away = c
+        }
+        if (home == null || away == null) return cardMessageBody("Scores are unavailable right now.")
+
+        val homeScore = home.optString("score", "0").toIntOrNull() ?: 0
+        val awayScore = away.optString("score", "0").toIntOrNull() ?: 0
+        val awayLead = awayScore > homeScore
+        val homeLead = homeScore > awayScore
+
+        val periods = maxOf(linescoreLen(home), linescoreLen(away))
+        val header = StringBuilder("<tr><th class=\"teamcol\"></th>")
+        for (p in 1..periods) header.append("<th>${ordinalShort(p)}</th>")
+        header.append("<th>T</th></tr>")
+
+        // Pre-game: no linescore yet — show matchup + scheduled detail.
+        val showGrid = state == "in" || state == "post"
+
+        val eyebrow = when (state) {
+            "in" -> "<span class=\"live\">● LIVE</span>"
+            "post" -> "Final"
+            else -> "Upcoming"
+        }
+        val statusLine = esc(detail.ifBlank { if (state == "pre") "Starting soon" else "" })
+
+        val sb = StringBuilder()
+        sb.append("<div class=\"eyebrow\">$eyebrow</div>")
+        if (statusLine.isNotBlank()) sb.append("<div class=\"status\">$statusLine</div>")
+        sb.append("<table>")
+        if (showGrid) sb.append(header)
+        sb.append(teamRow(away, awayScore, awayLead, periods, showGrid))
+        sb.append(teamRow(home, homeScore, homeLead, periods, showGrid))
+        sb.append("</table><div class=\"accent\"></div>")
+        return sb.toString()
+    }
+
+    private fun teamRow(c: JSONObject, score: Int, lead: Boolean, periods: Int, showGrid: Boolean): String {
+        val team = c.optJSONObject("team")
+        val name = team?.optString("shortDisplayName").orEmpty()
+            .ifBlank { team?.optString("abbreviation").orEmpty() }.ifBlank { "—" }
+        val logo = team?.optString("logo").orEmpty()
+        val record = c.optJSONArray("records")?.let { recs ->
+            (0 until recs.length()).map { recs.getJSONObject(it) }
+                .firstOrNull { it.optString("type") == "total" || it.optString("name") == "overall" }
+                ?.optString("summary")
+        }.orEmpty()
+        val cls = if (lead) "lead" else "trail"
+        val sb = StringBuilder("<tr class=\"team\">")
+        sb.append("<td class=\"teamcol\"><div class=\"teamrow\">")
+        if (logo.isNotBlank()) sb.append("<img src=\"${esc(logo)}\">")
+        sb.append("<div><div class=\"name $cls\">${esc(name)}</div>")
+        if (record.isNotBlank()) sb.append("<div class=\"rec\">${esc(record)}</div>")
+        sb.append("</div></div></td>")
+        if (showGrid) {
+            val ls = c.optJSONArray("linescores")
+            for (p in 0 until periods) {
+                val v = ls?.optJSONObject(p)?.let {
+                    it.optString("displayValue").ifBlank { fmtNum(it.optDouble("value", Double.NaN)) }
+                } ?: ""
+                sb.append("<td class=\"per\">${esc(v)}</td>")
+            }
+        }
+        sb.append("<td class=\"tot $cls\">$score</td></tr>")
+        return sb.toString()
+    }
+
+    private fun linescoreLen(c: JSONObject): Int = c.optJSONArray("linescores")?.length() ?: 0
+
+    private fun fmtNum(d: Double): String =
+        if (d.isNaN()) "" else if (d == d.toLong().toDouble()) d.toLong().toString() else d.toString()
+
+    // Short period label: 1..4 numeric; OT/2OT beyond regulation. Generic across
+    // sports (quarters/periods/innings all render as 1,2,3,…).
+    private fun ordinalShort(p: Int): String = p.toString()
+
+    private fun esc(s: String): String = s
+        .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        .replace("\"", "&quot;")
+
     // Base layer for the current break, chosen by mode. CARD/SCOREBOARD skip the
     // video entirely (SCOREBOARD gets the score strip added over the card by the
     // caller); VIDEO/VIDEO_SCORE play user media, falling back to the card when
@@ -1078,6 +1337,7 @@ object EspnAdBreakOverlayHelper {
         }
         if (mode == SlateMode.CARD || mode == SlateMode.SCOREBOARD) return buildCard(context)
         if (mode == SlateMode.OVERLAY) return buildOverlay(context) ?: buildCard(context)
+        if (mode == SlateMode.SCORECARD) return buildScorecard(context)
 
         // VIDEO / VIDEO_SCORE — user media, round-robined per break.
         val media = slateMediaFiles(context)
