@@ -1,3 +1,10 @@
+## [1.40.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.40.0...v1.40.1) (2026-09-28)
+
+
+### Bug Fixes
+
+* **netflix:** recover MASTER on renamed getAds builds (M1-only) — closes [#212](https://github.com/ajstrick81/morphe-androidtv-patches/issues/212) ([#223](https://github.com/ajstrick81/morphe-androidtv-patches/issues/223)) ([4f1db60](https://github.com/ajstrick81/morphe-androidtv-patches/commit/4f1db60adc663cb25c9b7a6dcf3611a963e0f20f))
+
 # [1.40.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.39.0...v1.40.0) (2026-09-28)
 
 
