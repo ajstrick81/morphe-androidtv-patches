@@ -63,4 +63,18 @@ Modifications:
   official Twitch Android APK v30.2.2, not copied from source code
 - Adapted to morphe-androidtv-patches Fingerprint/bytecodePatch framework
 
+- jev-kit (jonathanavis96/jev-kit), MIT
+  Author: Jonathan Avis (github.com/jonathanavis96)
+  Inspiration for scripts/smali-search (the `esm` fast-search tool).
+  jev-kit's filesearch component steers an agent's file search at an index
+  (voidtools Everything's `es.exe`) instead of walking the tree. That idea is
+  the basis of our smali-search tool. jev-kit is an excellent, carefully
+  measured toolkit — thank you to Jonathan Avis.
+  Source: https://github.com/jonathanavis96/jev-kit
+  Modifications / independence: no jev-kit code is copied. `esm` is our own
+  small shell implementation for the Morphe smali-search need, and it adds a
+  content/code index (Google Codesearch cindex/csearch) that Everything alone
+  cannot provide — the piece that fixes tree-wide content search, our slowest
+  step (measured ~165 s over 33.6k HBO Max smali files).
+
 All original authors retain credit for their contributions.
