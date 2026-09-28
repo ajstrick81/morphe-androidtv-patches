@@ -177,6 +177,19 @@ function patchMASTERw(rs){ if(masterDone||mwDone)return;
   for(var i=0;i<rs.length&&!m1addr;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
     try{var h=Memory.scanSync(r.base,r.size,p1);for(var j=0;j<h.length;j++){var t=h[j].address.add(m1off);var cc=-1;try{cc=t.readU8();}catch(e){}if(!isAlpha(cc))continue;m1addr=t;m1cc=cc;break;}}catch(e){}}
   if(!m1addr)return;   // getAdMetadata body not resident yet — try again next pass
+  // M1-ONLY recovery (2026-09-27, #212 build 25028): if the EXACT patchMASTER already landed M2
+  // (else return;->else b=[]) but its M1 missed because this build renamed the getAds local
+  // (if(d)->if(c) etc.), the else already yields a VALID [] — so flipping M1 alone is crash-safe
+  // (no v1 undefined). The atomic M2 search below would MISS here anyway (exact M2 consumed the
+  // 'else return;' string -> the 25028 'MASTERw M2-MISS' with rawRealPods leaking from the still-live
+  // if(<cond>) first branch). Flip M1 and finish.
+  if(m2Done){
+    Memory.protect(m1addr,1,'rw-'); m1addr.writeByteArray([0x30]);
+    var vb=-1; try{vb=m1addr.readU8();}catch(e){}   // read-back: confirm the flip actually took
+    mwDone=true; masterDone=true;
+    L('PATCH MASTERw: getAdMetadata if('+String.fromCharCode(m1cc)+')->if(0) @'+m1addr+' (M1-only; exact M2 already landed else b=[]) verify='+(vb===0x30?'OK(now 0)':'FAIL(byte='+vb+')')+' — rename-drift recovered, v2.1');
+    return;
+  }
   // --- locate M2: else return; [gap] <acc> =this.adBreakHydrator ---
   // The accumulator sits just before '=this.adBreakHydrator'. Older builds had NO gap
   // (else return;b=this...); the 2026-09 build inserted a newline (else return;\nb=this...). Try
