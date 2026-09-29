@@ -32,22 +32,24 @@ That line is the reason this project exists. If you own the TV and pay for the s
 
 ## 📊 Patch Status
 
-| App | Package | Status | Tested Version | Date |
-|-----|---------|--------|---------------|------|
-| 🟢 Disney+ | `com.disney.disneyplus` | Working | `26.16.0+rc2-2026.09.08` | 9/14/26 |
-| 🟢 Prime Video | `com.amazon.amazonvideo.livingroom` | Working — native in-app ad strip (movies + TV shows), no DNS required. ⚠️ **Use `6.23.23` / engine `v15.5.x`; do NOT update to `6.24.x` (engine `v16`)** — v16 moved the ad pipeline into the native engine, so ads return there ([#120](https://github.com/ajstrick81/morphe-androidtv-patches/issues/120)). Keep **auto-updates disabled**. **v1.37.4** hardens the strip for high-ad regions (India/EU), where large mid-roll ad responses split across memory chunks. A rare, very large mid-roll break can still briefly freeze (spinner / "Something went wrong") — press **Back**, then **Resume**, to continue ad-free | `6.23.23+v15.5.0.70-armv7a` | 9/20/26 |
-| 🟢 Netflix | `com.netflix.ninja` | Working — native in-app ad strip (pre-roll, mid-roll, pause-screen ad), no DNS required. Installs as a **side-by-side clone**; keep stock Netflix installed | `13.0.1 build 25028` | 9/14/26 |
-| 🟢 HBO Max | `com.wbd.hbomax` | Working — **fully ad-free by default** (v1.30.0). The **Prefer Ad-Free Stream** patch loads HBO's own ad-free manifest (its resiliency-fallback stream), so pre-rolls, mid-rolls, and even the ad-tier's stitched **SSAI baked-in ads** are gone — along with the ad markers/countdown — on both fresh start and resume, and it loads faster. No DNS required. (Legacy opt-in **Block SSAI Ad Origins** is now off by default and superseded.) | `v7.9.0.61` | 8/26/26 |
-| 🟢 Peacock | `com.peacocktv.peacockandroid` | Working — no DNS required | `v7.8.100` | 9/6/26 |
-| 🟢 Tubi | `com.tubitv` | Working | `v10.36.5000` | 9/29/26 |
-| 🟢 ViX | `com.univision.prendetv` | Working | `v4.47.2_tv` | 7/11/26 |
-| 🟢 Pluto TV | `tv.pluto.android` | Working — VOD ad breaks removed (video, markers, beacons); LIVE TV breaks maskable (black screen + mute) via optional patch | `5.66.0-leanback` | 9/7/26 |
-| 🟢 Paramount+ | `com.cbs.ott` | Working — VOD ads removed (movies + TV shows, pre-roll + mid-roll); pause ads removed; live TV preserved | `v16.17.0` | 8/4/26 |
-| 🟢 Twitch | `tv.twitch.android.app` | Working — **Android TV "Starshot" build only; install exactly `13.0.0.2`** (the phone app is not supported — do not use the phone APK). Removes the on-screen ad-pod overlay/countdown ("Ad · 1 of 3") and blanks stitched (SSAI) ad video on live streams. A brief black gap can remain during a break; a VPN set to Albania is fully ad-free — see notes | `13.0.0.2` | 8/22/26 |
-| 🟢 ESPN | `com.espn.score_center` | Working — **Android TV** only. Live commercial breaks masked with a full-screen slate + audio mute (passthrough SSAI can't be removed, only covered); VOD/scheduled ads suppressed. No DNS required | `6.11.1` | 9/5/26 |
-| 🟢 RTÉ Player | `com.twentyfouri.tvbridge.rte` | Working — **Android TV, VOD only**. Client-side (Google IMA) pre-roll + mid-roll ads removed seamlessly (no ad, no break pause). Live channels keep ads (server-stitched). **Geo-locked to Ireland — use a VPN**; needs a valid RTÉ account | `3.160.3` | 9/14/26 |
-| 🔴 Fox One | **Under Development** | — |
-| 🔴 MLB TV | **Under Development** | — |
+| App | What's removed | Tested version | Updated |
+|-----|----------------|----------------|---------|
+| 🟢 Disney+ | Ads (pre/mid-roll) + pause ads | `26.16.0+rc2-2026.09.08` | 9/14/26 |
+| 🟢 Prime Video | Movie + TV-show ads (native strip) · ⚠️ stay on `6.23.23` | `6.23.23+v15.5.0.70-armv7a` | 9/20/26 |
+| 🟢 Netflix | Pre/mid-roll + pause ads · installs as a clone | `13.0.1 build 25028` | 9/14/26 |
+| 🟢 HBO Max | All ads, incl. baked-in SSAI (ad-free stream) | `7.9.0.61` | 8/26/26 |
+| 🟢 Peacock | Ads | `7.8.100` | 9/6/26 |
+| 🟢 Tubi | Ads (+ opt-in analytics block) | `10.36.5000` | 9/29/26 |
+| 🟢 ViX | Ads | `4.47.2_tv` | 7/11/26 |
+| 🟢 Pluto TV | VOD ads · live breaks masked (opt-in) | `5.66.0-leanback` | 9/7/26 |
+| 🟢 Paramount+ | VOD + pause ads · live untouched | `16.17.0` | 8/4/26 |
+| 🟢 Twitch | Ad overlay + blanked live ads · TV build only | `13.0.0.2` | 8/22/26 |
+| 🟢 ESPN | Live breaks masked (slate + mute) · VOD ads | `6.11.1` | 9/5/26 |
+| 🟢 RTÉ Player | VOD ads · 🇮🇪 geo-locked | `3.160.3` | 9/14/26 |
+| 🔴 Fox One | Under development | — | — |
+| 🔴 MLB TV | Under development | — | — |
+
+Details, notes and the exact download links for each app are under **How to Install** below.
 
 > 🟢 Working &nbsp;&nbsp; 🟡 Partial/Testing &nbsp;&nbsp; 🔴 Under Development / Broken
 
@@ -94,6 +96,8 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 ### 🎭 HBO Max
 
+> **About this patch:** **Fully ad-free by default** (v1.30.0). **Prefer Ad-Free Stream** loads HBO's own ad-free manifest (its resiliency-fallback stream), so pre-rolls, mid-rolls and even the ad tier's stitched **SSAI baked-in ads** are gone — along with the ad markers/countdown — on fresh start and resume, and it loads faster. No DNS required. The legacy opt-in **Block SSAI Ad Origins** patch is off by default and superseded.
+
 1. Open the **[HBO Max 7.9.0.61 (Android TV) release on APKMirror](https://www.apkmirror.com/apk/warnermedia-direct-llc/hbo-max-stream-movies-tv-android-tv/hbo-max-stream-movies-tv-android-tv-7-9-0-61-release/hbo-max-stream-movies-tv-android-tv-7-9-0-61-android-apk-download/)** directly (or search APKMirror for the fallback `7.7.0.78` if unavailable)
    > ⚠️ **Get the right package.** These patches target **`com.wbd.hbomax`**. WarnerMedia also publishes a separate **`com.wbd.stream`** build under a near-identical name, and APKMirror's listing URLs for this app have shifted between the two before — don't trust the listing title alone. Confirm the download page shows package **`com.wbd.hbomax`** before downloading.
 2. Download the `.apkm` file
@@ -104,6 +108,8 @@ All patches follow the same general workflow using **Morphe Manager**:
 ---
 
 ### ▶️ Prime Video
+
+> **About this patch:** Native in-app ad strip for movies and TV shows — no DNS required. ⚠️ **Use `6.23.23` / engine `v15.5.x`; do NOT update to `6.24.x` (engine `v16`)** — v16 moved the ad pipeline into the native engine, so ads return there ([#120](https://github.com/ajstrick81/morphe-androidtv-patches/issues/120)). Keep **auto-updates disabled**. v1.37.4 hardens the strip for high-ad regions (India/EU). A rare, very large mid-roll break can still briefly freeze (spinner / "Something went wrong") — press **Back**, then **Resume**, to continue ad-free.
 
 1. Open the **[Prime Video (Android TV) 6.23.23+v15.5.0.70-armv7a release on APKMirror](https://www.apkmirror.com/apk/amazon-mobile-llc/prime-video-android-tv-android-tv/prime-video-android-tv-6-23-23v15-5-0-70-armv7a-release/)** (version **`6.23.23+v15.5.0.70-armv7a`** — `armeabi-v7a` only, so **Optimize for device architecture must be OFF**)
 2. Download the `.apkm` file
@@ -137,6 +143,8 @@ All patches follow the same general workflow using **Morphe Manager**:
 ---
 
 ### 🍿 Netflix
+
+> **About this patch:** Native in-app ad strip (pre-roll, mid-roll, pause-screen ad), no DNS required. Installs as a **side-by-side clone** — keep stock Netflix installed.
 
 > 🟢 **Working — no DNS filter needed.** Pre-rolls, mid-rolls, **and** the
 > full-screen pause-screen ad are removed **in-app** by an in-process script that
@@ -177,6 +185,8 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 ### 📡 Paramount+
 
+> **About this patch:** VOD ads removed (movies + TV shows, pre-roll + mid-roll) and pause ads removed; live TV is preserved.
+
 > 🟢 **Recommended version: `v16.17.0`.** VOD ads (movies **and** TV shows,
 > pre-roll and mid-roll) and pause ads are removed, while **live TV is
 > preserved**. This is the version to patch and install right now.
@@ -214,6 +224,8 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 ### 📡 Pluto TV
 
+> **About this patch:** VOD ad breaks removed (video, markers, beacons). LIVE TV breaks can be masked (black screen + mute) with an optional patch.
+
 > 🟢 **Working.** Pluto is a free, 100% ad-supported (FAST) service that uses
 > **server-side ad stitching (SSAI)** — ads are baked into the same stream as
 > the content, so there is no ad domain to block and no ad-free tier to unlock.
@@ -247,6 +259,8 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 ### 🦚 Peacock
 
+> **About this patch:** No DNS required.
+
 1. Open the **[Peacock TV (Android TV) 7.8.100 release on APKMirror](https://www.apkmirror.com/apk/peacock-tv-llc/peacock-tv-android-tv/peacock-tv-stream-tv-movies-android-tv-7-8-100-apk-release/)** directly (this is version **`7.8.100`** — use this link rather than searching, which can land on a similarly-named build). Versions **`7.5.102`** and **`7.6.100`** are also supported.
    > This release has three bundles — pick **`arm64-v8a + armeabi-v7a`** (Android 6.0+). The `armeabi-v7a`-only bundle needs Android 12L+, and the `arm64-v8a`-only one won't run on 32-bit TV boxes.
 2. Download the `.apkm` file
@@ -267,6 +281,8 @@ All patches follow the same general workflow using **Morphe Manager**:
 ---
 
 ### 💜 Twitch
+
+> **About this patch:** **Android TV "Starshot" build only — install exactly `13.0.0.2`** (the phone app is not supported). Removes the on-screen ad-pod overlay/countdown ("Ad · 1 of 3") and blanks stitched (SSAI) ad video on live streams. A brief black gap can remain during a break; a VPN set to Albania is fully ad-free.
 
 > 🟢 **Working — Android TV "Starshot" build only (`13.0.0.2`).** Twitch live ads
 > are **server-side stitched (SSAI)** into the same stream as the content, and the
@@ -292,6 +308,8 @@ All patches follow the same general workflow using **Morphe Manager**:
 ---
 
 ### 🏈 ESPN
+
+> **About this patch:** **Android TV** only. Live commercial breaks are masked with a full-screen slate + audio mute (passthrough SSAI can't be removed, only covered); VOD/scheduled ads are suppressed. No DNS required.
 
 > 🟢 **Working — Android TV only (`6.11.1`).** ESPN **live** commercial breaks are
 > native **passthrough SSAI** — the ad is stitched into the same stream as the game,
@@ -320,6 +338,8 @@ All patches follow the same general workflow using **Morphe Manager**:
 ---
 
 ### 📺 RTÉ Player
+
+> **About this patch:** **Android TV, VOD only.** Client-side (Google IMA) pre-roll + mid-roll ads are removed seamlessly (no ad, no break pause). Live channels keep ads (server-stitched). **Geo-locked to Ireland — use a VPN**; needs a valid RTÉ account.
 
 1. Open the **[RTÉ Player (Android TV) 3.160.3 release on APKMirror](https://www.apkmirror.com/apk/rte/rte-player-android-tv/rte-player-android-tv-3-160-3-release/)** (version **`3.160.3`**)
 2. Download the `.apkm` file
