@@ -39,7 +39,7 @@ That line is the reason this project exists. If you own the TV and pay for the s
 | 🟢 Netflix | `com.netflix.ninja` | Working — native in-app ad strip (pre-roll, mid-roll, pause-screen ad), no DNS required. Installs as a **side-by-side clone**; keep stock Netflix installed | `13.0.1 build 25028` | 9/14/26 |
 | 🟢 HBO Max | `com.wbd.hbomax` | Working — **fully ad-free by default** (v1.30.0). The **Prefer Ad-Free Stream** patch loads HBO's own ad-free manifest (its resiliency-fallback stream), so pre-rolls, mid-rolls, and even the ad-tier's stitched **SSAI baked-in ads** are gone — along with the ad markers/countdown — on both fresh start and resume, and it loads faster. No DNS required. (Legacy opt-in **Block SSAI Ad Origins** is now off by default and superseded.) | `v7.9.0.61` | 8/26/26 |
 | 🟢 Peacock | `com.peacocktv.peacockandroid` | Working — no DNS required | `v7.8.100` | 9/6/26 |
-| 🟢 Tubi | `com.tubitv` | Working | `v10.28.5000` | 7/20/26 |
+| 🟢 Tubi | `com.tubitv` | Working | `v10.36.5000` | 9/29/26 |
 | 🟢 ViX | `com.univision.prendetv` | Working | `v4.47.2_tv` | 7/11/26 |
 | 🟢 Pluto TV | `tv.pluto.android` | Working — VOD ad breaks removed (video, markers, beacons); LIVE TV breaks maskable (black screen + mute) via optional patch | `5.66.0-leanback` | 9/7/26 |
 | 🟢 Paramount+ | `com.cbs.ott` | Working — VOD ads removed (movies + TV shows, pre-roll + mid-roll); pause ads removed; live TV preserved | `v16.17.0` | 8/4/26 |
@@ -194,7 +194,7 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 ### 📺 Tubi
 
-1. Open the **[Tubi (Android TV) listing on APKMirror](https://www.apkmirror.com/apk/tubi-tv/tubi-free-movies-live-tv-android-tv/)** and select version **`10.28.5000`**
+1. Open the **[Tubi (Android TV) listing on APKMirror](https://www.apkmirror.com/apk/tubi-tv/tubi-free-movies-live-tv-android-tv/)** and select version **`10.36.5000`**
 2. ⚠️ Use this **Android TV** listing — not the "Tubi (Fire TV)" or the phone listing
 3. Download the `.apkm` file
 4. Select it in Morphe Manager

@@ -22,7 +22,7 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 | App | Engine | Targets | Patches | Fingerprints | Patch evidence logged | Device signature known |
 |---|---|---|---:|---:|---|---|
 | [disney](#disney) | Proprietary native / JS ad engine | 26.6.0+rc5-2026.04.21, 26.8.0+rc6-2026.05.20, 26.9.2+rc1-2026.06.12, 26.12.1+rc1-2026.07.15, 26.16.0+rc2-2026.09.08 | 2 | 6 | **no** | **no** |
-| [espn](#espn) | Server-side stitching (SSAI) via manifest | 6.11.1 | 4 | 7 | yes (48 lines) | **no** |
+| [espn](#espn) | Server-side stitching (SSAI) via manifest | 6.11.1 | 4 | 7 | yes (50 lines) | **no** |
 | [foxone](#foxone) | Google IMA / DAI client SDK | 1.9.2 | 1 | 8 | **no** | **no** |
 | [hbomax](#hbomax) | Server-side stitching (SSAI) via manifest | 7.9.0.61, 7.7.0.78, 7.5.0.73, 7.2.0.41 | 3 | 8 | yes (2 lines) | **no** |
 | [mlbtv](#mlbtv) | Google IMA / DAI client SDK | 26.8.1.1 | 1 | 9 | yes (7 lines) | **no** |
@@ -31,8 +31,9 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 | [peacock](#peacock) | Server-side stitching (SSAI) via manifest | 7.5.102, 7.6.100, 7.8.100 | 3 | 10 | yes (6 lines) | **no** |
 | [pluto](#pluto) | Server-side stitching (SSAI) via manifest | 5.66.0-leanback | 5 | 10 | yes (26 lines) | yes |
 | [primevideo](#primevideo) | Proprietary native / JS ad engine | 6.23.23+v15.5.0.70-armv7a | 7 | 5 | yes (37 lines) | yes |
+| [raiplay](#raiplay) | ? | 5.0.0 | 1 | 1 | **no** | **no** |
 | [rte](#rte) | Google IMA / DAI client SDK | 3.160.3 | 1 | 3 | **no** | **no** |
-| [tubi](#tubi) | Google IMA / DAI client SDK | 10.28.5000 | 2 | 12 | yes (2 lines) | **no** |
+| [tubi](#tubi) | Google IMA / DAI client SDK | 10.36.5000 | 2 | 12 | yes (2 lines) | **no** |
 | [twitchatv](#twitchatv) | Proprietary native / JS ad engine | 13.0.0.2 | 1 | 1 | yes (5 lines) | **no** |
 | [vix](#vix) | Google IMA / DAI client SDK | 4.46.0_tv, 4.47.2_tv | 2 | 2 | **no** | **no** |
 
@@ -95,20 +96,20 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 | ESPN live commercial-break slate | `ProgramDataAvailableFingerprint` | `(custom matcher)`.— | — |  | addInstructions `invoke-static { p0 }, Lajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper;` |
 | ESPN live commercial-break slate | `PlaylistRetrievedFingerprint` | `(custom matcher)`.— | — |  | addInstructions `invoke-static { p2 }, Lajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper;` |
 
-Runtime evidence (tags `MORPHE-ESPN-SLATE`; first 12 of 48):
+Runtime evidence (tags `MORPHE-ESPN-SLATE`; first 12 of 50):
 
-- D `registerActivity() — host container registered` — EspnAdBreakOverlayHelper.kt:203
-- D `setSession(…)` — EspnAdBreakOverlayHelper.kt:218
-- W `dump session failed: …` — EspnAdBreakOverlayHelper.kt:239
-- W `getPlaybackSession failed: …` — EspnAdBreakOverlayHelper.kt:240
-- W `dump playbackSession failed: …` — EspnAdBreakOverlayHelper.kt:242
-- W `getDataSource failed: …` — EspnAdBreakOverlayHelper.kt:243
-- W `dump dataSource failed: …` — EspnAdBreakOverlayHelper.kt:244
-- D `META[…] …() = …` — EspnAdBreakOverlayHelper.kt:257
-- W `getBreaks poll failed: …` — EspnAdBreakOverlayHelper.kt:287
-- W `…() not found on …` — EspnAdBreakOverlayHelper.kt:295
-- W `BreakInfo reflection failed: …` — EspnAdBreakOverlayHelper.kt:314
-- D `getBreaks -> … breaks … playhead=…` — EspnAdBreakOverlayHelper.kt:322
+- D `registerActivity() — host container registered` — EspnAdBreakOverlayHelper.kt:208
+- D `setSession(…)` — EspnAdBreakOverlayHelper.kt:223
+- W `dump session failed: …` — EspnAdBreakOverlayHelper.kt:244
+- W `getPlaybackSession failed: …` — EspnAdBreakOverlayHelper.kt:245
+- W `dump playbackSession failed: …` — EspnAdBreakOverlayHelper.kt:247
+- W `getDataSource failed: …` — EspnAdBreakOverlayHelper.kt:248
+- W `dump dataSource failed: …` — EspnAdBreakOverlayHelper.kt:249
+- D `META[…] …() = …` — EspnAdBreakOverlayHelper.kt:262
+- W `getBreaks poll failed: …` — EspnAdBreakOverlayHelper.kt:292
+- W `…() not found on …` — EspnAdBreakOverlayHelper.kt:300
+- W `BreakInfo reflection failed: …` — EspnAdBreakOverlayHelper.kt:319
+- D `getBreaks -> … breaks … playhead=…` — EspnAdBreakOverlayHelper.kt:327
 
 </details>
 
@@ -419,6 +420,28 @@ Runtime evidence (tags `SkipAdsPatch`, `PVNativeHook`; first 12 of 37):
 
 </details>
 
+## raiplay
+
+**Package** `it.rainet.androidtv` · **Targets** `5.0.0` · **Engine** unclassified
+
+| Layer | |
+|---|---|
+| Runtime | _unknown_ |
+| Delivery | _unknown_ |
+| Code seam | _unknown_ |
+| Patch action | _unknown_ |
+| Patch evidence | _unknown_ |
+| Device signature | _unknown_ |
+| Drift history | _unknown_ |
+
+<details><summary>Patches and fingerprints (generated)</summary>
+
+| Patch | Fingerprint | Class / method | Returns | Strings | Action |
+|---|---|---|---|---|---|
+| Skip ads | `ParseAdContextFingerprint` | `(custom matcher)`.— | `Lit/rai/raiplay/androidtv/nativeplayer/SmartclipAdContext;` |  | addInstructions `                 const/4 v0, 0x0                 return-object v0             ` |
+
+</details>
+
 ## rte
 
 **Package** `com.twentyfouri.tvbridge.rte` · **Targets** `3.160.3` · **Engine** Google IMA / DAI client SDK
@@ -447,7 +470,7 @@ Runtime evidence (tags `SkipAdsPatch`, `PVNativeHook`; first 12 of 37):
 
 ## tubi
 
-**Package** `com.tubitv` · **Targets** `10.28.5000` · **Engine** Google IMA / DAI client SDK
+**Package** `com.tubitv` · **Targets** `10.36.5000` · **Engine** Google IMA / DAI client SDK
 
 | Layer | |
 |---|---|
@@ -457,7 +480,7 @@ Runtime evidence (tags `SkipAdsPatch`, `PVNativeHook`; first 12 of 37):
 | Patch action | Skip ads at the SDK boundary. |
 | Patch evidence | _unknown_ |
 | Device signature | _unknown_ |
-| Drift history | R8 renames classes each version → per-version re-pin map (10.28.5000 shipped; newer re-pins in progress). |
+| Drift history | R8 renames classes each version → per-version re-pin map (10.36.5000 shipped 2026-09-29: ImagePauseAds l→m, TvWebFragment client Po→Ap, Rainmaker sf→Sf, NetworkResponse Mm/d→qn/d). |
 
 **Gaps:** No runtime log line. · Device signature not captured.
 
@@ -468,16 +491,16 @@ Runtime evidence (tags `SkipAdsPatch`, `PVNativeHook`; first 12 of 37):
 | Skip ads | `FoxImaAdEventListenerFingerprint` | `listeners/FoxImaAdListeners`.`adEventListener_delegate$lambda$10$lambda$9` | — | `adEvent` | addInstructions `return-void` |
 | Skip ads | `FoxImaAdsLoadedListenerFingerprint` | `listeners/FoxImaAdListeners`.`adsLoadedListener_delegate$lambda$4$lambda$3` | — | `onAdsManagerLoaded` | addInstructions `return-void` |
 | Skip ads | `FoxPlayerClearVodAdsFingerprint` | `player/FoxPlayer`.`clearVodAds` | — |  | addInstructions `return-void` |
-| Skip ads | `TubiPauseAdsFingerprint` | `pauseads/ImagePauseAds`.`l` | `V` |  | addInstructions `return-void` |
-| Skip ads | `FoxImaVodStreamRequestFingerprint` | `loaders/FoxImaStreamIdLoader`.`requestVODDAIUrl` | `V` | `requestVODDAIUrl() BEGIN...` | addInstructions `                 const-string v0, ` |
-| Skip ads | `FoxImaLiveStreamRequestFingerprint` | `loaders/FoxImaStreamIdLoader`.`requestImaStreamId` | `V` | `requestImaStreamId BEGIN...` | addInstructions `                 const-string v0, ` |
-| Skip ads | `TubiWebClientInterceptFingerprint` | `Po/C$c`.`shouldInterceptRequest` | `Landroid/webkit/WebResourceResponse;` |  | addInstructions |
-| Skip ads | `TubiWebClientPageFinishedFingerprint` | `Po/C$c`.`onPageFinished` | `V` |  | addInstructions `                 const-string v0, ` |
-| Skip ads | `QfcSuspendGetAdBreaksFingerprint` | `sf/c`.`suspendGetAdBreaks` | `Ljava/lang/Object;` |  | addInstructions `                 new-instance v0, Ljava/io/IOException;                 const-string v1, ` |
+| Skip ads | `TubiPauseAdsFingerprint` | `pauseads/ImagePauseAds`.`m` | `V` |  | addInstructions `return-void` |
+| Skip ads | `FoxImaVodStreamRequestFingerprint` | `loaders/FoxImaStreamIdLoader`.`requestVODDAIUrl` | `V` | `requestVODDAIUrl() BEGIN...` | addInstructions `                 const-string v0, ` |
+| Skip ads | `FoxImaLiveStreamRequestFingerprint` | `loaders/FoxImaStreamIdLoader`.`requestImaStreamId` | `V` | `requestImaStreamId BEGIN...` | addInstructions `                 const-string v0, ` |
+| Skip ads | `TubiWebClientInterceptFingerprint` | `Ap/C$c`.`shouldInterceptRequest` | `Landroid/webkit/WebResourceResponse;` |  | addInstructionsWithLabels |
+| Skip ads | `TubiWebClientPageFinishedFingerprint` | `Ap/C$c`.`onPageFinished` | `V` |  | addInstructions `                 const-string v0, ` |
+| Skip ads | `QfcSuspendGetAdBreaksFingerprint` | `Sf/c`.`suspendGetAdBreaks` | `Ljava/lang/Object;` |  | addInstructions `                 new-instance v0, Ljava/io/IOException;                 const-string v1, ` |
 | Block analytics & tracking _(opt-in)_ | `AdjustInitSdkFingerprint` | `sdk/Adjust`.`initSdk` | `V` |  | addInstructions `return-void` |
 | Block analytics & tracking _(opt-in)_ | `AdjustOnCreateFingerprint` | `sdk/Adjust`.`onCreate` | `V` |  | addInstructions `return-void` |
 | Block analytics & tracking _(opt-in)_ | `OkHttpClientInitFingerprint` | `okhttp3/OkHttpClient`.`<init>` | `V` |  | addInstructions `invoke-static { p1 }, $EXTENSION->install(Lokhttp3/OkHttpClient\$Builder;)V` |
-| Block analytics & tracking _(opt-in)_ | `TubiWebClientInterceptFingerprint` | `Po/C$c`.`shouldInterceptRequest` | `Landroid/webkit/WebResourceResponse;` |  | addInstructions |
+| Block analytics & tracking _(opt-in)_ | `TubiWebClientInterceptFingerprint` | `Ap/C$c`.`shouldInterceptRequest` | `Landroid/webkit/WebResourceResponse;` |  | addInstructionsWithLabels |
 
 Runtime evidence (tags `MORPHE-TUBI-PRIVACY`; first 12 of 2):
 

@@ -25,10 +25,14 @@ object FoxPlayerClearVodAdsFingerprint : Fingerprint(
     name = "clearVodAds"
 )
 
-// Hook 4 — ImagePauseAds.l(VideoApi, long)
+// Hook 4 — ImagePauseAds.m(VideoApi, long)
+//
+// R8 renames this method each release (it's a com.tubitv class, so unlike the
+// Fox SDK methods its member name churns): l (10.28) → m (10.36). Signature
+// (VideoApi, long)V is unique in the class, so re-pin the name on each bump.
 object TubiPauseAdsFingerprint : Fingerprint(
     definingClass = "Lcom/tubitv/features/player/presenters/pauseads/ImagePauseAds;",
-    name = "l",
+    name = "m",
     parameters = listOf(
         "Lcom/tubitv/core/api/models/VideoApi;",
         "J"
@@ -72,11 +76,12 @@ object FoxImaLiveStreamRequestFingerprint : Fingerprint(
 // DNS layer via AGH rules.
 //
 // Class is the TvWebFragment.kt WebViewClient (source-confirmed). R8 renames
-// its outer prefix each release: xo (10.20) → yo (10.21) → Po (10.28). NOTE a
-// second class (Ml/w1$c, WebViewFragment.kt) also has this exact signature, so
-// a pure signature match would be ambiguous — keep the class pinned.
+// its outer prefix each release: xo (10.20) → yo (10.21) → Po (10.28) →
+// Ap (10.36). NOTE a second class (WebViewFragment.kt) also has this exact
+// signature, so a pure signature match would be ambiguous — keep the class
+// pinned.
 object TubiWebClientInterceptFingerprint : Fingerprint(
-    definingClass = "LPo/C\$c;",
+    definingClass = "LAp/C\$c;",
     name = "shouldInterceptRequest",
     parameters = listOf(
         "Landroid/webkit/WebView;",
@@ -100,7 +105,7 @@ object TubiWebClientInterceptFingerprint : Fingerprint(
 // Uses window.__tubiAdBlockInstalled guard to ensure idempotency if
 // onPageFinished fires multiple times in a session.
 object TubiWebClientPageFinishedFingerprint : Fingerprint(
-    definingClass = "LPo/C\$c;",
+    definingClass = "LAp/C\$c;",
     name = "onPageFinished",
     parameters = listOf(
         "Landroid/webkit/WebView;",
@@ -110,18 +115,18 @@ object TubiWebClientPageFinishedFingerprint : Fingerprint(
     accessFlags = listOf(AccessFlags.PUBLIC)
 )
 
-// Hook 9 — sf/c.suspendGetAdBreaks(String, String, String, Map, Continuation)
+// Hook 9 — Sf/c.suspendGetAdBreaks(String, String, String, Map, Continuation)
 //
 // Rainmaker ad-break fetch coroutine (RainmakerAdsFetcher.kt). Returns
-// LMm/d; (sealed result wrapper, NetworkResponse.kt) — LMm/d$e for success,
-// LMm/d$b subtypes (LMm/d$c / LMm/d$d) for error. The caller (Lrf/a;)
-// branches on instance-of LMm/d$e vs LMm/d$b and converges afterward either
-// way, so a synchronously-returned error result is sufficient — no
-// suspension needed.
+// Lqn/d; (sealed result wrapper, NetworkResponse.kt) — Lqn/d$e for success,
+// Lqn/d$b subtypes (Lqn/d$c / Lqn/d$d) for error. The caller branches on
+// instance-of Lqn/d$e vs Lqn/d$b and converges afterward either way, so a
+// synchronously-returned error result is sufficient — no suspension needed.
 //
-// R8 renames per release: class qf/c → sf/c; wrapper wm/d → Mm/d (10.28).
+// R8 renames per release: class qf/c → sf/c → Sf/c; wrapper wm/d → Mm/d →
+// qn/d (10.36).
 object QfcSuspendGetAdBreaksFingerprint : Fingerprint(
-    definingClass = "Lsf/c;",
+    definingClass = "LSf/c;",
     name = "suspendGetAdBreaks",
     parameters = listOf(
         "Ljava/lang/String;",
