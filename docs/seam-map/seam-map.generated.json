@@ -301,289 +301,301 @@
             "level": "D",
             "text": "registerActivity() — host container registered",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 203
+            "line": 208
           },
           {
             "level": "D",
             "text": "setSession(…)",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 218
+            "line": 223
           },
           {
             "level": "W",
             "text": "dump session failed: …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 239
+            "line": 244
           },
           {
             "level": "W",
             "text": "getPlaybackSession failed: …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 240
+            "line": 245
           },
           {
             "level": "W",
             "text": "dump playbackSession failed: …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 242
+            "line": 247
           },
           {
             "level": "W",
             "text": "getDataSource failed: …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 243
+            "line": 248
           },
           {
             "level": "W",
             "text": "dump dataSource failed: …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 244
+            "line": 249
           },
           {
             "level": "D",
             "text": "META[…] …() = …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 257
+            "line": 262
           },
           {
             "level": "W",
             "text": "getBreaks poll failed: …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 287
+            "line": 292
           },
           {
             "level": "W",
             "text": "…() not found on …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 295
+            "line": 300
           },
           {
             "level": "W",
             "text": "BreakInfo reflection failed: …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 314
+            "line": 319
           },
           {
             "level": "D",
             "text": "getBreaks -> … breaks … playhead=…",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 322
+            "line": 327
           },
           {
             "level": "W",
             "text": "DateRange parse failed: …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 362
+            "line": 367
           },
           {
             "level": "D",
             "text": "onDateRanges -> updated=… live-windows=… playheadAbs=…",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 366
+            "line": 371
           },
           {
             "level": "D",
             "text": "raw playhead=… zeroPDT=… abs=… live-wins=… …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 400
+            "line": 405
           },
           {
             "level": "W",
             "text": "playhead reflection failed: …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 404
+            "line": 409
           },
           {
             "level": "D",
             "text": "playhead=… abs=… -> ${if (active) ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 430
+            "line": 435
           },
           {
             "level": "W",
             "text": "no host container — Activity not registered?",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 448
+            "line": 453
           },
           {
             "level": "D",
             "text": "slate mode=…",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 459
+            "line": 464
           },
           {
             "level": "D",
             "text": "slate shown + audio muted",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 472
+            "line": 477
           },
           {
             "level": "D",
             "text": "slate swapped -> mode=ADS",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 508
+            "line": 514
           },
           {
             "level": "D",
             "text": "slate swapped -> mode=…",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 513
+            "line": 519
           },
           {
             "level": "D",
             "text": "ads mode — hint shown (no mask, no mute)",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 544
+            "line": 550
           },
           {
             "level": "D",
             "text": "ads hint faded — ad uncovered",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 555
+            "line": 561
           },
           {
             "level": "D",
             "text": "slate hidden — …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 571
+            "line": 578
           },
           {
             "level": "D",
             "text": "picker opened (current=…)",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 648
+            "line": 655
           },
           {
             "level": "D",
             "text": "slate mode persisted -> …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 690
+            "line": 697
           },
           {
             "level": "W",
             "text": "persistMode failed: …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 692
+            "line": 699
           },
           {
             "level": "W",
             "text": "setPlayerMuted failed: …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 725
+            "line": 733
           },
           {
             "level": "D",
             "text": "onProgramData: eventId=… slug=… live=… title=…",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 762
+            "line": 770
           },
           {
             "level": "W",
             "text": "onProgramData reflect failed: …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 764
+            "line": 772
           },
           {
             "level": "D",
             "text": "score strip attached w=… h=… at(…,…) vis=… leagues=…",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 813
+            "line": 821
           },
           {
             "level": "D",
             "text": "score fetch EXACT … event=… -> …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 851
+            "line": 859
           },
           {
             "level": "W",
             "text": "score fetch (exact) failed (…): …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 855
+            "line": 863
           },
           {
             "level": "D",
             "text": "score fetch EXACT event=… -> not found in …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 858
+            "line": 866
           },
           {
             "level": "D",
             "text": "score fetch … -> …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 872
+            "line": 880
           },
           {
             "level": "D",
             "text": "score fetch … -> no in-progress game (events=…)",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 875
+            "line": 883
           },
           {
             "level": "W",
             "text": "score fetch failed (…): …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 877
+            "line": 885
           },
           {
             "level": "W",
             "text": "httpGet … -> HTTP …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 912
+            "line": 920
           },
           {
             "level": "D",
             "text": "httpGet … -> 200 (… bytes)",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 916
+            "line": 924
           },
           {
             "level": "W",
             "text": "httpGet failed (…): …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 920
+            "line": 928
           },
           {
             "level": "D",
             "text": "slate media (video) …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 968
+            "line": 976
           },
           {
             "level": "W",
             "text": "video overlay error what=… extra=… (…)",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 977
+            "line": 985
           },
           {
             "level": "W",
             "text": "overlay mode: …/index.html not found — falling back to card",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 1032
+            "line": 1040
           },
           {
             "level": "D",
             "text": "overlay countdown secs=… (realRemaining=${realRemainingSecs ?: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 1047
+            "line": 1055
           },
           {
             "level": "D",
             "text": "overlay webview loading …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 1064
+            "line": 1072
+          },
+          {
+            "level": "W",
+            "text": "scorecard fetch failed: …",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
+            "line": 1123
+          },
+          {
+            "level": "D",
+            "text": "scorecard mode — leagues=… eventId=…",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
+            "line": 1184
           },
           {
             "level": "D",
             "text": "slate media (image) …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 1092
+            "line": 1352
           },
           {
             "level": "W",
             "text": "slate media load failed (…): …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/espn/ads/EspnAdBreakOverlayHelper.kt",
-            "line": 1104
+            "line": 1364
           }
         ]
       },
@@ -597,7 +609,7 @@
         "patches": 4,
         "fingerprints": 7,
         "unusedFingerprints": [],
-        "runtimeMessages": 48
+        "runtimeMessages": 50
       }
     },
     "foxone": {
@@ -1328,7 +1340,7 @@
           "id": "bundleGadgetPatch",
           "kind": "resourcePatch",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/netflix/nativehook/BundleGadgetPatch.kt",
-          "line": 29,
+          "line": 30,
           "name": "Remove Netflix ads (bundle engine)",
           "description": "Bundles the in-process ad-kill script (killads.js) and its loader into the app. This is the ad remover: at launch the app runs the script itself (script mode — no PC, no root, no frida server) and empties Netflix's ad breaks (pre-roll, mid-roll) and the pause-screen ad overlay. Pairs with the loader patch. Default ON.",
           "uses": []
@@ -2363,7 +2375,7 @@
           "id": "bundleNativeHookPatch",
           "kind": "resourcePatch",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/primevideo/nativehook/BundleNativeHookPatch.kt",
-          "line": 31,
+          "line": 32,
           "name": "Bundle native ad-strip hook",
           "description": "Packages libpvhook.so into the APK's native lib dir for the in-process ad strip (libignite memcpy/memmove GOT/PLT import hook).",
           "uses": []
@@ -2626,6 +2638,65 @@
         "runtimeMessages": 37
       }
     },
+    "raiplay": {
+      "app": "raiplay",
+      "sourceRoots": [
+        "patches/src/main/kotlin/ajstrick81/morphe/patches/raiplay"
+      ],
+      "fingerprints": [
+        {
+          "id": "ParseAdContextFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/raiplay/ads/Fingerprints.kt",
+          "line": 34,
+          "returnType": "Lit/rai/raiplay/androidtv/nativeplayer/SmartclipAdContext;",
+          "parameters": [
+            "Lorg/json/JSONObject;"
+          ],
+          "accessFlags": [
+            "PRIVATE",
+            "FINAL"
+          ],
+          "hasCustomMatcher": true,
+          "note": "The ad-context parser. Matched on its STABLE signature — the only method returning SmartclipAdContext from a single JSONObject (the SmartclipAdContext constructor and copy() take the unpacked fields, not a JSONObject) — and pinned to NativePlaybackRequestParser so it can't hit an unrelated helper. The app is not obfuscated on 5.0.0, so the class/type names are stable anchors.",
+          "usedBy": [
+            "Skip ads"
+          ]
+        }
+      ],
+      "patches": [
+        {
+          "id": "skipAdsPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/raiplay/ads/SkipAdsPatch.kt",
+          "line": 8,
+          "name": "Skip ads",
+          "description": "Suppresses Smartclip VOD ads in the RaiPlay Android TV app by forcing the native ad-context parser to return null, so every title takes RaiPlay's own ad-free playback path — no Smartclip session, no VMAP ad slot, no pre/mid/post-roll breaks. Live-channel server-side ads (if any) are not affected.",
+          "uses": [
+            {
+              "fingerprint": "ParseAdContextFingerprint",
+              "call": "addInstructions",
+              "smali": "\r\n                const/4 v0, 0x0\r\n                return-object v0\r\n            "
+            }
+          ]
+        }
+      ],
+      "runtime": {
+        "tags": [],
+        "messages": []
+      },
+      "packages": [
+        "it.rainet.androidtv"
+      ],
+      "targets": [
+        "5.0.0"
+      ],
+      "summary": {
+        "patches": 1,
+        "fingerprints": 1,
+        "unusedFingerprints": [],
+        "runtimeMessages": 0
+      }
+    },
     "rte": {
       "app": "rte",
       "sourceRoots": [
@@ -2782,9 +2853,9 @@
         {
           "id": "TubiPauseAdsFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/tubi/ads/Fingerprints.kt",
-          "line": 29,
+          "line": 33,
           "definingClass": "Lcom/tubitv/features/player/presenters/pauseads/ImagePauseAds;",
-          "name": "l",
+          "name": "m",
           "returnType": "V",
           "parameters": [
             "Lcom/tubitv/core/api/models/VideoApi;",
@@ -2795,7 +2866,7 @@
             "FINAL"
           ],
           "hasCustomMatcher": false,
-          "note": "Hook 4 — ImagePauseAds.l(VideoApi, long)",
+          "note": "Hook 4 — ImagePauseAds.m(VideoApi, long) R8 renames this method each release (it's a com.tubitv class, so unlike the Fox SDK methods its member name churns): l (10.28) → m (10.36). Signature (VideoApi, long)V is unique in the class, so re-pin the name on each bump.",
           "usedBy": [
             "Skip ads"
           ]
@@ -2803,7 +2874,7 @@
         {
           "id": "FoxImaVodStreamRequestFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/tubi/ads/Fingerprints.kt",
-          "line": 41,
+          "line": 45,
           "definingClass": "Lcom/fox/android/video/player/api/ima/loaders/FoxImaStreamIdLoader;",
           "name": "requestVODDAIUrl",
           "returnType": "V",
@@ -2827,7 +2898,7 @@
         {
           "id": "FoxImaLiveStreamRequestFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/tubi/ads/Fingerprints.kt",
-          "line": 55,
+          "line": 59,
           "definingClass": "Lcom/fox/android/video/player/api/ima/loaders/FoxImaStreamIdLoader;",
           "name": "requestImaStreamId",
           "returnType": "V",
@@ -2851,8 +2922,8 @@
         {
           "id": "TubiWebClientInterceptFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/tubi/ads/Fingerprints.kt",
-          "line": 78,
-          "definingClass": "LPo/C$c;",
+          "line": 83,
+          "definingClass": "LAp/C$c;",
           "name": "shouldInterceptRequest",
           "returnType": "Landroid/webkit/WebResourceResponse;",
           "parameters": [
@@ -2863,7 +2934,7 @@
             "PUBLIC"
           ],
           "hasCustomMatcher": false,
-          "note": "Hook 7 — Po/C$c.shouldInterceptRequest(WebView, WebResourceRequest) Intercepts WebView XHR/fetch requests and blocks ad domains. Cannot intercept media element (<video> src) requests — those are blocked at DNS layer via AGH rules. Class is the TvWebFragment.kt WebViewClient (source-confirmed). R8 renames its outer prefix each release: xo (10.20) → yo (10.21) → Po (10.28). NOTE a second class (Ml/w1$c, WebViewFragment.kt) also has this exact signature, so a pure signature match would be ambiguous — keep the class pinned.",
+          "note": "Hook 7 — Po/C$c.shouldInterceptRequest(WebView, WebResourceRequest) Intercepts WebView XHR/fetch requests and blocks ad domains. Cannot intercept media element (<video> src) requests — those are blocked at DNS layer via AGH rules. Class is the TvWebFragment.kt WebViewClient (source-confirmed). R8 renames its outer prefix each release: xo (10.20) → yo (10.21) → Po (10.28) → Ap (10.36). NOTE a second class (WebViewFragment.kt) also has this exact signature, so a pure signature match would be ambiguous — keep the class pinned.",
           "usedBy": [
             "Skip ads",
             "Block analytics & tracking"
@@ -2872,8 +2943,8 @@
         {
           "id": "TubiWebClientPageFinishedFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/tubi/ads/Fingerprints.kt",
-          "line": 102,
-          "definingClass": "LPo/C$c;",
+          "line": 107,
+          "definingClass": "LAp/C$c;",
           "name": "onPageFinished",
           "returnType": "V",
           "parameters": [
@@ -2892,8 +2963,8 @@
         {
           "id": "QfcSuspendGetAdBreaksFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/tubi/ads/Fingerprints.kt",
-          "line": 123,
-          "definingClass": "Lsf/c;",
+          "line": 128,
+          "definingClass": "LSf/c;",
           "name": "suspendGetAdBreaks",
           "returnType": "Ljava/lang/Object;",
           "parameters": [
@@ -2907,7 +2978,7 @@
             "PUBLIC"
           ],
           "hasCustomMatcher": false,
-          "note": "Hook 9 — sf/c.suspendGetAdBreaks(String, String, String, Map, Continuation) Rainmaker ad-break fetch coroutine (RainmakerAdsFetcher.kt). Returns LMm/d; (sealed result wrapper, NetworkResponse.kt) — LMm/d$e for success, LMm/d$b subtypes (LMm/d$c / LMm/d$d) for error. The caller (Lrf/a;) branches on instance-of LMm/d$e vs LMm/d$b and converges afterward either way, so a synchronously-returned error result is sufficient — no suspension needed. R8 renames per release: class qf/c → sf/c; wrapper wm/d → Mm/d (10.28).",
+          "note": "Hook 9 — Sf/c.suspendGetAdBreaks(String, String, String, Map, Continuation) Rainmaker ad-break fetch coroutine (RainmakerAdsFetcher.kt). Returns Lqn/d; (sealed result wrapper, NetworkResponse.kt) — Lqn/d$e for success, Lqn/d$b subtypes (Lqn/d$c / Lqn/d$d) for error. The caller branches on instance-of Lqn/d$e vs Lqn/d$b and converges afterward either way, so a synchronously-returned error result is sufficient — no suspension needed. R8 renames per release: class qf/c → sf/c → Sf/c; wrapper wm/d → Mm/d → qn/d (10.36).",
           "usedBy": [
             "Skip ads"
           ]
@@ -2978,7 +3049,7 @@
           "id": "skipAdsPatch",
           "kind": "bytecodePatch",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/tubi/ads/SkipAdsPatch.kt",
-          "line": 8,
+          "line": 11,
           "name": "Skip ads",
           "description": "Suppresses all ad delivery systems in Tubi Android TV.",
           "uses": [
@@ -3005,26 +3076,26 @@
             {
               "fingerprint": "FoxImaVodStreamRequestFingerprint",
               "call": "addInstructions",
-              "smali": "\n                const-string v0, "
+              "smali": "\r\n                const-string v0, "
             },
             {
               "fingerprint": "FoxImaLiveStreamRequestFingerprint",
               "call": "addInstructions",
-              "smali": "\n                const-string v0, "
+              "smali": "\r\n                const-string v0, "
             },
             {
               "fingerprint": "TubiWebClientInterceptFingerprint",
-              "call": "addInstructions"
+              "call": "addInstructionsWithLabels"
             },
             {
               "fingerprint": "TubiWebClientPageFinishedFingerprint",
               "call": "addInstructions",
-              "smali": "\n                const-string v0, "
+              "smali": "\r\n                const-string v0, "
             },
             {
               "fingerprint": "QfcSuspendGetAdBreaksFingerprint",
               "call": "addInstructions",
-              "smali": "\n                new-instance v0, Ljava/io/IOException;\n                const-string v1, "
+              "smali": "\r\n                new-instance v0, Ljava/io/IOException;\r\n                const-string v1, "
             }
           ]
         },
@@ -3032,7 +3103,7 @@
           "id": "blockAnalyticsPatch",
           "kind": "bytecodePatch",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/tubi/privacy/BlockAnalyticsPatch.kt",
-          "line": 86,
+          "line": 89,
           "name": "Block analytics & tracking",
           "description": "Stops Tubi's analytics and tracking: Adjust, Branch, Braze, Nielsen, Conviva, NPAW/Youbora, Mux, Firebase/Google Analytics, Meta app events, and Tubi's own analytics endpoint (which receives your advertiser ID, device ID and ZIP/location fields). Blocking happens on the device, inside the app. Crash reporting, feature flags, sign-in and playback are left alone. Recommendations may be less personalised. Opt-in / experimental; test on-device.",
           "default": false,
@@ -3054,7 +3125,7 @@
             },
             {
               "fingerprint": "TubiWebClientInterceptFingerprint",
-              "call": "addInstructions"
+              "call": "addInstructionsWithLabels"
             }
           ]
         }
@@ -3082,7 +3153,7 @@
         "com.tubitv"
       ],
       "targets": [
-        "10.28.5000"
+        "10.36.5000"
       ],
       "summary": {
         "patches": 2,

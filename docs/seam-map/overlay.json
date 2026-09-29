@@ -148,7 +148,7 @@
       "action": "Skip ads at the SDK boundary.",
       "patch_evidence": null,
       "device_signature": null,
-      "drift": "R8 renames classes each version → per-version re-pin map (10.28.5000 shipped; newer re-pins in progress).",
+      "drift": "R8 renames classes each version → per-version re-pin map (10.36.5000 shipped 2026-09-29: ImagePauseAds l→m, TvWebFragment client Po→Ap, Rainmaker sf→Sf, NetworkResponse Mm/d→qn/d).",
       "gaps": [
         "No runtime log line.",
         "Device signature not captured."
