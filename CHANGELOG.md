@@ -1,3 +1,10 @@
+## [1.40.2](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.40.1...v1.40.2) (2026-09-29)
+
+
+### Bug Fixes
+
+* **tubi:** re-pin Skip ads for Tubi 10.36.5000 ([c755aae](https://github.com/ajstrick81/morphe-androidtv-patches/commit/c755aaefff64f884baed378ab1060a549f0ee6a8))
+
 ## [1.40.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.40.0...v1.40.1) (2026-09-28)
 
 
