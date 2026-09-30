@@ -1,3 +1,10 @@
+## [1.40.3](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.40.2...v1.40.3) (2026-09-30)
+
+
+### Bug Fixes
+
+* **peacock:** support 7.10.102 — re-anchor the OkHttp client hook on the builder ([04dca6c](https://github.com/ajstrick81/morphe-androidtv-patches/commit/04dca6c5e2bed02bc3ee396d190c0df2a824e4d1))
+
 ## [1.40.2](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.40.1...v1.40.2) (2026-09-29)
 
 
