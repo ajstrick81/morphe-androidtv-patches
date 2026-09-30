@@ -12,6 +12,7 @@ object Constants {
             AppTarget("7.5.102"),
             AppTarget("7.6.100"),
             AppTarget("7.8.100"),
+            AppTarget("7.10.102"),
         )
     )
 }

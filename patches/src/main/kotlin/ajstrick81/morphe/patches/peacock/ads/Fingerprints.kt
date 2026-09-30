@@ -2,6 +2,7 @@ package ajstrick81.morphe.patches.peacock.ads
 
 import app.morphe.patcher.Fingerprint
 import com.android.tools.smali.dexlib2.AccessFlags
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 
 // ── Layer 1 ──────────────────────────────────────────────────────────────────
 // Target: SSAIConfiguration$MediaTailor$AutomaticMediaTailor.getProxyHost()
@@ -71,16 +72,32 @@ internal object HandleAdBreakStartedFingerprint : Fingerprint(
 )
 
 // ── Layer 6 ──────────────────────────────────────────────────────────────────
-// Target: NetworkingKt.getOkHttpClient()
+// Target: the app's shared OkHttpClient BUILDER — the static, no-arg method that
+// builds the client with OkHttpWorkaroundInterceptor.
 // Replaces method body entirely via PeacockAdPatchHelper.buildOkHttpClient().
 // AdBlockInterceptor handles OkHttp-reachable ad/analytics traffic.
-// Confirmed matching v7.5.102 and v7.6.100.
+//
+//   ≤ 7.8.100:  NetworkingKt.getOkHttpClient()          (public static final)
+//   7.10.102:   OkHttpClientCacheKt.buildOkHttpClient() (private static final)
+//
+// In 7.10.102 getOkHttpClient() became a 4-instruction CACHE wrapper
+// (OkHttpClientCache.getOrCreate()) around the private builder. Hooking the
+// builder — not the wrapper — keeps Peacock's caching, so the ad-blocking client
+// is built once instead of on every call. Matched by behavior (constructs
+// OkHttpWorkaroundInterceptor) + either name, with no exact accessFlags (they
+// changed public → private). NetworkingKt.generateTlsClient() also constructs
+// the interceptor, so the name set is what keeps this unique.
 internal object GetOkHttpClientFingerprint : Fingerprint(
-    accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.STATIC, AccessFlags.FINAL),
     returnType = "Lokhttp3/OkHttpClient;",
+    parameters = listOf(),
     custom = { method, classDef ->
-        method.name == "getOkHttpClient" &&
-            classDef.type == "Lcom/peacock/peacocktv/util/NetworkingKt;"
+        (method.name == "getOkHttpClient" || method.name == "buildOkHttpClient") &&
+            AccessFlags.STATIC.isSet(method.accessFlags) &&
+            classDef.type.startsWith("Lcom/peacock/peacocktv/util/") &&
+            method.implementation?.instructions?.any { insn ->
+                (insn as? ReferenceInstruction)?.reference?.toString()
+                    ?.startsWith("Lcom/peacock/peacocktv/util/OkHttpWorkaroundInterceptor;-><init>") == true
+            } == true
     },
 )
 
