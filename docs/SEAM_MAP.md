@@ -28,7 +28,7 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 | [mlbtv](#mlbtv) | Google IMA / DAI client SDK | 26.8.1.1 | 1 | 9 | yes (7 lines) | **no** |
 | [netflix](#netflix) | Proprietary native / JS ad engine | 13.0.1 build 25028 | 6 | 2 | **no** | **no** |
 | [paramount](#paramount) | Google IMA / DAI client SDK | 16.19.0, 16.17.0, 16.12.0, 16.8.0 | 1 | 3 | **no** | **no** |
-| [peacock](#peacock) | Server-side stitching (SSAI) via manifest | 7.5.102, 7.6.100, 7.8.100 | 3 | 10 | yes (6 lines) | **no** |
+| [peacock](#peacock) | Server-side stitching (SSAI) via manifest | 7.5.102, 7.6.100, 7.8.100, 7.10.102 | 3 | 10 | yes (6 lines) | **no** |
 | [pluto](#pluto) | Server-side stitching (SSAI) via manifest | 5.66.0-leanback | 5 | 10 | yes (26 lines) | yes |
 | [primevideo](#primevideo) | Proprietary native / JS ad engine | 6.23.23+v15.5.0.70-armv7a | 7 | 5 | yes (37 lines) | yes |
 | [raiplay](#raiplay) | ? | 5.0.0 | 1 | 1 | **no** | **no** |
@@ -279,7 +279,7 @@ Runtime evidence (tags `MORPHE-MLB-ADBREAK`, `MORPHE-MLB-MANIFEST`; first 12 of 
 
 ## peacock
 
-**Package** `com.peacocktv.peacockandroid` · **Targets** `7.5.102`, `7.6.100`, `7.8.100` · **Engine** Server-side stitching (SSAI) via manifest
+**Package** `com.peacocktv.peacockandroid` · **Targets** `7.5.102`, `7.6.100`, `7.8.100`, `7.10.102` · **Engine** Server-side stitching (SSAI) via manifest
 
 | Layer | |
 |---|---|
