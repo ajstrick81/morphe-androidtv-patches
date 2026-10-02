@@ -98,6 +98,55 @@ public class PeacockWebViewHelper {
     private static final String NETSKRT_DOMAIN = ".prd.pck.netskrt.net";
     private static final String NETSKRT_SAFE_SUFFIX = "-ns.prd.pck.netskrt.net";
 
+    // Layer 13 — LIVE (SLE) DAI origin swap. Live playback starts with an AWS
+    // MediaTailor session-init POST from page JS (core-video SDK, XHR, arraybuffer
+    // reply) to /dai/v~<token>/<origin path>/master_2hr.mpd?requestVamAPI=true. The
+    // JSON reply's manifestUrl is the ad-stitched /pck-sle/…/v1/dash/… MPD that the
+    // native player fetches outside the WebView. The origin path with /dai/v~<token>
+    // stripped is the clean, un-stitched live MPD on the same CDN host, so the shim
+    // rewrites manifestUrl to it: breaks then play the broadcast feed's own slate
+    // instead of MediaTailor's ad pod, and no ad tracking/beacons fire. The POST
+    // body is not visible to shouldInterceptRequest, hence the JS layer. Device-
+    // verified 7.10.102 (coffey, 2026-09-30). The rewrite is logged to logcat via a
+    // same-origin /__morphe_log ping answered locally (connect-src stays 'self').
+    private static final String JS_LOG_PATH = "/__morphe_log";
+
+    private static final String LIVE_DAI_SHIM =
+        "(function(){"
+        + "if(window.__morpheDai)return;window.__morpheDai=1;"
+        + "function L(t,s){try{fetch('" + JS_LOG_PATH + "?t='+t+'&d='+encodeURIComponent(String(s).substr(0,1500))).catch(function(){});}catch(e){}}"
+        + "function isDai(u){return typeof u==='string'&&u.indexOf('/dai/v~')>=0&&u.indexOf('.mpd')>=0;}"
+        + "function org(u){try{var x=new URL(u,location.href);return x.origin+x.pathname.replace(/\\/dai\\/v~[^\\/]+/,'');}catch(e){return null;}}"
+        + "function rw(u,t){try{var j=JSON.parse(t),o=org(u);"
+        +   "if(o&&j&&j.manifestUrl&&o.indexOf('/dai/')<0){L('RW',j.manifestUrl+' -> '+o);j.manifestUrl=o;return JSON.stringify(j);}"
+        +   "}catch(e){L('ERR','rw '+e);}return t;}"
+        + "var of=window.fetch;"
+        + "if(of)window.fetch=function(inp,init){var u=typeof inp==='string'?inp:(inp&&inp.url);"
+        +   "if(!isDai(u))return of.apply(this,arguments);"
+        +   "return of.apply(this,arguments).then(function(r){return r.clone().text().then(function(t){"
+        +     "var n=rw(u,t);return n===t?r:new Response(n,{status:r.status,statusText:r.statusText,headers:r.headers});"
+        +   "},function(){return r;});});};"
+        + "var P=XMLHttpRequest.prototype,XO=P.open,XS=P.send,"
+        +   "GT=Object.getOwnPropertyDescriptor(P,'responseText').get,GR=Object.getOwnPropertyDescriptor(P,'response').get;"
+        + "P.open=function(m,u){this.__mu=String(u);return XO.apply(this,arguments);};"
+        + "P.send=function(){var x=this;if(isDai(x.__mu)){"
+        +   "var done=false,out;function fix(){if(done||x.readyState!==4)return;done=true;try{var rt=x.responseType;"
+        +     "if(rt===''||rt==='text'){var t=GT.call(x),n=rw(x.__mu,t);if(n!==t)out=n;}"
+        +     "else if(rt==='arraybuffer'){var a=new TextDecoder('utf-8').decode(GR.call(x)),b=rw(x.__mu,a);if(b!==a)out=new TextEncoder().encode(b).buffer;}"
+        +     "else if(rt==='json'){var o=GR.call(x),s=JSON.stringify(o),c=rw(x.__mu,s);if(c!==s)out=JSON.parse(c);}"
+        +   "}catch(e){L('ERR','xhr '+e);}}"
+        +   "Object.defineProperty(x,'responseText',{configurable:true,get:function(){fix();return typeof out==='string'?out:GT.call(x);}});"
+        +   "Object.defineProperty(x,'response',{configurable:true,get:function(){fix();return out!==undefined?out:GR.call(x);}});"
+        +   "x.addEventListener('readystatechange',fix);}"
+        +   "return XS.apply(this,arguments);};"
+        + "})();";
+
+    private static WebResourceResponse jsLogPing(android.net.Uri u) {
+        Log.d(TAG, "Layer 13 " + u.getQueryParameter("t") + ": " + u.getQueryParameter("d"));
+        return new WebResourceResponse("text/plain", "utf-8", 204, "No Content",
+            new HashMap<String, String>(), new ByteArrayInputStream(new byte[0]));
+    }
+
     /**
      * Returns a randomized empty response to avoid a detectable uniform
      * blocking pattern. Varies status code and introduces occasional delays.
@@ -207,6 +256,9 @@ public class PeacockWebViewHelper {
                 WebView view, WebResourceRequest request) {
             try {
                 String url = request.getUrl().toString();
+                if (url.startsWith("https://tv.clients.peacocktv.com" + JS_LOG_PATH)) {
+                    return jsLogPing(request.getUrl());
+                }
                 // Layer 12 — DAI manifest swap. Peacock's VOD ads are SSAI-stitched
                 // into a DASH manifest at /dai/pub/…master_cmaf.mpd on its own CDN,
                 // fetched by the SPA as an XHR (so shouldInterceptRequest CAN see it).
@@ -247,6 +299,14 @@ public class PeacockWebViewHelper {
         @Override
         public void onPageFinished(WebView view, String url) {
             original.onPageFinished(view, url);
+            // Layer 13 — install the live-DAI shim into the SPA (idempotent per page).
+            try {
+                if (url != null && url.startsWith("https://tv.clients.peacocktv.com/")) {
+                    view.evaluateJavascript(LIVE_DAI_SHIM, null);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Layer 13 shim inject failed: " + e.getMessage());
+            }
         }
 
         @Override
