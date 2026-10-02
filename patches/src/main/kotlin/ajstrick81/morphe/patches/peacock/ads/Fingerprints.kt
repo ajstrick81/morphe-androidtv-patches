@@ -71,16 +71,25 @@ internal object HandleAdBreakStartedFingerprint : Fingerprint(
 )
 
 // ── Layer 6 ──────────────────────────────────────────────────────────────────
-// Target: NetworkingKt.getOkHttpClient()
+// Target: the central OkHttp client factory getOkHttpClient().
 // Replaces method body entirely via PeacockAdPatchHelper.buildOkHttpClient().
 // AdBlockInterceptor handles OkHttp-reachable ad/analytics traffic.
-// Confirmed matching v7.5.102 and v7.6.100.
+//
+// Version drift: on v7.5.102–v7.8.100 this lived in NetworkingKt. On v7.10.102
+// the factory moved to OkHttpClientCacheKt (NetworkingKt now just delegates to
+// OkHttpClientCacheKt.getOkHttpClient() in several places), so NetworkingKt no
+// longer defines the method. Both classes sit in com/peacock/peacocktv/util and
+// keep the identical signature (public static final, returns OkHttpClient,
+// .locals 1), so matching either keeps the injected block register-safe.
+// Confirmed matching v7.5.102, v7.6.100 (NetworkingKt) and v7.10.102
+// (OkHttpClientCacheKt).
 internal object GetOkHttpClientFingerprint : Fingerprint(
     accessFlags = listOf(AccessFlags.PUBLIC, AccessFlags.STATIC, AccessFlags.FINAL),
     returnType = "Lokhttp3/OkHttpClient;",
     custom = { method, classDef ->
         method.name == "getOkHttpClient" &&
-            classDef.type == "Lcom/peacock/peacocktv/util/NetworkingKt;"
+            (classDef.type == "Lcom/peacock/peacocktv/util/NetworkingKt;" ||
+                classDef.type == "Lcom/peacock/peacocktv/util/OkHttpClientCacheKt;")
     },
 )
 
