@@ -74,7 +74,8 @@ internal object HandleAdBreakStartedFingerprint : Fingerprint(
 // ── Layer 6 ──────────────────────────────────────────────────────────────────
 // Target: the app's shared OkHttpClient BUILDER — the static, no-arg method that
 // builds the client with OkHttpWorkaroundInterceptor.
-// Replaces method body entirely via PeacockAdPatchHelper.buildOkHttpClient().
+// AdBlockInterceptor is injected into this builder before build() (see Layer 6
+// in SkipAdsPatch) so the original client configuration is preserved.
 // AdBlockInterceptor handles OkHttp-reachable ad/analytics traffic.
 //
 //   ≤ 7.8.100:  NetworkingKt.getOkHttpClient()          (public static final)

@@ -33,18 +33,12 @@
     public <init>();
 }
 
-# Peacock — Layer 6: method-replacement wrapper
-# PeacockAdPatchHelper.buildOkHttpClient() is called directly from injected
-# smali via invoke-static {}. R8 must not rename or remove this method.
-# OkHttpWorkaroundInterceptor is also instantiated here — kept via its own
-# existing rule elsewhere; confirm it has one if the build strips it.
-#
-# Layer 9: addAdBlockInterceptor(OkHttpClient.Builder) is likewise called
-# only from injected smali (in NativeNetworkApi.<init>), so it must be kept
-# explicitly too — without this R8 sees it as unreferenced and would strip
-# or rename it, breaking the Sky SDK addon-client interception at runtime.
+# Peacock — Layers 6/9/11: builder interceptor injection
+# addAdBlockInterceptor(OkHttpClient.Builder) is called only from injected
+# smali (Layer 6 shared client, Layer 9 NativeNetworkApi.<init>, Layer 11 SDK
+# root client), so it must be kept explicitly — without this R8 sees it as
+# unreferenced and would strip or rename it, breaking interception at runtime.
 -keep class ajstrick81.morphe.extension.peacock.ads.PeacockAdPatchHelper {
-    public static okhttp3.OkHttpClient buildOkHttpClient();
     public static okhttp3.OkHttpClient$Builder addAdBlockInterceptor(okhttp3.OkHttpClient$Builder);
 }
 # Layer 7 — WebView shouldInterceptRequest wrapper

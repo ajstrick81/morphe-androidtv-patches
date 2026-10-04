@@ -156,29 +156,34 @@ val skipAdsPatch = bytecodePatch(
         )
 
         // ── Layer 6 ─────────────────────────────────────────────────────────
-        // Replace NetworkingKt.getOkHttpClient() body entirely via a no-arg
-        // static call to PeacockAdPatchHelper.buildOkHttpClient().
+        // Add AdBlockInterceptor to the app's shared OkHttpClient by injecting
+        // it into the existing builder immediately before build() — NOT by
+        // replacing the method body.
         //
-        // History of VerifyErrors:
-        //   v1.4.56 — offset 5, 4-instruction block passing v0 as Builder arg
-        //             → type=Undefined at 0x16 (move-result-object after build())
-        //   v1.4.57 — offset 5, single invoke-static {v0} passing Builder arg
-        //             → type=Conflict at 0x10 (verifier ambiguous on v0 type
-        //                at mid-method merge point)
+        // Why not body-replacement (the pre-1.40.4 approach):
+        //   Up to 7.8.100 the fingerprint matched NetworkingKt.getOkHttpClient(),
+        //   a thin getter, and the old patch replaced its whole body with
+        //   PeacockAdPatchHelper.buildOkHttpClient() — a bare client carrying
+        //   only AdBlockInterceptor + OkHttpWorkaroundInterceptor. That was
+        //   tolerable there. On 7.10.102 the fingerprint re-anchored onto the
+        //   private shared-client BUILDER (OkHttpClientCacheKt.buildOkHttpClient,
+        //   behind the client cache), so replacing its body wholesale discarded
+        //   the real client's configuration (timeouts, TLS, cookie jar, auth/
+        //   header interceptors, DNS). The under-configured cached client is
+        //   used app-wide, which broke fresh sign-in — the device-code/QR fetch
+        //   failed with "Something went wrong. Please check your internet
+        //   connection" (issue #230). Playback survived because it rides the
+        //   separately-configured Sky SDK client (Layer 9), and in-place
+        //   upgrades kept the stored login, which is why #228 missed it.
         //
-        // Fix — offset 0, no register arguments:
-        //   At offset 0 no registers are live. invoke-static {} touches nothing.
-        //   move-result-object v0 assigns a fresh OkHttpClient into an
-        //   uninitialized register — the verifier always accepts this.
-        //   return-object v0 exits cleanly. Original method body unreachable.
-        GetOkHttpClientFingerprint.method.addInstructions(
-            0,
-            """
-                invoke-static {}, Lajstrick81/morphe/extension/peacock/ads/PeacockAdPatchHelper;->buildOkHttpClient()Lokhttp3/OkHttpClient;
-                move-result-object v0
-                return-object v0
-            """.trimIndent(),
-        )
+        // The build()-injection pattern (same as Layers 9/11) preserves the
+        // original builder's full configuration and only adds AdBlockInterceptor.
+        // Both matched methods — getOkHttpClient() (≤7.8.100) and
+        // buildOkHttpClient() (7.10.102) — construct the client via a single
+        // okhttp3.OkHttpClient$Builder.build(), so this is uniform across
+        // versions. OkHttpWorkaroundInterceptor is already added by the
+        // original (unmodified) body, so it is not re-added here.
+        injectAdBlockBeforeOkHttpBuild(GetOkHttpClientFingerprint)
 
         // ── Layer 7 ─────────────────────────────────────────────────────────
         // WebView shouldInterceptRequest injection.
