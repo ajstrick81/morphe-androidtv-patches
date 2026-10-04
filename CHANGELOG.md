@@ -1,3 +1,10 @@
+## [1.40.4](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.40.3...v1.40.4) (2026-10-04)
+
+
+### Bug Fixes
+
+* **peacock:** preserve shared OkHttp client config so sign-in works ([#230](https://github.com/ajstrick81/morphe-androidtv-patches/issues/230)) ([2fd8350](https://github.com/ajstrick81/morphe-androidtv-patches/commit/2fd835071ef0cc0369e17b864f99ef1f7357f43f)), closes [#228](https://github.com/ajstrick81/morphe-androidtv-patches/issues/228)
+
 ## [1.40.3](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.40.2...v1.40.3) (2026-09-30)
 
 
