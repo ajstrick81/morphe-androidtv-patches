@@ -94,6 +94,17 @@ public class PeacockWebViewHelper {
         "2mdn.net",
     };
 
+    // sas.peacocktv.com is the ad-decision host but ALSO serves the sign-in
+    // device-code flow: POST /commerce/activation/activate?type=sign-in returns
+    // a journey URL, then POST /companion-service/journeys/sign-in registers
+    // the code/QR journey (then polled at /companion-service/journeys/<id>).
+    // Blocking either means the journey is never created, so a fresh sign-in
+    // can never complete (issue #230). Account/sign-in traffic, never ads.
+    private static final String[] SAS_SIGNIN_PATHS = {
+        "sas.peacocktv.com/commerce/",
+        "sas.peacocktv.com/companion-service/",
+    };
+
     // Netskrt CDN — block all shards except -ns (content delivery)
     private static final String NETSKRT_DOMAIN = ".prd.pck.netskrt.net";
     private static final String NETSKRT_SAFE_SUFFIX = "-ns.prd.pck.netskrt.net";
@@ -158,6 +169,11 @@ public class PeacockWebViewHelper {
     }
 
     private static boolean shouldBlock(String url) {
+        // Sign-in/account traffic on the ad-decision host — must pass (#230).
+        for (String path : SAS_SIGNIN_PATHS) {
+            if (url.contains(path)) return false;
+        }
+
         // Ad hosts are checked FIRST. SAFE_HOSTS below uses broad substring
         // matching ("nbcuni.com", "peacocktv.com") that would otherwise
         // shadow ad hosts living under those same parent domains.
