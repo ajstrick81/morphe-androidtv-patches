@@ -1,3 +1,10 @@
+## [1.40.5](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.40.4...v1.40.5) (2026-10-06)
+
+
+### Bug Fixes
+
+* **peacock:** unblock sas sign-in endpoints so fresh device sign-in works ([#230](https://github.com/ajstrick81/morphe-androidtv-patches/issues/230)) ([b425a65](https://github.com/ajstrick81/morphe-androidtv-patches/commit/b425a6536feaab76a3143776c40569c4763a8957)), closes [228/#231](https://github.com/ajstrick81/morphe-androidtv-patches/issues/231)
+
 ## [1.40.4](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.40.3...v1.40.4) (2026-10-04)
 
 
