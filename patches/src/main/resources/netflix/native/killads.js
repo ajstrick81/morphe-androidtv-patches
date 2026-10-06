@@ -151,10 +151,15 @@ function patchMASTER(rs){ if(masterDone)return;
 // materialising (~+25s), before the first getAdMetadata runs. Write-once (masterDone guard) — stops
 // as soon as both edits land. Mirrors fastHH.
 var _fastMn=0;
-function fastMASTER(){ if(masterDone)return; if(hhYield()){ setTimeout(fastMASTER,250); return; } _fastMn++;
-  try{ var _rm=Process.enumerateRanges('rw-'); patchMASTER(_rm); if(!masterDone) patchMASTERw(_rm); }catch(e){}
-  if(masterDone){ L('fastMASTER: applied by pass '+_fastMn+(mwDone?' (wildcard fallback)':'')); return; }
-  if(_fastMn<500) setTimeout(fastMASTER, 120);   // ~60s of tight scanning
+function fastMASTER(){ if(masterDone&&(advDone||advwDone))return; if(hhYield()){ setTimeout(fastMASTER,250); return; } _fastMn++;
+  // V3 first: ONE fixed-token scan over anon memory incl. >128MB regions (~1.5-2s on .210). The legacy
+  // exact+wildcard MASTER scans cost ~1.7s PER PATTERN over all memory (~5 patterns), which starved every
+  // other timer (household race, monitor) for over a minute when they kept missing — run them every 10th pass.
+  try{ var _t0=Date.now(), _jr=jsRanges(), _t1=Date.now(); patchV3(_jr); var _mb=0; for(var _q=0;_q<_jr.length;_q++) _mb+=_jr[_q].size; if(_fastMn<=3||_fastMn%20===0) L('V3 pass '+_fastMn+': enum '+(_t1-_t0)+'ms scan '+(Date.now()-_t1)+'ms over '+Math.round(_mb/1048576)+'MB/'+_jr.length+' ranges'); }catch(e){ L('V3 pass error '+e); }
+  if(!masterDone&&_fastMn%20===10){ try{ var _rm=Process.enumerateRanges('rw-'); patchMASTER(_rm); if(!masterDone) patchMASTERw(_rm); }catch(e){} }
+  if(masterDone&&(advDone||advwDone)){ L('fastMASTER: applied by pass '+_fastMn+(v3MasterDone?' (V3)':(mwDone?' (wildcard fallback)':''))); return; }
+  if(_fastMn<60) setTimeout(fastMASTER, 250);          // early: the source can materialise ~30-70s in
+  else if(_fastMn<400) setTimeout(fastMASTER, 2000);   // then every 2s for ~12 min: late player-bundle loads (#212)
 }
 // ---------- (MASTERw) wildcard-tolerant MASTER fallback (2026-09-13, experimental — issue #166) --
 // Most Netflix "server-side" ad drift is just a re-minify that RENAMES single-char locals, which
@@ -217,6 +222,74 @@ function patchMASTERw(rs){ if(masterDone||mwDone)return;
   // M1 found, M2 not -> CRASH-SAFE: write nothing; dump the region after M1 once for re-anchor.
   if(!mwDumped){ mwDumped=true; var ctx=null; try{ctx=m1addr.sub(24).readCString(700);}catch(e){}
     L('MASTERw M2-MISS (no write, crash-safe) dump@'+m1addr+' cond="'+String.fromCharCode(m1cc)+'" ctx='+JSON.stringify(ctx)); }
+}
+// ---------- (V3) 2026-10 server re-minify of the ad code (#212, still build 25028) ----------
+// Netflix pushed a re-minified appboot: one-char locals, (e,t) params, and getAdMetadata's
+// `else return;` became an else-BLOCK. Every exact/wildcard anchor above misses. The new shapes:
+//   ADV : adBreaks:(null==(h=r.manifest.adverts.adBreaks)?void 0:h.map(function(e,t){var i=c.normalize(e.locationMs)...
+//   M1  : getAds(e);if(t){var i,n,r,s=...
+//   M2  : }else{if(!e.adverts||!e.adverts.adBreaks.length)return;i=e.adverts.adBreaks.map(function(e){...})}return i=this.adBreakHydrator...
+// Edits (all length-preserving, verify-before-write, read-back):
+//   ADV : `void 0:h` -> `[]:[]   `  => adBreaks is ALWAYS [] (`[]   .map(...)` is valid JS)
+//   M1  : if(t) -> if(0)
+//   M2  : `!e.adverts||!e.adverts.adBreaks.length)return;` -> `1)i=[];else<pad>` => else{if(1)i=[];else i=...}
+//         so getAdMetadata always returns a VALID [] (never undefined = the v1 crash). Same semantics as v2.
+//   M1+M2 are GATED on ADV landing first, so player timeline and ad metadata agree (both empty).
+// COST + REACH (measured on .210, 2026-10-06): the JS source sits in ONE anon rw- region of ~201MB that every
+// `size>128MB continue` scanner skips (=> the kill landing or not depended on heap size: the "title-
+// dependent" #212 pattern), and each full-memory pattern scan costs ~1.7s. So V3 does ONE fixed-string scan
+// ('.adverts.adBreaks', present at both sites) over anonymous memory only (big regions chunked; ART heap,
+// GPU/JIT/file mappings skipped) and classifies each hit by direct reads — no per-site wildcard scans.
+// The bare token '.adverts.adBreaks' is too common (a first pass took ~35s on .210), so ADV uses the selective
+// '.adverts.adBreaks)?void 0:' and M2 '.adverts.adBreaks.length)return;' — searched FIRST only inside the
+// region holding the ADV site (both live in the same appboot source, ~1.1MB apart), whole anon memory as fallback.
+var v3AdvDone=false, v3MasterDone=false, v3Waited=false;
+var ART_HEAP_BASE='0x12c00000';   // 32-bit ART main space base — Java heap, never holds the JS source
+function jsRanges(){ var out=[], CH=64*1024*1024, OV=4096;
+  Process.enumerateRanges('rw-').forEach(function(r){
+    if(r.file||r.size<4096||r.base.toString()===ART_HEAP_BASE) return;
+    if(r.size<=CH+OV){ out.push(r); return; }
+    for(var off=0; off<r.size; off+=CH) out.push({base:r.base.add(off), size:Math.min(CH+OV, r.size-off)});
+  });
+  return out; }
+var V3_ADV_TOKEN=pat('.adverts.adBreaks)?void 0:'), V3_M2_TOKEN=pat('.adverts.adBreaks.length)return;'), v3AdvSite=null, _v3n=0;
+var V3_ADV_RE=/^\.adverts\.adBreaks\)\?void 0:([A-Za-z_$])\.map\(function\([A-Za-z_$],[A-Za-z_$]\)\{var [A-Za-z_$]=[A-Za-z_$]\.normalize\(/;
+var V3_M2_RE=/^!([A-Za-z_$])\.adverts\|\|!\1\.adverts\.adBreaks\.length\)return;([A-Za-z_$])=\1\.adverts\.adBreaks\.map\(/;
+var V3_M1_RE=/^getAds\([A-Za-z_$]\);if\(([A-Za-z_$])\)\{var /;
+function rd(a,n){ try{ return a.readCString(n); }catch(e){ return null; } }
+function v3Find(rs, tok, test){ for(var i=0;i<rs.length;i++){ var h; try{ h=Memory.scanSync(rs[i].base, rs[i].size, tok); }catch(e){ continue; }
+    for(var j=0;j<h.length;j++){ var a=test(h[j].address); if(a) return a; } } return null; }
+function chunked(r){ var out=[], CH=64*1024*1024, OV=4096; if(r.size<=CH+OV) return [r];
+  for(var off=0; off<r.size; off+=CH) out.push({base:r.base.add(off), size:Math.min(CH+OV, r.size-off)}); return out; }
+function patchV3(rs){ if(v3AdvDone&&v3MasterDone) return; _v3n++;
+  var advSite=v3AdvSite, m2Site=null;
+  if(!advSite){ advSite=v3Find(rs, V3_ADV_TOKEN, function(a){ var c=rd(a,90); return (c&&V3_ADV_RE.test(c))?a:null; }); if(advSite) v3AdvSite=advSite; }
+  if(advSite&&!v3MasterDone){ var near=null; try{ near=Process.findRangeByAddress(advSite); }catch(e){}
+    var m2test=function(a){ var b=a.sub(14), c=rd(b,90); return (c&&V3_M2_RE.test(c))?b:null; };
+    if(near) m2Site=v3Find(chunked(near), V3_M2_TOKEN, m2test);
+    if(!m2Site&&_v3n%10===0) m2Site=v3Find(rs, V3_M2_TOKEN, m2test);
+  }
+  if(advSite&&!v3AdvDone&&!advDone&&!advwDone){
+    var t=advSite.add(19), old=rd(t,8);
+    if(old&&/^void 0:[A-Za-z_$]$/.test(old)){ Memory.protect(t,8,'rw-'); t.writeByteArray(bytesOf('[]:[]   '));
+      var rb=rd(t,8); v3AdvDone=true; advwDone=true;
+      L('PATCH V3-ADV: adverts.adBreaks ?'+old+'.map -> ?[]:[]   .map (empty all ad breaks) @'+t+' verify='+(rb==='[]:[]   '?'OK':'FAIL('+rb+')')); }
+  }
+  if(m2Site&&!v3MasterDone&&!masterDone){
+    if(!(advDone||advwDone)){ if(!v3Waited){ v3Waited=true; L('V3: getAdMetadata found @'+m2Site+', waiting for ADV to land first (gate)'); } return; }
+    var m=V3_M2_RE.exec(rd(m2Site,90)||''); if(!m) return;
+    var old2='!'+m[1]+'.adverts||!'+m[1]+'.adverts.adBreaks.length)return;', neu2='1)'+m[2]+'=[];else';
+    while(neu2.length<old2.length) neu2+=' ';
+    // M1: the getAds guard is just before the else-block, inside the same function (<=2KB back)
+    var m1=null, win=m2Site.sub(2048), wh=[]; try{ wh=Memory.scanSync(win, 2048, pat('getAds(')); }catch(e){}
+    for(var k=wh.length-1;k>=0&&!m1;k--){ var c=rd(wh[k].address,24); if(c&&V3_M1_RE.test(c)) m1=wh[k].address.add(13); }
+    if(!m1||old2.length!==46||rd(m2Site,46)!==old2){ L('V3: getAdMetadata verify mismatch, no write (m1='+m1+')'); return; }
+    var cond=String.fromCharCode(m1.readU8());
+    Memory.protect(m1,1,'rw-'); m1.writeU8(0x30);
+    Memory.protect(m2Site,46,'rw-'); m2Site.writeByteArray(bytesOf(neu2));
+    var ok=(m1.readU8()===0x30&&rd(m2Site,46)===neu2); v3MasterDone=true; mwDone=true; masterDone=true;
+    L('PATCH V3-MASTER: getAdMetadata if('+cond+')->if(0) @'+m1+' + else{if(1)'+m[2]+'=[];else ...} @'+m2Site+' verify='+(ok?'OK':'FAIL')+' — #212 re-minify recovered');
+  }
 }
 // ---------- (MASTERdump) read-only recon: dump CURRENT getAdMetadata body on drift ----------
 // If BOTH the exact and wildcard MASTER matches miss, the drift is a real REFACTOR, not a rename —
@@ -316,8 +389,11 @@ function patchHH(rs){ if(hhDone||!HH_ENABLED)return;
 // MASTER lands costs no household runway. Safety fallback: after ~30s of waiting, proceed regardless
 // (if the MASTER anchor is absent this launch there are no ads to protect, and HH is time-critical).
 var _fastHHn=0, _fastHHwait=0;
+var _fhT0=Date.now();
 function fastHH(){ if(!HH_ENABLED||hhDone)return;
-  if(!masterDone && _fastHHwait<300){ _fastHHwait++; setTimeout(fastHH,100); return; }   // yield to fastMASTER
+  // yield to fastMASTER — but by WALL CLOCK (<=10s), not by tick count: when big scans hog the single script
+  // thread a tick-count yield stretched to ~60s and let the household prompt win the race (#212).
+  if(!masterDone && _fastHHwait<300 && (Date.now()-_fhT0)<10000){ _fastHHwait++; setTimeout(fastHH,100); return; }
   if(_fastHHwait && _fastHHn===0) L('fastHH: released after '+_fastHHwait+' waits (masterDone='+masterDone+')');
   _fastHHn++;
   try{ var _r=Process.enumerateRanges('rw-'); patchHH(_r); neuterMhuRenders(_r); }catch(e){}
@@ -513,15 +589,21 @@ var tries=0;
 function apply(){ if(hhYield()){ setTimeout(apply,500); return; } tries++; var rs=Process.enumerateRanges('rw-');
   var loaded=false,gp=pat('nrdp.gibbon');
   for(var i=0;i<rs.length&&!loaded;i++){if(rs[i].size>128*1024*1024)continue;try{if(Memory.scanSync(rs[i].base,rs[i].size,gp).length)loaded=true;}catch(e){}}
-  if(loaded){patchA(rs);patchA2(rs);patchADV(rs);if(!advDone)patchADVw(rs);patchDAI(rs);patchMASTER(rs);if(!masterDone)patchMASTERw(rs);patchB(rs);patchFP(rs);patchGAID(rs);patchHH(rs);neuterMhuRenders(rs);patchCLCS(rs);}
+  // V3 FIRST (#212): a 1.5s targeted check, ahead of the ~20 legacy full-memory scans below (~30s per pass on .210)
+  if(loaded&&!(v3AdvDone&&v3MasterDone)){ try{ patchV3(jsRanges()); }catch(e){} }
+  // Household first (it races the prompt). Once V3 has landed, the legacy ad patchers (older code shapes;
+  // ~1.7s per full-memory pattern) are moot for this session — skip them so they can't starve HH/CLCS/B.
+  if(loaded){ patchHH(rs); neuterMhuRenders(rs);
+    if(!(v3AdvDone&&v3MasterDone)){ patchA(rs);patchA2(rs);patchADV(rs);if(!advDone&&!advwDone)patchADVw(rs);patchDAI(rs);patchMASTER(rs);if(!masterDone)patchMASTERw(rs); }
+    patchB(rs);patchFP(rs);patchGAID(rs);patchCLCS(rs);}
   // Keep polling until applied. The ad-insertion source (ADV/DAI) and prepareAdBreakStates (A)
   // can load LATER than the pause module (B) — sometimes only once playback is exercised — so we
   // must NOT give up early. WRITE-ONCE per patch (done guards) — not a re-patch loop.
   var fpOk=(!FP_ENABLED||fpDone);
   var gaidOk=(!GAID_ENABLED||gaidDone);
   var hhOk=(!HH_ENABLED||hhDone);
-  if((aDone||a2Done||masterDone)&&bDone&&fpOk&&gaidOk&&hhOk){ L('apply DONE: A='+aDone+' A2='+a2Done+' ADV='+advDone+' DAI='+daiDone+' MASTER='+masterDone+'(m1='+m1Done+',m2='+m2Done+') B='+bDone+' FP='+(FP_ENABLED?fpDone:'off')+' GAID='+(GAID_ENABLED?gaidDone:'off')+' HH='+(HH_ENABLED?hhDone:'off')+' tries='+tries); return; }
-  if(tries%15===0) L('apply waiting: A='+aDone+' A2='+a2Done+' ADV='+advDone+' DAI='+daiDone+' MASTER='+masterDone+'(m1='+m1Done+',m2='+m2Done+') B='+bDone+' HH='+(HH_ENABLED?hhDone:'off')+' tries='+tries);
+  if((aDone||a2Done||masterDone)&&bDone&&fpOk&&gaidOk&&hhOk){ L('apply DONE: A='+aDone+' A2='+a2Done+' ADV='+(advDone?true:(advwDone?'w':false))+' DAI='+daiDone+' MASTER='+masterDone+'(m1='+m1Done+',m2='+m2Done+') B='+bDone+' FP='+(FP_ENABLED?fpDone:'off')+' GAID='+(GAID_ENABLED?gaidDone:'off')+' HH='+(HH_ENABLED?hhDone:'off')+' tries='+tries); return; }
+  if(tries%15===0) L('apply waiting: A='+aDone+' A2='+a2Done+' ADV='+(advDone?true:(advwDone?'w':false))+' DAI='+daiDone+' MASTER='+masterDone+'(m1='+m1Done+',m2='+m2Done+') B='+bDone+' HH='+(HH_ENABLED?hhDone:'off')+' tries='+tries);
   if(tries<3600) setTimeout(apply, 2000);   // up to ~2h of find-and-apply polling
 }
 
@@ -540,9 +622,10 @@ function observe(){ if(hhYield()){ setTimeout(observe,1000); return; } cyc++;
   var tag=(kill>1?'  <<<MANIFEST-KILL':'')+(disp>0?'  <<<server-pauseAd(x'+disp+')':'')+(real>0?'  <<<rawRealPod(x'+real+')':'');
   // Drift alarm: raw pods present but nothing killed -> report which anchors installed so we can tell
   // string-drift (MASTER=0: anchor scan-missed) from semantic-drift (MASTER=1: matched but ineffective).
-  if(real>0 && kill===0){ tag+='  <<<DRIFT[A='+(aDone?1:0)+' A2='+(a2Done?1:0)+' ADV='+(advDone?1:0)+' DAI='+(daiDone?1:0)+' MASTER='+(masterDone?1:0)+(mwDone?'w':'')+']'; }
+  if(real>0 && kill===0){ tag+='  <<<DRIFT[A='+(aDone?1:0)+' A2='+(a2Done?1:0)+' ADV='+(advDone?1:(advwDone?'w':0))+' DAI='+(daiDone?1:0)+' MASTER='+(masterDone?1:0)+(mwDone?'w':'')+']'; }
   L('OBS'+cyc+': KILLMARK='+kill+' rawRealPods='+real+' rawDisplayAd='+disp+' bookmarks='+JSON.stringify(bks)+tag);
-  if(cyc<560) setTimeout(observe,3000);   // ~28 min coverage
+  if(cyc<560) setTimeout(observe,3000);        // ~28 min dense coverage
+  else if(cyc<800) setTimeout(observe,30000);  // then a 30s heartbeat for ~2h more (long sessions, #212)
 }
 
 L('killads ready (A/A2/ADV/DAI/MASTER ad-kill + B pause, single-shot; ad+resume monitor)');
