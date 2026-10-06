@@ -114,9 +114,27 @@ public class AdBlockInterceptor implements Interceptor {
         "firebaselogging.googleapis.com", // full host only — must not catch play*.googleapis.com
     };
 
+    // sas.peacocktv.com also serves the sign-in device-code flow under
+    // /commerce/ and /companion-service/ — never block those (issue #230).
+    // Mirrors PeacockWebViewHelper.SAS_SIGNIN_PATHS.
+    private static final String SAS_HOST = "sas.peacocktv.com";
+    private static final String[] SAS_SIGNIN_PATH_PREFIXES = {
+        "/commerce/",
+        "/companion-service/",
+    };
+
     @Override
     public Response intercept(Chain chain) throws IOException {
         final String host = chain.request().url().host();
+
+        if (host.contains(SAS_HOST)) {
+            final String path = chain.request().url().encodedPath();
+            for (final String prefix : SAS_SIGNIN_PATH_PREFIXES) {
+                if (path.startsWith(prefix)) {
+                    return chain.proceed(chain.request());
+                }
+            }
+        }
 
         for (final String suffix : AD_CDN_SUFFIXES) {
             if (host.endsWith(suffix)) {
