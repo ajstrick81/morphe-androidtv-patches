@@ -9,6 +9,12 @@
             "shell": "bash",
             "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/guard_fetch_exec.py\"",
             "statusMessage": "Checking command for fetch-exec patterns"
+          },
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/guard_commit_secrets.py\"",
+            "statusMessage": "Checking commit for secrets"
           }
         ]
       }
