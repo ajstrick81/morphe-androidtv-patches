@@ -156,6 +156,29 @@ function fastMASTER(){ if(masterDone)return; if(hhYield()){ setTimeout(fastMASTE
   if(masterDone){ L('fastMASTER: applied by pass '+_fastMn+(mwDone?' (wildcard fallback)':'')); return; }
   if(_fastMn<500) setTimeout(fastMASTER, 120);   // ~60s of tight scanning
 }
+// ---------- (fastADV) persistent adverts.adBreaks race-win scanner (2026-09-28, #212) ----------
+// ADV/ADVw was one-shot: the apply loop stops calling patchADVw once "apply DONE" fires (~30s in),
+// so a title started later — whose adverts.adBreaks normaliser materialises AFTER that window —
+// never gets ADVw. On such titles adverts.adBreaks stays populated, the ad break survives to the
+// pod, and the native media pipeline dies resolving it (rodawg71 #212: DRIFT[ADV=0 ... MASTER=1w]
+// the whole session -> OMXNodeInstance Observer died -> clone pid died fg TOP at the mid-roll).
+// His RESUME session (where ADVw happened to land) played clean with rawRealPods=0 and NO crash,
+// which proves the anchor still matches this title ("na".map) — it just needs to keep trying.
+//
+// This scanner mirrors fastMASTER but runs INDEPENDENTLY of masterDone (fastMASTER stops once MASTER
+// lands, which is early via the M1-only wildcard, long before a late title starts). It keeps hunting
+// the normaliser until ADVw lands (write-once -> emptying the single upstream source covers every
+// break, early or late), so ADVw lands when the title's player bundle loads and the pod is emptied
+// well before playback reaches it. Tight for ~50s, then a ~5min 1/s tail for late title starts;
+// stops the instant ADV/ADVw lands, so steady-state cost is zero. Low contention: fastMASTER has
+// already finished by the time the tail runs.
+var _fastAn=0;
+function fastADV(){ if(advDone||advwDone)return; _fastAn++;
+  try{ var _ra=Process.enumerateRanges('rw-'); patchADV(_ra); if(!advDone) patchADVw(_ra); }catch(e){}
+  if(advDone||advwDone){ L('fastADV: applied by pass '+_fastAn+(advwDone?' (wildcard)':'')); return; }
+  var iv = _fastAn<200 ? 250 : 1000;             // ~50s tight, then ~5min 1/s tail
+  if(_fastAn<500) setTimeout(fastADV, iv);
+}
 // ---------- (MASTERw) wildcard-tolerant MASTER fallback (2026-09-13, experimental — issue #166) --
 // Most Netflix "server-side" ad drift is just a re-minify that RENAMES single-char locals, which
 // makes the exact-string MASTER anchors scan-miss and the kill silently no-op (#166: KILLMARK=0
@@ -560,6 +583,8 @@ function anchorMap(){ _amN++;
 setTimeout(anchorMap,15000);
 L('fastMASTER armed (getAdMetadata early race-win scanner — beat first-title pre/mid-roll)');
 setTimeout(fastMASTER,200);
+L('fastADV armed (persistent adverts.adBreaks normaliser scanner — beat late-loading pods #212)');
+setTimeout(fastADV,300);
 L('dumpMASTER armed (recon: dump getAdMetadata body if both exact+wildcard MASTER miss — #166)');
 setTimeout(dumpMASTER,2000);
 if(HH_ENABLED){ L('fastHH armed (household prompt suppression, early race-win scanner)'); setTimeout(fastHH,200);
