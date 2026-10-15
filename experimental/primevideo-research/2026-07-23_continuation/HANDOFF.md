@@ -1,8 +1,8 @@
 # Session handoff → local PC project (Prime Video native interception)
 
 **Read this first.** It orchestrates the PC-side work; the design is in
-[`README.md`](./README.md) and the Ghidra worksheet is in
-[`OFFSETS.md`](./OFFSETS.md).
+[`README.md`](../2026-07-25_interception-handoff/README.md) and the Ghidra worksheet is in
+[`OFFSETS.md`](../2026-07-25_interception-handoff/OFFSETS.md).
 
 > ⭐ **Next step at the device:** project memory
 > [`MEMORY-pull-seam.md`](./MEMORY-pull-seam.md) (`primevideo-tv-pull-seam-next`)
@@ -125,7 +125,7 @@ playback, the whole native approach needs rethinking before any Ghidra effort �
 so do this first.**
 
 ### Step 2 — Ghidra pass: recover SSL_read / inflate (the gating task)
-Follow [`OFFSETS.md`](./OFFSETS.md) against the device's **armeabi-v7a**
+Follow [`OFFSETS.md`](../2026-07-25_interception-handoff/OFFSETS.md) against the device's **armeabi-v7a**
 `libignite.so`. Fill signatures + fallback offsets + the SHA-256 into
 `jni/offsets.h`. Enable `ENABLE_INFLATE_HOOK` only if manifests come back gzip'd.
 
@@ -134,7 +134,7 @@ Vendor Dobby under `jni/dobby/`, then build per `jni/CMakeLists.txt` (armeabi-v7
 first). Output → `patches/src/main/resources/native/armeabi-v7a/libpvhook.so`.
 
 ### Step 4 — Promote scaffold → real patch tree
-Follow the **Promotion checklist** in [`README.md`](./README.md): move `patch/`
+Follow the **Promotion checklist** in [`README.md`](../2026-07-25_interception-handoff/README.md): move `patch/`
 → `patches/.../primevideo/nativehook/`, `NativeHookLoader.java` → the extension
 module, add the R8 `-keep`, register `bundleNativeHookPatch` +
 `loadNativeHookPatch`.

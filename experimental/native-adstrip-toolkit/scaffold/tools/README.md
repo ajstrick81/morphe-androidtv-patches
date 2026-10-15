@@ -1,6 +1,6 @@
 # Offset-recovery tooling (`inflate` / `SSL_read` in libignite.so)
 
-How the values in [`../jni/offsets.h`](../jni/offsets.h) were recovered on
+How the values in `../jni/offsets.h` (copied from [`offsets.h.template`](../jni/offsets.h.template)) were recovered on
 2026-07-20, and how to re-derive them when Prime Video updates (the offsets are
 per-build; the SHA-256 in `offsets.h` is the guard).
 

@@ -1,5 +1,13 @@
 # Twitch Android TV — Ad-Suppression Blueprint
 
+> **Historical.** The v30.2.2 **Skip ads** patch this document describes was
+> removed from `main` on purpose in PR #128. Its code is preserved in the
+> `archive/claude/twitch-atv-webview-adblock` tag (links below point there).
+> What ships today for Twitch is the **Block TV ads** patch in
+> [`patches/.../twitchatv/ads/`](../patches/src/main/kotlin/ajstrick81/morphe/patches/twitchatv/ads/BlockTvAdsPatch.kt),
+> which targets the WebView-based TV app. The research below still applies to
+> the stitched-ad mechanism.
+
 A starting map for anyone picking up the Twitch ad work (`tv.twitch.android.app`).
 It records what ships today, **why** it works, the walls we've already hit (with
 on-device evidence, so you don't re-run dead ends), and the concrete frontier
@@ -57,8 +65,8 @@ in-band ID3/EMSG metadata ──> ExoPlayer onMetadata ──> "twitch-stitched-
 ## What ships, and why it works
 
 All three layers live in
-[`patches/.../twitch/ads/SkipAdsPatch.kt`](../patches/src/main/kotlin/ajstrick81/morphe/patches/twitch/ads/SkipAdsPatch.kt),
-anchored by [`Fingerprints.kt`](../patches/src/main/kotlin/ajstrick81/morphe/patches/twitch/ads/Fingerprints.kt).
+[`patches/.../twitch/ads/SkipAdsPatch.kt`](https://github.com/ajstrick81/morphe-androidtv-patches/blob/archive/claude/twitch-atv-webview-adblock/patches/src/main/kotlin/ajstrick81/morphe/patches/twitch/ads/SkipAdsPatch.kt),
+anchored by [`Fingerprints.kt`](https://github.com/ajstrick81/morphe-androidtv-patches/blob/archive/claude/twitch-atv-webview-adblock/patches/src/main/kotlin/ajstrick81/morphe/patches/twitch/ads/Fingerprints.kt).
 
 | Layer | Where | What it does | Proven effect |
 |-------|-------|--------------|---------------|
@@ -133,7 +141,8 @@ The residual pre-roll's playlist is parsed **inside the native IVS pipeline**
 
 ## Build / test / ship
 
-Follow [`docs/AGENT_PATCH_WORKFLOW.md`](AGENT_PATCH_WORKFLOW.md). Twitch specifics:
+The general workflow doc this section used to point at (`docs/AGENT_PATCH_WORKFLOW.md`)
+no longer exists; see [`testing/README.md`](../testing/README.md). Twitch specifics:
 
 ```
 APP PACKAGE     : tv.twitch.android.app

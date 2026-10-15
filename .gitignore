@@ -139,3 +139,7 @@ scratchmlb/
 
 # Playwright MCP output (browser logs, screenshots, snapshots)
 .playwright-mcp/
+
+# Python bytecode (Claude Code hook imports)
+__pycache__/
+*.pyc
