@@ -77,4 +77,17 @@ Modifications:
   cannot provide — the piece that fixes tree-wide content search, our slowest
   step (measured ~165 s over 33.6k HBO Max smali files).
 
+- netflix_test_space (phly95/netflix_test_space), a fork of this repo
+  Author: phly95 (github.com/phly95)
+  Contributed the async-scan scheduling engine used on the Netflix household
+  (HH_ENABLED) path of patches/.../netflix/native/killads.js — replacing the
+  synchronous Memory.scanSync household sweeps (which held Frida's single JS
+  lock for ~tens of seconds per pass and made the household flip lose its race)
+  with an async Memory.scan worker-thread pool, a bounded in-flight limit, and
+  a defer gate so the verified ad-kill cooperates instead of being starved.
+  Diagnosed and device-verified by phly95 in issue #237. The async household
+  functions (patchHHAsync / neuterMhuAsync / fastCLCS) were adapted from that
+  fork; our verified ad-kill anchors are unchanged. Thank you, phly95.
+  Source: https://github.com/phly95/netflix_test_space
+
 All original authors retain credit for their contributions.
