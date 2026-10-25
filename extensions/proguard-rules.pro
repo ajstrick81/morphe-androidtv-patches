@@ -69,6 +69,11 @@
 # Keep it and the WrappedClient it returns intact so R8 can't strip/rename/merge them.
 -keep class ajstrick81.morphe.extension.twitchatv.ads.TwitchAtvWebViewHelper {
     public static android.webkit.WebViewClient wrapClient(android.webkit.WebViewClient);
+    public static void setSpeedEnabled();
+    public static boolean onSpeedKeyEvent(int, android.view.KeyEvent);
+    public static void onSpeedKeyEventVoid(int, android.view.KeyEvent);
+    public static boolean onSpeedKeyEvent(android.view.KeyEvent);
+    public static void onSpeedKeyEventVoid(android.view.KeyEvent);
 }
 
 # MLB At Bat — Patch 6: HLS manifest ad-segment stripper. Called directly

@@ -1,7 +1,20 @@
 package ajstrick81.morphe.extension.twitchatv.ads;
 
+import android.app.Activity;
+import android.content.Context;
+import android.content.ContextWrapper;
 import android.util.Base64;
 import android.util.Log;
+import android.view.ActionMode;
+import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.view.SearchEvent;
+import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
+import android.view.accessibility.AccessibilityEvent;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
@@ -10,6 +23,7 @@ import android.webkit.WebViewClient;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -151,6 +165,617 @@ public final class TwitchAtvWebViewHelper {
         + "}catch(e){}},700);"
         + "}catch(e){}})();";
 
+    // ── playback-speed control (opt-in via TwitchSpeedTogglePatch) ────────────
+    // The player is hls.js over an HTML5 <video>, so the only thing needed is to
+    // set video.playbackRate. The native key interceptor sits in front of the
+    // Activity, so it sees the OK press whichever view ends up handling it, and
+    // drives the speed list drawn into the page by SPEED_TOGGLE_JS. The interval
+    // re-applies the chosen rate after hls.js recreates the <video> element.
+    //
+    // Triggers: the blue colour key (KEYCODE_PROG_BLUE) opens and closes the
+    // list; long-press OK (KEYCODE_DPAD_CENTER) stays as the fallback for remotes
+    // that do not send colour keys. Transport keys are deliberately not
+    // hijacked: remotes that have them use them for seeking, and current
+    // TCL/Google TV remotes do not send them at all.
+    private static volatile boolean speedEnabled;
+    private static volatile WeakReference<WebView> speedView;
+
+    /**
+     * Repeats of DPAD_CENTER before the press counts as a long press. The
+     * framework only starts repeating after ViewConfiguration.getLongPressTimeout()
+     * (~500 ms), so 1 is the first repeat and therefore the earliest reliable
+     * signal — no extra delay is added on top of the system timeout.
+     */
+    private static final int OK_LONG_PRESS_REPEATS = 1;
+
+    /**
+     * Latches one speed toggle per physical OK press. Both the Activity fallback
+     * and the WebView OnKeyListener can see the same event; without the latch a
+     * single hold would toggle twice and land back on 1x.
+     */
+    private static volatile boolean okLongPressFired;
+
+    /**
+     * Latches one blue-key toggle per physical press. Same reason as
+     * {@link #okLongPressFired}: the Window.Callback, the Activity fallback and
+     * the WebView OnKeyListener can all see the same event. Without the latch the
+     * second sighting would open the menu and immediately close it again.
+     */
+    private static volatile boolean blueKeyFired;
+
+    // ── on-screen speed menu (opened by blue key or long-press OK) ───────────
+    // The Twitch player UI is their own React app; its quality menu cannot be
+    // extended from here. Instead the menu is drawn into the page by our JS and
+    // driven entirely from the native key interceptor, so D-pad navigation does
+    // not depend on Twitch's focus handling.
+    private static final float[] SPEED_RATES =
+            {0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f};
+    private static final String SPEED_RATES_JS = "[0.5,0.75,1.0,1.25,1.5,1.75,2.0]";
+    private static final int SPEED_MENU_TIMEOUT_MS = 6000;
+
+    private static volatile boolean speedMenuOpen;
+    private static volatile int speedMenuIndex = 2; // 1.0x
+    private static volatile int speedMenuToken;
+    private static volatile float currentRate = 1.0f;
+
+    /**
+     * Key whose press was consumed by the menu and whose release must therefore
+     * be swallowed too. Needed when the menu closes on key-down (OK applies, Back
+     * cancels): the Activity would otherwise act on the matching key-up — for
+     * Back that means leaving the player.
+     */
+    private static volatile int swallowNextUpKey = -1;
+
+    /** Called from injected smali by the opt-in speed patch. */
+    public static void setSpeedEnabled() {
+        speedEnabled = true;
+        Log.i(TAG, "playback speed controls enabled");
+    }
+
+    private static void installSpeedToggle(WebView view) {
+        if (!speedEnabled || view == null) return;
+        speedView = new WeakReference<>(view);
+        speedMenuOpen = false;
+        try {
+            // Off unless explicitly asked for over ADB:
+            //   adb shell settings put global morphe_webview_debug 1
+            // Debugging hooks cost a little on every page and were keeping the
+            // WebView busy during playback, so they are only for DOM inspection
+            // with chrome://inspect when Twitch's player markup has to be re-checked.
+            boolean debug = "1".equals(android.provider.Settings.Global.getString(
+                    view.getContext().getContentResolver(), "morphe_webview_debug"));
+            if (debug) {
+                WebView.setWebContentsDebuggingEnabled(true);
+                Log.i(TAG, "WebView debugging enabled via morphe_webview_debug");
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "could not read morphe_webview_debug", t);
+        }
+        try {
+            view.setOnKeyListener(new SpeedKeyListener(view));
+            view.evaluateJavascript(SPEED_TOGGLE_JS, null);
+            installWindowKeyInterceptor(view);
+        } catch (Throwable t) {
+            Log.e(TAG, "speed toggle injection failed", t);
+        }
+    }
+
+    /**
+     * Installs the key interceptor on the Activity's Window.Callback.
+     *
+     * The WebView OnKeyListener alone is not reliable: D-pad events only reach it
+     * while that exact view holds focus, and Twitch's player moves focus between
+     * its own overlay views. A Window.Callback wrapper sits in front of the whole
+     * Activity (DecorView.dispatchKeyEvent calls the callback before anything is
+     * dispatched to the view tree), so OK presses are seen no matter which view
+     * ends up handling them. Everything except the speed triggers is delegated
+     * unchanged.
+     */
+    private static void installWindowKeyInterceptor(WebView view) {
+        try {
+            Activity activity = findActivity(view.getContext());
+            if (activity == null) {
+                Log.w(TAG, "no activity for key interceptor; WebView listener only");
+                return;
+            }
+            Window window = activity.getWindow();
+            if (window == null) return;
+            Window.Callback current = window.getCallback();
+            if (current == null || current instanceof SpeedWindowCallback) return;
+            window.setCallback(new SpeedWindowCallback(current, view));
+            Log.i(TAG, "window key interceptor installed on " + activity.getClass().getName());
+        } catch (Throwable t) {
+            Log.e(TAG, "window key interceptor failed", t);
+        }
+    }
+
+    private static Activity findActivity(Context context) {
+        Context current = context;
+        while (current instanceof ContextWrapper) {
+            if (current instanceof Activity) return (Activity) current;
+            Context base = ((ContextWrapper) current).getBaseContext();
+            if (base == null || base == current) break;
+            current = base;
+        }
+        return current instanceof Activity ? (Activity) current : null;
+    }
+
+    /**
+     * Named (not anonymous) listener: the extension dex is merged raw by
+     * extendWith(), and ART's verifier has rejected anonymous framework
+     * subclasses in this helper before (see proguard-rules.pro).
+     *
+     * Note: this replaces any OnKeyListener the host set on the WebView, but it
+     * returns false for every key except the speed triggers, so normal key
+     * handling still falls through.
+     */
+    private static final class SpeedKeyListener implements View.OnKeyListener {
+        private final WebView view;
+
+        SpeedKeyListener(WebView view) {
+            this.view = view;
+        }
+
+        @Override
+        public boolean onKey(View v, int keyCode, KeyEvent event) {
+            return dispatchSpeedKey(view, keyCode, event);
+        }
+    }
+
+    /**
+     * Window.Callback delegate that intercepts the speed triggers first and
+     * forwards everything else verbatim. Named (not anonymous) for the same ART
+     * verifier reason as {@link SpeedKeyListener}.
+     */
+    private static final class SpeedWindowCallback implements Window.Callback {
+        private final Window.Callback delegate;
+        private final WebView view;
+
+        SpeedWindowCallback(Window.Callback delegate, WebView view) {
+            this.delegate = delegate;
+            this.view = view;
+        }
+
+        @Override
+        public boolean dispatchKeyEvent(KeyEvent event) {
+            if (event != null && dispatchSpeedKey(view, event.getKeyCode(), event)) return true;
+            return delegate.dispatchKeyEvent(event);
+        }
+
+        @Override
+        public boolean dispatchKeyShortcutEvent(KeyEvent event) {
+            return delegate.dispatchKeyShortcutEvent(event);
+        }
+
+        @Override
+        public boolean dispatchTouchEvent(MotionEvent event) {
+            return delegate.dispatchTouchEvent(event);
+        }
+
+        @Override
+        public boolean dispatchTrackballEvent(MotionEvent event) {
+            return delegate.dispatchTrackballEvent(event);
+        }
+
+        @Override
+        public boolean dispatchGenericMotionEvent(MotionEvent event) {
+            return delegate.dispatchGenericMotionEvent(event);
+        }
+
+        @Override
+        public boolean dispatchPopulateAccessibilityEvent(AccessibilityEvent event) {
+            return delegate.dispatchPopulateAccessibilityEvent(event);
+        }
+
+        @Override
+        public View onCreatePanelView(int featureId) {
+            return delegate.onCreatePanelView(featureId);
+        }
+
+        @Override
+        public boolean onCreatePanelMenu(int featureId, Menu menu) {
+            return delegate.onCreatePanelMenu(featureId, menu);
+        }
+
+        @Override
+        public boolean onPreparePanel(int featureId, View view, Menu menu) {
+            return delegate.onPreparePanel(featureId, view, menu);
+        }
+
+        @Override
+        public boolean onMenuOpened(int featureId, Menu menu) {
+            return delegate.onMenuOpened(featureId, menu);
+        }
+
+        @Override
+        public boolean onMenuItemSelected(int featureId, MenuItem item) {
+            return delegate.onMenuItemSelected(featureId, item);
+        }
+
+        @Override
+        public void onWindowAttributesChanged(WindowManager.LayoutParams attrs) {
+            delegate.onWindowAttributesChanged(attrs);
+        }
+
+        @Override
+        public void onContentChanged() {
+            delegate.onContentChanged();
+        }
+
+        @Override
+        public void onWindowFocusChanged(boolean hasFocus) {
+            delegate.onWindowFocusChanged(hasFocus);
+        }
+
+        @Override
+        public void onAttachedToWindow() {
+            delegate.onAttachedToWindow();
+        }
+
+        @Override
+        public void onDetachedFromWindow() {
+            delegate.onDetachedFromWindow();
+        }
+
+        @Override
+        public void onPanelClosed(int featureId, Menu menu) {
+            delegate.onPanelClosed(featureId, menu);
+        }
+
+        @Override
+        public boolean onSearchRequested() {
+            return delegate.onSearchRequested();
+        }
+
+        @Override
+        public boolean onSearchRequested(SearchEvent searchEvent) {
+            return delegate.onSearchRequested(searchEvent);
+        }
+
+        @Override
+        public ActionMode onWindowStartingActionMode(ActionMode.Callback callback) {
+            return delegate.onWindowStartingActionMode(callback);
+        }
+
+        @Override
+        public ActionMode onWindowStartingActionMode(ActionMode.Callback callback, int type) {
+            return delegate.onWindowStartingActionMode(callback, type);
+        }
+
+        @Override
+        public void onActionModeStarted(ActionMode mode) {
+            delegate.onActionModeStarted(mode);
+        }
+
+        @Override
+        public void onActionModeFinished(ActionMode mode) {
+            delegate.onActionModeFinished(mode);
+        }
+    }
+
+    /**
+     * Activity-level fallback, called from injected smali on StarshotActivity's
+     * dispatchKeyEvent/onKeyDown. Covers the case where the Activity consumes
+     * media keys before the WebView gains focus.
+     *
+     * @return true when the key was consumed by a speed change.
+     */
+    public static boolean onSpeedKeyEvent(int keyCode, KeyEvent event) {
+        WebView view = speedView == null ? null : speedView.get();
+        return view != null && dispatchSpeedKey(view, keyCode, event);
+    }
+
+    /** Non-consuming fallback for methods with no scratch register. */
+    public static void onSpeedKeyEventVoid(int keyCode, KeyEvent event) {
+        WebView view = speedView == null ? null : speedView.get();
+        if (view != null) dispatchSpeedKey(view, keyCode, event);
+    }
+
+    /** dispatchKeyEvent(KeyEvent) overload — key code comes from the event. */
+    public static boolean onSpeedKeyEvent(KeyEvent event) {
+        return event != null && onSpeedKeyEvent(event.getKeyCode(), event);
+    }
+
+    /** Non-consuming dispatchKeyEvent(KeyEvent) overload. */
+    public static void onSpeedKeyEventVoid(KeyEvent event) {
+        if (event != null) onSpeedKeyEventVoid(event.getKeyCode(), event);
+    }
+
+    /**
+     * @return true when the key was consumed by a speed change.
+     *
+     * KEYCODE_PROG_BLUE is the primary trigger: it is unused by the Twitch
+     * player, so a single press opens the list and a second press closes it.
+     * DPAD_CENTER remains the fallback for remotes without colour keys. Its
+     * initial press must reach the page unchanged (that is the normal OK click),
+     * so only the repeats are consumed, and the matching ACTION_UP is swallowed
+     * once the menu fired so the page does not also treat the hold as a click
+     * (which would pause the video). Every other key, including the media
+     * transport keys, is passed through untouched.
+     */
+    private static boolean dispatchSpeedKey(WebView view, int keyCode, KeyEvent event) {
+        if (view == null || event == null) return false;
+        try {
+            if (event.getAction() == KeyEvent.ACTION_UP && keyCode == swallowNextUpKey) {
+                swallowNextUpKey = -1;
+                return true;
+            }
+            if (keyCode == KeyEvent.KEYCODE_PROG_BLUE) {
+                return dispatchBlueKey(view, event);
+            }
+            if (speedMenuOpen) return handleSpeedMenuKey(view, keyCode, event);
+            if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER) {
+                return dispatchOkLongPress(view, event);
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "speed key handling failed", t);
+        }
+        return false;
+    }
+
+    /**
+     * Blue colour key: one press opens the speed list, another closes it.
+     *
+     * Colour keys are standard Android key codes (KEYCODE_PROG_RED..BLUE) but
+     * not every remote sends them. They are otherwise unused by Twitch's player,
+     * which is why this does not take anything away from the app. Both the press
+     * and the release are consumed so no other handler sees a stray key event.
+     */
+    private static boolean dispatchBlueKey(WebView view, KeyEvent event) {
+        final int action = event.getAction();
+        if (action == KeyEvent.ACTION_UP) {
+            boolean consumed = blueKeyFired;
+            blueKeyFired = false;
+            if (consumed) Log.i(TAG, "blue key: swallowing key-up");
+            return consumed;
+        }
+        if (action != KeyEvent.ACTION_DOWN) return false;
+        if (event.getRepeatCount() > 0) return blueKeyFired;
+        if (blueKeyFired) return true; // already handled for this press
+        blueKeyFired = true;
+        if (speedMenuOpen) {
+            Log.i(TAG, "blue key: closing speed menu");
+            hideSpeedMenu(view);
+        } else {
+            Log.i(TAG, "blue key: opening speed menu");
+            showSpeedMenu(view, false);
+        }
+        return true;
+    }
+
+    private static boolean dispatchOkLongPress(WebView view, KeyEvent event) {
+        final int action = event.getAction();
+        if (action == KeyEvent.ACTION_UP) {
+            boolean consumed = okLongPressFired;
+            okLongPressFired = false;
+            if (consumed) Log.i(TAG, "ok long-press: swallowing key-up");
+            return consumed;
+        }
+        if (action != KeyEvent.ACTION_DOWN) return false;
+        final int repeat = event.getRepeatCount();
+        if (repeat == 0) {
+            // A fresh press always starts clean, even if a previous ACTION_UP was
+            // swallowed by something else and left the latch set. Remember the
+            // paused state before the app sees the press, so a toggle can undo the
+            // play/pause that the app itself triggers off the same press.
+            okLongPressFired = false;
+            view.evaluateJavascript("window.__morpheSpeedArm&&window.__morpheSpeedArm();", null);
+            return false;
+        }
+        if (repeat < OK_LONG_PRESS_REPEATS) return false;
+        if (okLongPressFired) return true; // already handled for this press
+        okLongPressFired = true;
+        Log.i(TAG, "ok long-press: opening speed menu");
+        showSpeedMenu(view, true);
+        return true;
+    }
+
+    // ── speed menu ────────────────────────────────────────────────────────────
+
+    private static void showSpeedMenu(WebView view, boolean undoOkPress) {
+        speedMenuOpen = true;
+        speedMenuIndex = nearestRateIndex(currentRate);
+        final int token = ++speedMenuToken;
+        if (undoOkPress) {
+            evaluate(view, "window.__morpheSpeedUndoPress&&window.__morpheSpeedUndoPress();");
+        } else {
+            // Opened by the blue key, not by an OK press. Drop any arm left over
+            // from an earlier OK press so choosing a rate cannot undo a
+            // play/pause that was not caused by this menu.
+            evaluate(view,
+                    "window.__morpheSpeedArmedAt=0;window.__morpheSpeedWasPaused=null;");
+        }
+        evaluate(view, "window.__morpheSpeedMenu&&window.__morpheSpeedMenu(true,"
+                + speedMenuIndex + ",'" + SPEED_RATES_JS + "');");
+        view.postDelayed(new MenuTimeout(view, token), SPEED_MENU_TIMEOUT_MS);
+    }
+
+    private static void hideSpeedMenu(WebView view) {
+        if (!speedMenuOpen) return;
+        speedMenuOpen = false;
+        speedMenuToken++;
+        evaluate(view, "window.__morpheSpeedMenu&&window.__morpheSpeedMenu(false,0,'');");
+    }
+
+    private static void moveSpeedSelection(WebView view, int delta) {
+        int next = speedMenuIndex + delta;
+        if (next < 0) next = 0;
+        if (next >= SPEED_RATES.length) next = SPEED_RATES.length - 1;
+        if (next == speedMenuIndex) return;
+        speedMenuIndex = next;
+        evaluate(view, "window.__morpheSpeedMenu&&window.__morpheSpeedMenu(true,"
+                + speedMenuIndex + ",'" + SPEED_RATES_JS + "');");
+    }
+
+    private static void applySpeedSelection(WebView view) {
+        float rate = SPEED_RATES[speedMenuIndex];
+        Log.i(TAG, "speed menu: applying " + rate + "x");
+        currentRate = rate;
+        evaluate(view, "window.__morpheSpeedSet&&window.__morpheSpeedSet(" + rate + ");");
+        hideSpeedMenu(view);
+    }
+
+    private static int nearestRateIndex(float rate) {
+        int best = 0;
+        float bestDelta = Float.MAX_VALUE;
+        for (int i = 0; i < SPEED_RATES.length; i++) {
+            float delta = Math.abs(SPEED_RATES[i] - rate);
+            if (delta < bestDelta) {
+                bestDelta = delta;
+                best = i;
+            }
+        }
+        return best;
+    }
+
+    private static boolean isSpeedMenuKey(int keyCode) {
+        return keyCode == KeyEvent.KEYCODE_DPAD_UP
+                || keyCode == KeyEvent.KEYCODE_DPAD_DOWN
+                || keyCode == KeyEvent.KEYCODE_DPAD_LEFT
+                || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
+                || keyCode == KeyEvent.KEYCODE_DPAD_CENTER
+                || keyCode == KeyEvent.KEYCODE_ENTER
+                || keyCode == KeyEvent.KEYCODE_BACK;
+    }
+
+    /**
+     * While the menu is open every relevant key belongs to it: the page must not
+     * also seek, scroll or open its own controls. Navigation is on key-down so a
+     * single tap moves exactly one row; the matching key-up is swallowed.
+     */
+    private static boolean handleSpeedMenuKey(WebView view, int keyCode, KeyEvent event) {
+        final int action = event.getAction();
+        if (action == KeyEvent.ACTION_UP) {
+            if (keyCode == swallowNextUpKey) swallowNextUpKey = -1;
+            return isSpeedMenuKey(keyCode);
+        }
+        if (action != KeyEvent.ACTION_DOWN) return false;
+        boolean handled = true;
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_DPAD_UP:
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+                moveSpeedSelection(view, -1);
+                break;
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                moveSpeedSelection(view, +1);
+                break;
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+            case KeyEvent.KEYCODE_ENTER:
+                // The press that opened the menu is still repeating; only a fresh
+                // press selects, otherwise holding OK would apply and close at once.
+                if (event.getRepeatCount() > 0) break;
+                applySpeedSelection(view);
+                break;
+            case KeyEvent.KEYCODE_BACK:
+                Log.i(TAG, "speed menu: closed without change");
+                hideSpeedMenu(view);
+                break;
+            default:
+                handled = false;
+        }
+        if (handled) swallowNextUpKey = keyCode;
+        return handled;
+    }
+
+    private static void evaluate(WebView view, String js) {
+        try {
+            view.evaluateJavascript(js, null);
+        } catch (Throwable t) {
+            Log.e(TAG, "evaluateJavascript failed", t);
+        }
+    }
+
+    /** Closes the menu on its own if the remote is put down mid-selection. */
+    private static final class MenuTimeout implements Runnable {
+        private final WebView view;
+        private final int token;
+
+        MenuTimeout(WebView view, int token) {
+            this.view = view;
+            this.token = token;
+        }
+
+        @Override
+        public void run() {
+            if (speedMenuOpen && speedMenuToken == token) {
+                Log.i(TAG, "speed menu: closed by timeout");
+                hideSpeedMenu(view);
+            }
+        }
+    }
+
+    private static final String SPEED_TOGGLE_JS =
+        "(function(){try{"
+        + "if(window.__morpheSpeedInstalled)return;window.__morpheSpeedInstalled=true;"
+        + "window.__morpheSpeed=window.__morpheSpeed||1;"
+        + "window.__morpheSpeedArmedAt=0;window.__morpheSpeedWasPaused=null;"
+        + "function v(){return document.querySelector('video');}"
+        // Called from native on the first ACTION_DOWN of an OK press: remembers
+        // whether playback was running, so a long press can undo the play/pause
+        // the page performs off that same press.
+        + "window.__morpheSpeedArm=function(){try{var e=v();"
+        + "window.__morpheSpeedWasPaused=e?!!e.paused:null;"
+        + "window.__morpheSpeedArmedAt=Date.now();}catch(x){}};"
+        + "function undoPressPlayPause(){try{var e=v();"
+        + "if(!e||window.__morpheSpeedWasPaused===null)return;"
+        + "if(Date.now()-(window.__morpheSpeedArmedAt||0)>2500)return;"
+        + "if(!!e.paused===window.__morpheSpeedWasPaused)return;"
+        + "if(window.__morpheSpeedWasPaused){try{e.pause();}catch(x){}}"
+        + "else{try{var p=e.play();if(p&&p.catch)p.catch(function(){});}catch(x){}}"
+        + "}catch(x){}}"
+        // Writing playbackRate unconditionally re-runs the media pipeline's rate
+        // handling even when nothing changed, so only write when it differs.
+        //
+        // The rate is never changed automatically. Whatever is picked in the
+        // hold-OK list stays applied until it is changed again. A
+        // live stream that cannot sustain it will freeze for a moment; that is
+        // the stream's buffer, and deciding to slow down is the viewer's call,
+        // not the driver's.
+        + "function setApplied(r){try{var e=v();if(!e)return;"
+        + "if(Math.abs((e.playbackRate||1)-r)>0.001)e.playbackRate=r;}catch(x){}}"
+        + "function apply(){try{setApplied(window.__morpheSpeed);}catch(x){}}"
+        + "function badge(t){try{var el=document.getElementById('__morpheSpeedBadge');"
+        + "if(!el){el=document.createElement('div');el.id='__morpheSpeedBadge';"
+        + "el.style.cssText='position:fixed;right:40px;bottom:40px;z-index:2147483647;"
+        + "padding:10px 18px;border-radius:8px;background:rgba(0,0,0,.78);color:#fff;"
+        + "font:600 26px/1 sans-serif;pointer-events:none;opacity:0;transition:opacity .15s';"
+        + "(document.body||document.documentElement).appendChild(el);}"
+        + "el.textContent=t;el.style.opacity='1';clearTimeout(window.__morpheSpeedTimer);"
+        + "window.__morpheSpeedTimer=setTimeout(function(){el.style.opacity='0';},1200);}catch(x){}}"
+        // Speed menu, rendered by us and driven from the native key interceptor.
+        + "window.__morpheSpeedSet=function(r){try{var n=parseFloat(r);"
+        + "if(!(n>0))return;"
+        + "window.__morpheSpeed=n;apply();undoPressPlayPause();"
+        + "badge(n+'x');}catch(x){}};"
+        + "window.__morpheSpeedUndoPress=undoPressPlayPause;"
+        + "window.__morpheSpeedMenu=function(open,idx,rates){try{"
+        + "var el=document.getElementById('__morpheSpeedMenu');"
+        + "if(!open){if(el)el.style.display='none';return;}"
+        + "var list=typeof rates==='string'?JSON.parse(rates):rates;if(!list||!list.length)return;"
+        + "if(!el){el=document.createElement('div');el.id='__morpheSpeedMenu';"
+        + "el.style.cssText='position:fixed;right:7%;top:50%;transform:translateY(-50%);"
+        + "z-index:2147483647;min-width:210px;background:rgba(18,16,22,.95);"
+        + "border-radius:16px;padding:18px 22px;color:#fff;pointer-events:none;"
+        + "box-shadow:0 12px 48px rgba(0,0,0,.65);font:600 26px/1.7 Roboto,Arial,sans-serif';"
+        + "(document.body||document.documentElement).appendChild(el);}"
+        + "el.innerHTML='';var head=document.createElement('div');"
+        + "head.style.cssText='font-size:16px;letter-spacing:.12em;opacity:.55;margin:0 0 8px 8px';"
+        + "head.textContent='PLAYBACK SPEED';el.appendChild(head);"
+        + "for(var i=0;i<list.length;i++){var row=document.createElement('div');"
+        + "var sel=(i===idx);"
+        + "row.style.cssText='padding:6px 12px;border-radius:9px;'+(sel"
+        + "?'background:#9147ff;color:#fff;':'color:#d7d5de;');"
+        + "row.textContent=list[i]+'x'+(sel?'   \\u25C0':'');el.appendChild(row);}"
+        + "el.style.display='block';}catch(x){}};"
+        // Slow safety net only: hls.js can swap the <video> element, which resets
+        // its rate. Nothing to do at 1x.
+        + "setInterval(function(){try{if(document.hidden)return;"
+        + "if(window.__morpheSpeed===1)return;apply();}catch(x){}},3000);"
+        + "document.addEventListener('loadedmetadata',function(){apply();},true);"
+        + "apply();"
+        + "}catch(x){}})();";
+
     private static final class WrappedClient extends WebViewClient {
         private final WebViewClient original;
 
@@ -180,12 +805,14 @@ public final class TwitchAtvWebViewHelper {
         public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
             original.onPageStarted(view, url, favicon);
             injectPlaybackFix(view);
+            installSpeedToggle(view);
         }
 
         @Override
         public void onPageFinished(WebView view, String url) {
             original.onPageFinished(view, url);
             injectPlaybackFix(view);
+            installSpeedToggle(view);
         }
 
         @Override
