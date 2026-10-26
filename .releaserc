@@ -30,7 +30,8 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "jq '.version=\"${nextRelease.version}\"' patches-list.json > patches-list.json.tmp && mv patches-list.json.tmp patches-list.json"
+        "prepareCmd": "jq '.version=\"${nextRelease.version}\"' patches-list.json > patches-list.json.tmp && mv patches-list.json.tmp patches-list.json",
+        "publishCmd": "find patches/build/libs -maxdepth 1 -name 'patches-*.mpp' ! -name 'patches-${nextRelease.version}.mpp' -delete"
       }
     ],
     [
