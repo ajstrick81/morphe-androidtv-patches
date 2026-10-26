@@ -23,9 +23,11 @@ import android.webkit.WebViewClient;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
@@ -117,6 +119,148 @@ public final class TwitchAtvWebViewHelper {
     /** Only the video-weaver media playlists carry stitched ads. */
     private static boolean isWeaverPlaylist(String url) {
         return url != null && url.contains(".playlist.ttvnw.net/") && url.contains("/playlist/");
+    }
+
+    // ── ad-free playback token (experimental, fails open) ─────────────────────
+    // Twitch only stitches SSAI ads into the "site" player context. The very same
+    // channel requested as "popout" (what TwitchAdSolutions' vaft does, see
+    // docs/TWITCH_AD_SUPPRESSION_BLUEPRINT.md) comes back as a clean playlist:
+    // no #EXT-X-DATERANGE ad pods and no ad segments, so there is nothing to
+    // blank and the 20-30 s black gap at stream start disappears.
+    //
+    // The TV app asks usher for its own (ad-laden) master playlist. We replace
+    // that response with one obtained under a popout token. The variant URLs are
+    // self-contained and signed, so hls.js simply plays them; the app cannot tell
+    // the difference (measured 2026-10-26: identical variant count, media groups
+    // and resolutions, only the ad pods are missing).
+    //
+    // Every step fails open: GQL error, HTTP error, unexpected body or a missing
+    // channel name returns null, the app's own response is used, and the stitched
+    // ads then go through the weaver blanking exactly as before.
+    private static final String TWITCH_GQL = "https://gql.twitch.tv/gql";
+    private static final String TWITCH_WEB_CLIENT_ID = "kimne78kx3ncx6brgo4mv6wki5h1ko";
+    private static final String[] AD_FREE_PLAYER_TYPES = {"popout", "mobile_web"};
+    private static final String BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)";
+
+    /** Usher master playlist request (the per-channel entry point). */
+    private static boolean isUsherMaster(String url) {
+        return url != null
+            && url.contains("usher.ttvnw.net/")
+            && url.contains("/channel/hls/")
+            && url.contains(".m3u8");
+    }
+
+    /** {@code .../channel/hls/<login>.m3u8?...} → {@code <login>}, or null. */
+    private static String channelFromUsher(String url) {
+        int s = url.indexOf("/channel/hls/");
+        if (s < 0) return null;
+        s += "/channel/hls/".length();
+        int e = url.indexOf(".m3u8", s);
+        if (e <= s) return null;
+        String login = url.substring(s, e);
+        if (login.isEmpty() || login.length() > 64) return null;
+        for (int i = 0; i < login.length(); i++) {
+            char c = login.charAt(i);
+            boolean ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+                || (c >= '0' && c <= '9') || c == '_';
+            if (!ok) return null;
+        }
+        return login;
+    }
+
+    /**
+     * Fetches a clean master playlist for {@code url}'s channel and wraps it as the
+     * response, or returns null to let the app's own (ad-laden) playlist through.
+     */
+    private static WebResourceResponse adFreeMaster(String url) {
+        String login = channelFromUsher(url);
+        if (login == null) return null;
+        for (String playerType : AD_FREE_PLAYER_TYPES) {
+            String body = fetchPopoutMaster(login, playerType);
+            if (body == null || !body.contains("#EXT-X-STREAM-INF")) continue;
+            Log.i(TAG, "ad-free master playlist via playerType=" + playerType
+                + " for " + login);
+            return m3u8Response(body);
+        }
+        return null;
+    }
+
+    private static String fetchPopoutMaster(String login, String playerType) {
+        String query = "{\"query\":\"query{streamPlaybackAccessToken(channelName:\\\""
+            + login + "\\\",params:{platform:\\\"web\\\",playerBackend:\\\"mediaplayer\\\","
+            + "playerType:\\\"" + playerType + "\\\"}){value signature}}\"}";
+        String json = httpPost(TWITCH_GQL, query);
+        if (json == null) return null;
+        String value = jsonString(json, "value");
+        String signature = jsonString(json, "signature");
+        if (value == null || signature == null) {
+            Log.i(TAG, "gql: no token for " + login + " (" + playerType + ")");
+            return null;
+        }
+        String usher;
+        try {
+            usher = "https://usher.ttvnw.net/api/channel/hls/" + login
+                + ".m3u8?allow_source=true&allow_audio_only=true&p=1234"
+                + "&player=twitchweb&type=any&sig=" + signature
+                + "&token=" + URLEncoder.encode(value, "UTF-8");
+        } catch (Throwable t) {
+            return null;
+        }
+        return httpGet(usher);
+    }
+
+    /** Reads the first JSON string value for {@code key} (the values are JWTs/hex). */
+    private static String jsonString(String json, String key) {
+        String needle = "\"" + key + "\":\"";
+        int i = json.indexOf(needle);
+        if (i < 0) return null;
+        StringBuilder sb = new StringBuilder(512);
+        for (int p = i + needle.length(); p < json.length(); p++) {
+            char c = json.charAt(p);
+            if (c == '\\' && p + 1 < json.length()) {
+                sb.append(json.charAt(++p));
+            } else if (c == '"') {
+                return sb.length() == 0 ? null : sb.toString();
+            } else {
+                sb.append(c);
+            }
+        }
+        return null;
+    }
+
+    /** POSTs a GQL query with the public web Client-ID. */
+    private static String httpPost(String url, String body) {
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) new URL(url).openConnection();
+            conn.setRequestMethod("POST");
+            conn.setConnectTimeout(4000);
+            conn.setReadTimeout(4000);
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Client-ID", TWITCH_WEB_CLIENT_ID);
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("User-Agent", BROWSER_UA);
+            byte[] payload = body.getBytes(StandardCharsets.UTF_8);
+            conn.setFixedLengthStreamingMode(payload.length);
+            OutputStream out = conn.getOutputStream();
+            out.write(payload);
+            out.close();
+            if (conn.getResponseCode() != 200) return null;
+            return readAll(conn.getInputStream());
+        } catch (Throwable t) {
+            Log.e(TAG, "gql request failed: " + t);
+            return null;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    private static String readAll(InputStream in) throws Exception {
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        byte[] buf = new byte[8192];
+        int n;
+        while ((n = in.read(buf)) != -1) bos.write(buf, 0, n);
+        return new String(bos.toByteArray(), StandardCharsets.UTF_8);
     }
 
     public static WebViewClient wrapClient(final WebViewClient original) {
@@ -790,6 +934,11 @@ public final class TwitchAtvWebViewHelper {
                 if (url.contains(BLANK_HOST)) {
                     return blankTsResponse(url);
                 }
+                if (isUsherMaster(url)) {
+                    // Prefer a clean (ad-free) master; null → keep the app's own.
+                    WebResourceResponse clean = adFreeMaster(url);
+                    if (clean != null) return clean;
+                }
                 if (isWeaverPlaylist(url)) {
                     WebResourceResponse scrubbed = scrubPlaylist(url);
                     if (scrubbed != null) return scrubbed;
@@ -961,14 +1110,10 @@ public final class TwitchAtvWebViewHelper {
             conn.setConnectTimeout(5000);
             conn.setReadTimeout(5000);
             conn.setInstanceFollowRedirects(true);
+            conn.setRequestProperty("User-Agent", BROWSER_UA);
             int code = conn.getResponseCode();
             if (code != 200) return null;
-            InputStream in = conn.getInputStream();
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            byte[] buf = new byte[8192];
-            int n;
-            while ((n = in.read(buf)) != -1) bos.write(buf, 0, n);
-            return new String(bos.toByteArray(), StandardCharsets.UTF_8);
+            return readAll(conn.getInputStream());
         } catch (Throwable t) {
             Log.e(TAG, "httpGet failed: " + t);
             return null;

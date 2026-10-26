@@ -19,11 +19,14 @@ val blockTvAdsPatch = bytecodePatch(
     name = "Block TV ads",
     description = "Blocks live ads on the Twitch ANDROID TV app (tv.twitch.android.app v13.0.0.2, " +
         "the \"Starshot\" living-room build — NOT the phone app). That app runs the Twitch web " +
-        "player (laserarray/hls.js) in a WebView, and live ads are server-stitched into the " +
-        "video-weaver HLS playlist. This wraps the app's WebViewClient so a native " +
-        "shouldInterceptRequest override re-fetches the weaver playlist and strips the " +
-        "twitch-stitched-ad segments before hls.js sees them — timing-independent, no proxy, " +
-        "Twitch's own servers only.",
+        "player (laserarray/hls.js) in a WebView. Twitch only stitches its SSAI ads into the " +
+        "\"site\" player context, so this first swaps the channel's usher master playlist for one " +
+        "obtained under a \"popout\" playback token — that stream arrives with no ad segments at " +
+        "all, so the 20-30s black gap at stream start disappears. Ads that still show up (e.g. " +
+        "stitched mid-rolls) fall back to the older path: a native shouldInterceptRequest " +
+        "override re-fetches the video-weaver playlist and blanks the twitch-stitched-ad " +
+        "segments before hls.js sees them — timing-independent, no proxy, Twitch's own servers " +
+        "only. Fails open: if the clean token is refused, everything behaves exactly as before.",
 ) {
     compatibleWith(
         Compatibility(
