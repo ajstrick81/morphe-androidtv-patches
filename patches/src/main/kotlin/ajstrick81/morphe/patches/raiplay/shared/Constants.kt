@@ -8,6 +8,6 @@ object Constants {
         name = "RaiPlay Android TV",
         packageName = "it.rainet.androidtv",
         appIconColor = 0x7A2FF7,
-        targets = listOf(AppTarget("5.0.0"))
+        targets = listOf(AppTarget("5.0.1"), AppTarget("5.0.0"))
     )
 }
