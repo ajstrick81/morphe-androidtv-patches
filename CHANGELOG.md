@@ -1,3 +1,16 @@
+# [1.45.0](https://github.com/lennartabeln/morphe-androidtv-patches/compare/v1.44.0...v1.45.0) (2026-10-26)
+
+
+### Bug Fixes
+
+* **bundle:** give this fork its own Morphe source identity ([5f9fecc](https://github.com/lennartabeln/morphe-androidtv-patches/commit/5f9feccf0c15acd5e621c569bb07aaf14bee530d))
+
+
+### Features
+
+* **twitch:** add playback speed controls ([4937655](https://github.com/lennartabeln/morphe-androidtv-patches/commit/493765584d522c50cacc7f9943a738a5797d360d))
+* **twitch:** request an ad-free playback token instead of blanking ([046f7b4](https://github.com/lennartabeln/morphe-androidtv-patches/commit/046f7b441779185cc40fb18edf4ba460a772442d))
+
 # [1.44.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.43.0...v1.44.0) (2026-10-26)
 
 
