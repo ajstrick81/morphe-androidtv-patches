@@ -122,6 +122,9 @@ public final class TwitchAtvWebViewHelper {
     }
 
     // ── ad-free playback token (experimental, fails open) ─────────────────────
+    // Contributed by Lennart Abeln (github.com/lennartabeln), from his fork
+    // lennartabeln/morphe-androidtv-patches. Concept: TwitchAdSolutions (pixeltris).
+    // See docs/TWITCH_ATV_AD_FREE_TOKEN.md and NOTICE.
     // Twitch only stitches SSAI ads into the "site" player context. The very same
     // channel requested as "popout" (what TwitchAdSolutions' vaft does, see
     // docs/TWITCH_AD_SUPPRESSION_BLUEPRINT.md) comes back as a clean playlist:

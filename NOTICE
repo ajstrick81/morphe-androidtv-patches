@@ -29,6 +29,12 @@ Modifications:
   rewriting techniques.
   Source: https://github.com/pixeltris/TwitchAdSolutions
 
+- Lennart Abeln (lennartabeln)
+  Twitch Android TV ad-free playback token (popout/mobile_web master
+  playlist swap via usher interception) and Twitch playback speed controls.
+  Contributed code, used with credit under GPL-3.0.
+  Source: https://github.com/lennartabeln/morphe-androidtv-patches
+
 - Xtra for Twitch (crackededed/Xtra)
   Referenced as prior art for Android-side Twitch ad mitigation
   Source: https://github.com/crackededed/Xtra

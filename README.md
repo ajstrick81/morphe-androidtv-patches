@@ -374,9 +374,10 @@ This patch template is based on the prior work of [ReVanced](https://github.com/
 **Twitch ad-suppression techniques** are informed by:
 - [Purple TV](https://github.com/AdrianLxM/PurpleTV) (nyanarchive/purpletv) — GrandDads ad-eligibility short-circuit approach
 - [TwitchAdSolutions](https://github.com/pixeltris/TwitchAdSolutions) (pixeltris) — playerType spoofing concept
+- [Lennart Abeln](https://github.com/lennartabeln) (lennartabeln) — ad-free playback token (popout master-playlist swap) and playback speed controls, contributed code
 - [Xtra for Twitch](https://github.com/crackededed/Xtra) (crackededed) — Android-side Twitch ad mitigation prior art
 
-All Twitch techniques were independently re-derived via dex disassembly and are not copied from these projects' source code. See [NOTICE](NOTICE) for full attribution details.
+Except for Lennart Abeln's contributed code, all Twitch techniques were independently re-derived via dex disassembly and are not copied from these projects' source code. See [NOTICE](NOTICE) for full attribution details.
 
 **Netflix household-prompt suppression** is informed by:
 - [Nikflix](https://github.com/YidirK/Nikflix) (YidirK, GPL-3.0) — identified Netflix's household / "you're traveling" enforcement via the `CLCSInterstitialPlaybackAndPostPlayback` interstitial
