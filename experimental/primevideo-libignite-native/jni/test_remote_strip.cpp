@@ -355,6 +355,92 @@ int main() {
         CHECK(buf == full, "reasm-dryrun: apply=false writes nothing");
     }
 
+    // ── #260 SPLIT-TAIL (primary fix): close the playlist in front of the ──────
+    // unclosed tail object using only the prefix bytes, independent of where the
+    // rest of the body is later written. split_off_truncated_tail() runs after the
+    // caller has blanked the complete leading ad objects to spaces, so the gap
+    // between '[' and the tail '{' is whitespace.
+    {
+        // Precondition met: leading complete objects already blanked to spaces.
+        std::string s = "{\"playlist\":[                      {\"type\":\"Ad\",\"url\":\"t.mpd\"";
+        size_t open = s.find("\"playlist\":[") + 11;      // '['
+        size_t tail = s.find('{', open + 1);              // tail object '{'
+        std::string b = s;
+        CHECK(pvfilter::split_off_truncated_tail(&b[0], b.size(), open, tail),
+              "split: valid gap -> spliced");
+        CHECK(b.size() == s.size(), "split: length unchanged");
+        CHECK(b.find("\"playlist\":[],\"_\":[") != std::string::npos,
+              "split: playlist closed as [], dummy \"_\" array opened in front of tail");
+        CHECK(b.find("{\"type\":\"Ad\"") != std::string::npos,
+              "split: tail object preserved (now the first element of \"_\")");
+    }
+    {
+        // Tail is the FIRST item: no blanked gap -> must refuse, write nothing.
+        std::string s = "{\"playlist\":[{\"type\":\"Ad\",\"url\":\"t.mpd\"";
+        size_t open = s.find("\"playlist\":[") + 11;
+        size_t tail = open + 1;                           // '{' immediately after '['
+        std::string b = s;
+        CHECK(!pvfilter::split_off_truncated_tail(&b[0], b.size(), open, tail),
+              "split-firstitem: refuses (no blanked gap)");
+        CHECK(b == s, "split-firstitem: buffer unchanged");
+    }
+    {
+        // Gap is NOT all whitespace (caller precondition violated) -> refuse.
+        std::string s = "{\"playlist\":[{\"old\":1}   {\"type\":\"Ad\"";
+        size_t open = s.find("\"playlist\":[") + 11;
+        size_t tail = s.rfind('{');
+        std::string b = s;
+        CHECK(!pvfilter::split_off_truncated_tail(&b[0], b.size(), open, tail),
+              "split-nonws: refuses when gap has non-whitespace");
+        CHECK(b == s, "split-nonws: buffer unchanged");
+    }
+    {
+        // Dry-run: apply=false reports the splice point but writes nothing.
+        std::string s = "{\"playlist\":[        {\"type\":\"Ad\"";
+        size_t open = s.find("\"playlist\":[") + 11;
+        size_t tail = s.find('{', open + 1);
+        std::string b = s;
+        CHECK(pvfilter::split_off_truncated_tail(&b[0], b.size(), open, tail, /*apply=*/false),
+              "split-dryrun: reports valid splice");
+        CHECK(b == s, "split-dryrun: apply=false writes nothing");
+    }
+    {
+        // End-to-end, buffer-location-independent: for EVERY cut inside the tail
+        // ad object, apply steps (1)+(3) to the prefix, append the UNMODIFIED
+        // remainder (wherever it lands), and the reassembled body must be a valid
+        // balanced object with a genuinely empty playlist and no leading ad URLs.
+        std::string full =
+          "{\"playlist\":["
+          "{\"type\":\"Ad\",\"media\":{\"urls\":[{\"url\":\"a/interstitial/1.mpd\"}]}},"
+          "{\"type\":\"Ad\",\"media\":{\"urls\":[{\"url\":\"b/interstitial/2.mpd\"}]}},"
+          "{\"type\":\"Ad\",\"media\":{\"urls\":[{\"url\":\"c/interstitial/3.mpd\"}]}}"
+          "],\"measurement\":{\"m\":1}}";
+        size_t open = full.find("\"playlist\":[") + 11;        // '['
+        size_t tail = full.rfind("{\"type\":\"Ad\"");           // 3rd ad = tail object
+        size_t tail_end = pvfilter::json_match_bracket(&full[0], full.size(), tail) + 1; // past tail '}'
+        int cases = 0, ok = 0;
+        for (size_t cut = tail + 1; cut < tail_end; ++cut) {
+            ++cases;
+            std::string prefix = full.substr(0, cut);
+            // step (1): blank the complete leading ad objects (open+1 .. tail) to spaces
+            for (size_t k = open + 1; k < tail; ++k) prefix[k] = ' ';
+            // step (3): splice the playlist closed in front of the tail
+            if (!pvfilter::split_off_truncated_tail(&prefix[0], prefix.size(), open, tail))
+                continue;
+            std::string reasm = prefix + full.substr(cut);     // remainder lands verbatim
+            bool pass = true;
+            pass &= reasm.size() == full.size();
+            pass &= reasm.find("\"playlist\":[]") != std::string::npos;   // empty playlist
+            pass &= reasm.find("interstitial/1.mpd") == std::string::npos; // leading ads gone
+            pass &= reasm.find("interstitial/2.mpd") == std::string::npos;
+            pass &= reasm.find("\"measurement\":{\"m\":1}") != std::string::npos;
+            // outer object must still balance (valid JSON structure)
+            pass &= pvfilter::json_match_bracket(&reasm[0], reasm.size(), 0) == reasm.size() - 1;
+            if (pass) ++ok;
+        }
+        CHECK(cases > 0 && ok == cases, "split-e2e: every cut inside the tail reassembles to valid empty-playlist JSON");
+    }
+
     std::printf(g_fail == 0 ? "ALL TESTS PASSED (0 failure(s))\n" : "%d FAILURE(S)\n", g_fail);
     return g_fail == 0 ? 0 : 1;
 }

@@ -84,4 +84,38 @@ inline int blank_complete_media_urls(char* buf, size_t n, size_t from) {
     return blanked;
 }
 
+// #260: Close a truncated regolith playlist IN FRONT OF its unclosed tail object,
+// using only the prefix bytes visible in this chunk — independent of where the
+// remaining body is later written. (The cross-chunk reassembly in hooks.cpp only
+// fires when the continuation lands CONTIGUOUSLY right after the first chunk; a
+// field capture in #260 showed that on real EU devices it often does NOT —
+// nothing hooked lands within ±256 KB of prev_end — so reassembly rarely helps.)
+//
+// Precondition: the complete ad objects between the playlist '[' (at `open`) and
+// the unclosed tail object '{' (at `tail`) have already been blanked to spaces by
+// the caller, so the whole gap (open+1, tail) is whitespace. A same-length splice
+// of `],"_":[` into the start of that gap turns
+//     "playlist":[      {tail…      ->   "playlist":[],"_":[{tail…
+// The ']' that would originally have closed the playlist now closes the dummy
+// "_" array instead, so once the rest of the body is appended (wherever it lands)
+// the reassembled text is valid JSON with e.playlist.length === 0 — the app takes
+// its clean empty-break path and never needs the tail bytes. Refuses (returns
+// false, writes nothing) when the tail is the first item (no blanked gap, or the
+// gap is shorter than the splice), leaving the caller's existing salvage /
+// reassembly fallback in force. Same length; `buf` must be writable.
+inline bool split_off_truncated_tail(char* buf, size_t n, size_t open, size_t tail,
+                                     bool apply = true) {
+    static const char   kSplice[]  = "],\"_\":[";
+    static const size_t kSpliceLen = sizeof(kSplice) - 1;   // 6 bytes
+    if (open >= n || tail >= n || tail <= open) return false;
+    if (buf[open] != '[' || buf[tail] != '{') return false;
+    if (tail - (open + 1) < kSpliceLen) return false;       // no room for the splice
+    for (size_t i = open + 1; i < tail; ++i) {              // gap must be all whitespace
+        char c = buf[i];
+        if (c != ' ' && c != '\t' && c != '\n' && c != '\r') return false;
+    }
+    if (apply) std::memcpy(buf + open + 1, kSplice, kSpliceLen);
+    return true;
+}
+
 } // namespace pvfilter

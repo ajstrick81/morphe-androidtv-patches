@@ -91,6 +91,7 @@ std::atomic<uint64_t> g_pvkill_movie{0};  // Remote ad items blanked (movies, PA
 std::atomic<uint64_t> g_pvkill_tv{0};     // ad entries emptied (TV regolith, PATH 2)
 std::atomic<uint64_t> g_rego_trunc_salvaged{0};  // truncated-preroll buffers whose media.urls we blanked
 std::atomic<uint64_t> g_rego_reassembled{0};     // #260 playlists emptied across contiguous chunks
+std::atomic<uint64_t> g_rego_split{0};           // #260 playlists closed in front of the truncated tail (location-independent)
 
 // ── #260 cross-chunk reassembly state (per-thread) ───────────────────────────
 // When the regolith "playlist":[ array is truncated inside a chunk, the salvage
@@ -289,13 +290,14 @@ void maybe_empty_regolith(void* vbuf, size_t n) {
 #endif
         // (1) mid-roll: blank complete ad objects that close in-chunk
         int trunc_blanked = 0;
+        size_t tail_obj = static_cast<size_t>(-1);          // '{' of the unclosed tail item (#260 split)
         size_t i = open + 1;
         auto is_ws = [](char c){ return c==' '||c=='\t'||c=='\n'||c=='\r'; };
         while (i < n) {
             while (i < n && is_ws(buf[i])) ++i;
             if (i >= n || buf[i] != '{') break;            // not at an object start → stop
             size_t item_close = pvfilter::json_match_bracket(buf, n, i);
-            if (item_close == static_cast<size_t>(-1)) break;  // truncated tail item — leave it
+            if (item_close == static_cast<size_t>(-1)) { tail_obj = i; break; }  // truncated tail item — leave it
             size_t j = item_close + 1;                     // find optional trailing comma
             while (j < n && is_ws(buf[j])) ++j;
             bool has_comma = (j < n && buf[j] == ',');
@@ -319,6 +321,27 @@ void maybe_empty_regolith(void* vbuf, size_t n) {
                 LOGI("[rego] TRUNCATED playlist: blanked %d complete media.urls "
                      "array(s) before cut n=%zu", nb, n);
             LOGI("PVKILL path=tv-trunc urls=%d n=%zu", nb, n);   // self-stamp (oracle)
+        }
+        // #260 PRIMARY FIX: close the playlist IN FRONT OF the unclosed tail
+        // object, in the prefix bytes we already have. Step (1) blanked every
+        // complete ad object before the tail to spaces, so the gap between '[' and
+        // the tail '{' is whitespace — splice "],\"_\":[" into it so the playlist
+        // closes as an empty [] and the original ']' closes a dummy "_" array once
+        // the body reassembles. e.playlist.length === 0 regardless of WHERE the
+        // remaining bytes land, so (unlike the contiguous-only reassembler below)
+        // this works even when the continuation is written through a copy we don't
+        // hook (the common EU case, per the #260 field capture). If the tail is the
+        // first item there is no blanked gap, split refuses, and we fall through to
+        // arming the reassembler as the fallback.
+        if (tail_obj != static_cast<size_t>(-1) &&
+            pvfilter::split_off_truncated_tail(buf, n, open, tail_obj, /*apply=*/kApplyWrites)) {
+            g_rego_split.fetch_add(1, std::memory_order_relaxed);
+            g_pvkill_tv.fetch_add(1, std::memory_order_relaxed);
+            LOGI("[rego] TRUNCATED playlist closed before tail item (tail at %zu) n=%zu",
+                 tail_obj, n);
+            LOGI("PVKILL path=tv-split n=%zu", n);              // self-stamp (oracle)
+            g_rego_cont_base = nullptr;                         // split is complete; no reassembly needed
+            return;
         }
         // #260: arm the cross-chunk reassembler. The partial salvage above stays
         // as the fallback; if the finishing bytes arrive contiguously in a later
@@ -537,7 +560,7 @@ void* worker_thread(void*) {
         LOGI("[hb] skipchunk=%llu malloc=%llu | cpy=%llu mov=%llu cpy_chk=%llu mov_chk=%llu | "
              "total=%llu in_gate=%llu max_n=%llu marker=%llu complete=%llu "
              "trunc=%llu trunc_rem=%llu modified=%llu blanked=%llu rego_trunc=%llu rego_trunc_salv=%llu "
-             "rego_reasm=%llu",
+             "rego_reasm=%llu rego_split=%llu",
              (unsigned long long)g_skipped_chunk.load(std::memory_order_relaxed),
              (unsigned long long)g_malloc_calls.load(std::memory_order_relaxed),
              (unsigned long long)g_n_memcpy.load(std::memory_order_relaxed),
@@ -555,13 +578,15 @@ void* worker_thread(void*) {
              (unsigned long long)g_remote_blanked.load(std::memory_order_relaxed),
              (unsigned long long)g_rego_trunc.load(std::memory_order_relaxed),
              (unsigned long long)g_rego_trunc_salvaged.load(std::memory_order_relaxed),
-             (unsigned long long)g_rego_reassembled.load(std::memory_order_relaxed));
+             (unsigned long long)g_rego_reassembled.load(std::memory_order_relaxed),
+             (unsigned long long)g_rego_split.load(std::memory_order_relaxed));
         // Self-stamp summary (oracle): total ads removed since load, both paths.
-        LOGI("PVOBS movieBlanked=%llu tvEmptied=%llu tvTruncSalvaged=%llu tvReassembled=%llu",
+        LOGI("PVOBS movieBlanked=%llu tvEmptied=%llu tvTruncSalvaged=%llu tvReassembled=%llu tvSplit=%llu",
              (unsigned long long)g_pvkill_movie.load(std::memory_order_relaxed),
              (unsigned long long)g_pvkill_tv.load(std::memory_order_relaxed),
              (unsigned long long)g_rego_trunc_salvaged.load(std::memory_order_relaxed),
-             (unsigned long long)g_rego_reassembled.load(std::memory_order_relaxed));
+             (unsigned long long)g_rego_reassembled.load(std::memory_order_relaxed),
+             (unsigned long long)g_rego_split.load(std::memory_order_relaxed));
     }
     return nullptr;
 }
