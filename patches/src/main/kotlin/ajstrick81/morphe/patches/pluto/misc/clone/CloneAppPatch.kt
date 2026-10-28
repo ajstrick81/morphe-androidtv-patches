@@ -1,5 +1,7 @@
 package ajstrick81.morphe.patches.pluto.misc.clone
 
+// Pluto TV 17.x compatibility (COMPATIBILITY_17 / COMPATIBILITY_ALL) contributed by Mathias Thur (github.com/AllGray).
+
 import app.morphe.patcher.patch.resourcePatch
 import ajstrick81.morphe.patches.pluto.shared.Constants
 import org.w3c.dom.Element
