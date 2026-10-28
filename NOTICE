@@ -77,4 +77,10 @@ Modifications:
   cannot provide — the piece that fixes tree-wide content search, our slowest
   step (measured ~165 s over 33.6k HBO Max smali files).
 
+- Mathias Thur (AllGray)
+  Pluto TV 17.x support: DASH ad-period filter (PlutoMpdFilter), empty AdsData /
+  stitcher adBreaks, pause-ad suppression, and 5.66 + 17.x Clone compatibility.
+  Contributed code, used with credit under GPL-3.0.
+  Source: https://github.com/AllGray/morphe-androidtv-patches
+
 All original authors retain credit for their contributions.
