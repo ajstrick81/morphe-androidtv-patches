@@ -1,5 +1,7 @@
 package ajstrick81.morphe.patches.pluto.misc.clone
 
+// Pluto TV 17.x compatibility (COMPATIBILITY_17 / COMPATIBILITY_ALL) contributed by Mathias Thur (github.com/AllGray).
+
 import app.morphe.patcher.patch.resourcePatch
 import ajstrick81.morphe.patches.pluto.shared.Constants
 import org.w3c.dom.Element
@@ -49,7 +51,7 @@ val cloneAppPatch = resourcePatch(
         "uninstall the original Pluto TV first (a normal in-place install is cleaner). Opt-in.",
     default = false,
 ) {
-    compatibleWith(Constants.COMPATIBILITY)
+    compatibleWith(Constants.COMPATIBILITY_ALL)   // manifest-only: 5.66.0-leanback and 17.x
 
     finalize {
         val packageName = packageMetadata.packageName

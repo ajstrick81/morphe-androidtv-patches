@@ -41,7 +41,7 @@ That line is the reason this project exists. If you own the TV and pay for the s
 | 🟢 Peacock | VOD ads | `7.10.102` · `7.8.100` | 9/29/26 |
 | 🟢 Tubi | Ads (+ opt-in analytics block) | `10.40.5000` | 10/22/26 |
 | 🟢 ViX | Ads | `4.47.2_tv` | 7/11/26 |
-| 🟢 Pluto TV | VOD ads · live breaks masked (opt-in) | `5.66.0-leanback` | 9/7/26 |
+| 🟢 Pluto TV | VOD ads · live breaks masked (opt-in) | `5.66.0-leanback` · `17.2.0` (VOD) | 9/7/26 |
 | 🟢 Paramount+ | VOD + pause ads · live untouched | `16.17.0` | 8/4/26 |
 | 🟢 Twitch | Ad overlay + blanked live ads · TV build only | `13.0.0.2` | 8/22/26 |
 | 🟢 ESPN | Live breaks masked (slate + mute) · VOD ads | `6.11.1` | 9/5/26 |
@@ -252,6 +252,14 @@ All patches follow the same general workflow using **Morphe Manager**:
 > to disable it on-device without re-patching, or **`pluto_slate_mode`** containing `black`
 > (cover only) or `mute` (mute only) instead of the default both.
 >
+> 🆕 **Pluto TV 17.x (`17.2.0`)** — contributed by [Mathias Thur (AllGray)](https://github.com/AllGray). Pluto 17 is a
+> rebuild on Paramount+'s platform, but its VOD is still Pluto's stitched multi-period DASH, so the **Skip ads (Pluto TV 17)**
+> patch drops the ad periods from the manifest before media3's (renamed) parser reads it, empties the ad-break timeline
+> (AdsData), and turns off pause ads. Tested by him on a Sony BRAVIA (Android 9): 97 ad periods removed from a 44-minute
+> episode, playback and resume fine. A few cosmetic markers remain where content periods meet; **live channels are not
+> covered on 17.x** — use `5.66.0-leanback` if you want the live-break mask. Works with both the Android TV and
+> phone/tablet 17.2.0 builds; **Clone** works on both 5.66 and 17.x.
+
 > 🔬 **How it works under the hood:** [`docs/PLUTO_TV_ATV_SYSTEM_DESIGN.md`](docs/PLUTO_TV_ATV_SYSTEM_DESIGN.md)
 > is a reverse-engineering teardown of Pluto TV's ad and playback system, and of why the patch works.
 
@@ -370,6 +378,9 @@ This patch template is based on the prior work of [ReVanced](https://github.com/
 - [Xtra for Twitch](https://github.com/crackededed/Xtra) (crackededed) — Android-side Twitch ad mitigation prior art
 
 All Twitch techniques were independently re-derived via dex disassembly and are not copied from these projects' source code. See [NOTICE](NOTICE) for full attribution details.
+
+**Community contributions** — code written by people who forked this repo, ported here with their authorship preserved. Thank you for your time and hard work:
+- [Mathias Thur (AllGray)](https://github.com/AllGray) — Pluto TV 17.x support (DASH ad-period removal, ad timeline, pause ads)
 
 **Netflix household-prompt suppression** is informed by:
 - [Nikflix](https://github.com/YidirK/Nikflix) (YidirK, GPL-3.0) — identified Netflix's household / "you're traveling" enforcement via the `CLCSInterstitialPlaybackAndPostPlayback` interstitial
