@@ -77,4 +77,10 @@ Modifications:
   cannot provide — the piece that fixes tree-wide content search, our slowest
   step (measured ~165 s over 33.6k HBO Max smali files).
 
+- Joker4Life12
+  HBO Max "Remove Ad Periods (keep 5.1)": PRIMARY-manifest ad-period removal
+  by duration matching against the FALLBACK manifest (HboManifestFilter).
+  Contributed code, used with credit under GPL-3.0.
+  Source: https://github.com/Joker4Life12/morphe-androidtv-patches
+
 All original authors retain credit for their contributions.

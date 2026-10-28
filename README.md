@@ -104,6 +104,7 @@ All patches follow the same general workflow using **Morphe Manager**:
 3. Select it in Morphe Manager
 4. Apply the patch
    > 💡 **Keep the defaults.** Since v1.30.0 the default **Prefer Ad-Free Stream** patch loads HBO's own ad-free stream, which removes the stitched (SSAI) ad video too. Leave the legacy opt-in **Block SSAI Ad Origins** patch **off** — it is superseded, and turning it on can make mid-roll breaks fail with error `39999`.
+   > 🔊 **Want 5.1 surround?** The ad-free stream is stereo only. Try the opt-in **HBO Max - Remove Ad Periods (keep 5.1)** patch instead, contributed by [Joker4Life12](https://github.com/Joker4Life12): it keeps HBO's main E-AC-3 5.1 stream and cuts the stitched ad periods out of it, with skip-intro / next-episode markers still lined up. Turn **Prefer Ad-Free Stream off** when you use it. It falls back to the normal stream if anything looks off.
 
 ---
 
@@ -370,6 +371,9 @@ This patch template is based on the prior work of [ReVanced](https://github.com/
 - [Xtra for Twitch](https://github.com/crackededed/Xtra) (crackededed) — Android-side Twitch ad mitigation prior art
 
 All Twitch techniques were independently re-derived via dex disassembly and are not copied from these projects' source code. See [NOTICE](NOTICE) for full attribution details.
+
+**Community contributions** — code written by people who forked this repo, ported here with their authorship preserved. Thank you for your time and hard work:
+- [Joker4Life12](https://github.com/Joker4Life12) — HBO Max ad-period removal that keeps 5.1 audio
 
 **Netflix household-prompt suppression** is informed by:
 - [Nikflix](https://github.com/YidirK/Nikflix) (YidirK, GPL-3.0) — identified Netflix's household / "you're traveling" enforcement via the `CLCSInterstitialPlaybackAndPostPlayback` interstitial
