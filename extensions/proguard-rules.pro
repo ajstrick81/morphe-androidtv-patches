@@ -151,3 +151,10 @@
     public static *** blockWebRequest(android.webkit.WebResourceRequest);
 }
 -keep class ajstrick81.morphe.extension.tubi.privacy.TrackerBlocker$BlockInterceptor { *; }
+
+# Pluto TV 17 — DASH ad-period filter (contributed by Mathias Thur / AllGray).
+# PlutoMpdFilter.filter(InputStream) is called only from injected smali at the start of media3's
+# (R8-renamed) DashManifestParser.parse, so R8 would strip or rename it.
+-keep class ajstrick81.morphe.extension.pluto17.PlutoMpdFilter {
+    public static java.io.InputStream filter(java.io.InputStream);
+}

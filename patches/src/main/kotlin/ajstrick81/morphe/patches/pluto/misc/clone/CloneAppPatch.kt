@@ -49,7 +49,7 @@ val cloneAppPatch = resourcePatch(
         "uninstall the original Pluto TV first (a normal in-place install is cleaner). Opt-in.",
     default = false,
 ) {
-    compatibleWith(Constants.COMPATIBILITY)
+    compatibleWith(Constants.COMPATIBILITY_ALL)   // manifest-only: 5.66.0-leanback and 17.x
 
     finalize {
         val packageName = packageMetadata.packageName
