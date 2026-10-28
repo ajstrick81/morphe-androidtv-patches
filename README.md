@@ -289,9 +289,11 @@ All patches follow the same general workflow using **Morphe Manager**:
 > TV app runs Twitch's web player inside a WebView. Twitch only stitches those ads
 > into the **`site`** player context, so the patch first swaps the channel's usher
 > master playlist for one requested under a **`popout`** playback token — that
-> stream arrives with **no ad segments at all**, so there is nothing to hide and
-> the stream starts immediately. This is the same *playerType spoofing* idea
-> TwitchAdSolutions' `vaft` uses.
+> stream arrived with **no ad segments** in the contributor's tests, so the preroll
+> black screen should disappear. This is the same *playerType spoofing* idea
+> TwitchAdSolutions' `vaft` uses (contributed by [Lennart Abeln](https://github.com/lennartabeln)).
+> It is **experimental**: it holds the app's playlist request for at most 3 s while
+> it tries, then gives up and uses the app's own playlist.
 >
 > If that token is refused (or an ad still slips through, e.g. a stitched mid-roll),
 > the patch falls back to the older behaviour: it intercepts the live HLS playlist,

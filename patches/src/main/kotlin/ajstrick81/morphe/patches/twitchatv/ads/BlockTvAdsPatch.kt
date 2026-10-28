@@ -6,6 +6,9 @@
  */
 package ajstrick81.morphe.patches.twitchatv.ads
 
+// Ad-free playback token (popout master-playlist swap) contributed by Lennart Abeln
+// (github.com/lennartabeln); see docs/TWITCH_ATV_AD_FREE_TOKEN.md and NOTICE.
+
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.AppTarget
 import app.morphe.patcher.patch.Compatibility

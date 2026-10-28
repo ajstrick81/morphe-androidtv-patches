@@ -6,7 +6,7 @@ and what to do when Twitch changes something.
 Measured **2026-10-26** against `usher.ttvnw.net` / `*.playlist.ttvnw.net` (DE).
 Codes live in
 [`TwitchAtvWebViewHelper`](../extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java)
-(`isUsherMaster`, `adFreeMaster`, `fetchPopoutMaster`, `httpPost`).
+(`isUsherMaster`, `adFreeMaster`, `fetchAdFreeMaster`, `parseAccessToken`, `withToken`, `httpPost`).
 
 ---
 
@@ -60,26 +60,35 @@ there is no ad window at all.
 ```
 shouldInterceptRequest(url)
 ├─ url contains morphe.invalid          → blank TS for blanked ad segments
-├─ isUsherMaster(url)                   → adFreeMaster(url)
+├─ isUsherMaster(url)                   → adFreeMaster(url)   (host == usher.ttvnw.net,
+│    │                                                         path /api/channel/hls/*.m3u8)
 │    ├─ channelFromUsher(url)           → "<login>" (strict [A-Za-z0-9_]{1,64})
-│    ├─ for playerType in {popout, mobile_web}
+│    ├─ worker thread, whole chain capped at AD_FREE_BUDGET_MS (3 s):
+│    │  for playerType in {popout, mobile_web}
 │    │    ├─ POST https://gql.twitch.tv/gql   (Client-ID: public web client)
 │    │    │     streamPlaybackAccessToken(channelName, platform=web,
 │    │    │                                 playerBackend=mediaplayer, playerType)
-│    │    └─ GET  https://usher.ttvnw.net/api/channel/hls/<login>.m3u8?…sig&token
+│    │    │     → parseAccessToken(): org.json, data.streamPlaybackAccessToken.{value,signature}
+│    │    └─ GET  the app's own usher URL with ONLY sig + token replaced (withToken):
+│    │          every other param the app sent (supported_codecs, platform, …) is kept
 │    └─ body contains #EXT-X-STREAM-INF      → return it as the master playlist
 └─ isWeaverPlaylist(url)                → scrubPlaylist(url)  (blanking fallback)
 ```
 
 Every step **fails open**: missing token, non-200, no `#EXT-X-STREAM-INF`, weird
-channel name → `null` → the app's own response is used, and the weaver blanking
-handles whatever ads are stitched. A Twitch-side change can therefore not break
-playback; it can only bring the black gap back.
+channel name, or the 3 s budget running out → `null` → the app's own response is
+used, and the weaver blanking handles whatever ads are stitched.
 
-The usher request is a GET on a background thread (`shouldInterceptRequest` is
-called off the UI thread), so the extra GQL round-trip only adds ~200–500 ms to
-stream start. There is no cache: the master is requested once per player session,
-and caching a short-lived token would risk serving an expired playlist.
+Caveats on that guarantee:
+- While it tries, the app's master-playlist request is **held** (`shouldInterceptRequest`
+  runs off the UI thread but the WebView waits for its answer). Normally that is one
+  GQL + one usher round-trip; the hard cap is 3 s, after which playback proceeds as before.
+- `#EXT-X-STREAM-INF` only proves the body *looks like* a master playlist, not that
+  its variants play or are ad-free. If `popout` returns a valid but ad-bearing master,
+  `mobile_web` is not tried; the weaver blanking still handles the ads.
+
+There is no cache: the master is requested once per player session, and caching a
+short-lived token would risk serving an expired playlist.
 
 ---
 
@@ -93,7 +102,10 @@ and caching a short-lived token would risk serving an expired playlist.
   Twitch can rate-limit or invalidate it; the patch then falls back to blanking.
 - **ToS.** Requesting a different player context is the standard ad-blocker trick,
   but it is a grey area — same category as VPN-to-Albania.
-- **Quality** is unchanged (source/1080p60 available). `autoplay` is deliberately
+- **Quality** should be unchanged: the swapped request keeps every parameter the app
+  sent (codec / capability hints) and replaces only `sig` and `token`; in the
+  2026-10-26 measurements source/1080p60 was available. Not yet confirmed on-device
+  after that change. `autoplay` is deliberately
   *not* in the chain: it is 360p only. Add it at the end of
   `AD_FREE_PLAYER_TYPES` if you ever need a last resort.
 
@@ -116,9 +128,9 @@ On a device with ADB:
 adb logcat -s MORPHE-TW-ATV-WV
 ```
 
-No ADB? The practical test is behavioural: with the swap working the stream starts
-immediately; if you see the ~30 s black window again, the swap is failing and the
-blanking fallback took over.
+No ADB? The practical test is behavioural: with the swap working there should be no
+preroll black window; if you see the ~30 s black window again, the swap is failing
+(or timed out after 3 s) and the blanking fallback took over.
 
 ---
 
