@@ -218,7 +218,17 @@ public final class TwitchAtvWebViewHelper {
         for (int p = i + needle.length(); p < json.length(); p++) {
             char c = json.charAt(p);
             if (c == '\\' && p + 1 < json.length()) {
-                sb.append(json.charAt(++p));
+                char n = json.charAt(++p);
+                if (n == 'u' && p + 4 < json.length()) {
+                    try {
+                        sb.append((char) Integer.parseInt(json.substring(p + 1, p + 5), 16));
+                        p += 4;
+                    } catch (NumberFormatException ex) {
+                        return null;
+                    }
+                } else {
+                    sb.append(n);
+                }
             } else if (c == '"') {
                 return sb.length() == 0 ? null : sb.toString();
             } else {
