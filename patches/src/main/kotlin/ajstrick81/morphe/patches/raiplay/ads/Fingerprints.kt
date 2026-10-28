@@ -1,5 +1,7 @@
 package ajstrick81.morphe.patches.raiplay.ads
 
+// RaiPlay 5.0.1 support (target + re-verified seam) contributed by Michael Bompani (github.com/michaelbompani).
+
 import app.morphe.patcher.Fingerprint
 import com.android.tools.smali.dexlib2.AccessFlags
 

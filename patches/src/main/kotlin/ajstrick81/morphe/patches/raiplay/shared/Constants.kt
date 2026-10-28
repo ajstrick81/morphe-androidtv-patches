@@ -1,5 +1,7 @@
 package ajstrick81.morphe.patches.raiplay.shared
 
+// RaiPlay 5.0.1 support (target + re-verified seam) contributed by Michael Bompani (github.com/michaelbompani).
+
 import app.morphe.patcher.patch.AppTarget
 import app.morphe.patcher.patch.Compatibility
 
