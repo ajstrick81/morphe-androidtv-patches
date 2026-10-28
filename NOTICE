@@ -77,4 +77,11 @@ Modifications:
   cannot provide — the piece that fixes tree-wide content search, our slowest
   step (measured ~165 s over 33.6k HBO Max smali files).
 
+- Michael Bompani (michaelbompani)
+  RaiPlay Android TV 5.0.1 support, "Fix live HLS variant 404" (rewrites the
+  missing bitrate-capped playlist_ma_1800-3600.m3u8 to playlist_ma.m3u8) and
+  the opt-in "Enable WebView debugging" patch.
+  Contributed code, used with credit under GPL-3.0.
+  Source: https://github.com/michaelbompani/morphe-androidtv-patches
+
 All original authors retain credit for their contributions.

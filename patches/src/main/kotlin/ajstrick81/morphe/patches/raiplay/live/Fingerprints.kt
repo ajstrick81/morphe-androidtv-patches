@@ -1,5 +1,8 @@
 package ajstrick81.morphe.patches.raiplay.live
 
+// RaiPlay 5.0.1 support, live-variant fix and WebView debug patch contributed by
+// Michael Bompani (github.com/michaelbompani), from his fork michaelbompani/morphe-androidtv-patches. Thank you!
+
 import app.morphe.patcher.Fingerprint
 
 // ─────────────────────────────────────────────────────────────────────────────
