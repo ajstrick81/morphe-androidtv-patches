@@ -27,8 +27,9 @@ import java.util.regex.Pattern;
  * Pluto 17, so here it works on the XML text instead: drop every ad period, then give the kept periods
  * contiguous start times and shorten mediaPresentationDuration to match.
  *
- * Fail-open: anything unexpected (no ad periods, a kept period without a duration, no content left)
- * returns the manifest unchanged, so ads may remain but playback never breaks.
+ * Fail-open: anything unexpected (a dynamic/live MPD, no ad periods, any kept period without an explicit
+ * duration, no /clip/ content left) returns the manifest unchanged, so ads may remain but playback never
+ * breaks. A period is only dropped on positive evidence that it is an ad (see isAd).
  */
 public final class PlutoMpdFilter {
     private static final String TAG = "MorphePluto17";
@@ -64,11 +65,14 @@ public final class PlutoMpdFilter {
             from = b;
         }
         if (spans.isEmpty()) return null;
+        // VOD only: the parser hook is global, so never touch a live (dynamic) MPD.
+        String root = mpd.substring(0, spans.get(0)[0]);
+        if (root.contains("type=\"dynamic\"")) return null;
 
         StringBuilder out = new StringBuilder(mpd.length());
         out.append(mpd, 0, spans.get(0)[0]);
         double t = 0;
-        int dropped = 0, kept = 0;
+        int dropped = 0, kept = 0, keptClips = 0;
         for (int i = 0; i < spans.size(); i++) {
             String p = mpd.substring(spans.get(i)[0], spans.get(i)[1]);
             if (isAd(p)) { dropped++; continue; }
@@ -76,15 +80,19 @@ public final class PlutoMpdFilter {
             String head = p.substring(0, headEnd + 1);
             Matcher dm = DURATION.matcher(head);
             double dur = dm.find() ? seconds(dm.group(1)) : -1;
-            if (dur < 0 && i != spans.size() - 1) return null;   // can't place what comes after it
+            // Every kept period needs an explicit duration: it places the next period's start and the
+            // rewritten mediaPresentationDuration. Without one (even on the last period) the new total
+            // would be wrong (e.g. PT0.000S), so leave the manifest alone instead.
+            if (dur <= 0) return null;
+            if (hasClipBaseUrl(p)) keptClips++;
             String newHead = START.matcher(head).find()
                     ? START.matcher(head).replaceFirst(" start=\"" + iso(t) + "\"")
                     : head.replaceFirst("<Period", "<Period start=\"" + iso(t) + "\"");
             out.append(newHead).append(p, headEnd + 1, p.length());
-            if (dur > 0) t += dur;
+            t += dur;
             kept++;
         }
-        if (dropped == 0 || kept == 0) return null;
+        if (dropped == 0 || kept == 0 || keptClips == 0) return null;
         out.append(mpd, spans.get(spans.size() - 1)[1], mpd.length());
 
         String result = out.toString().replaceFirst("mediaPresentationDuration=\"PT[^\"]*\"",
@@ -93,27 +101,34 @@ public final class PlutoMpdFilter {
         return result;
     }
 
-    // Content (the show, Pluto's own warning cards) always comes from a partner's /clip/ folder, e.g.
-    // /704_Comedy_Central_Nordics/clip/... or /190_pluto/clip/...; ads come from /v1/mp4/... (creatives) and /v1/jit/...
-    // (bumpers), and on the TV some ads were not marked _ad/creative at all (one played ~100 s). So a period is an ad
-    // when it is marked as one OR when none of its BaseURLs points into a /clip/ folder.
+    // Content (the show, Pluto's own warning cards) comes from a partner's /clip/ folder, e.g.
+    // /704_Comedy_Central_Nordics/clip/... or /190_pluto/clip/...; ads come from /v1/mp4/... (creatives) and
+    // /v1/jit/... (bumpers). On the TV some ads were not marked _ad/creative at all (one played ~100 s), so an
+    // unmarked period whose BaseURL is on one of those ad paths is an ad too. A period whose BaseURL is in
+    // neither layout is KEPT (unknown layout -> fail open) rather than guessed to be an ad.
     private static final Pattern BASE_URL = Pattern.compile("<BaseURL[^>]*>([^<]*)</BaseURL>");
+    private static final String[] AD_PATHS = { "/v1/mp4/", "/v1/jit/" };
 
-    private static boolean isAd(String period) {
+    static boolean isAd(String period) {
         for (String m : AD_MARKERS) if (period.contains(m)) return true;
         Matcher m = BASE_URL.matcher(period);
-        boolean any = false;
+        String adUrl = null;
         while (m.find()) {
-            any = true;
-            if (m.group(1).contains("/clip/")) return false;
+            String u = m.group(1);
+            if (u.contains("/clip/")) return false;
+            for (String a : AD_PATHS) if (u.contains(a) && adUrl == null) adUrl = u;
         }
-        if (any) {
-            Matcher f = BASE_URL.matcher(period); f.find();
-            String u = f.group(1);
-            Log.i(TAG, "dropping unmarked period from " + u.substring(0, Math.min(90, u.length())));
+        if (adUrl != null) {
+            Log.i(TAG, "dropping unmarked ad period from " + adUrl.substring(0, Math.min(90, adUrl.length())));
             return true;
         }
-        return false;   // no BaseURL to judge by: keep it (fail-open)
+        return false;   // no BaseURL, or an unrecognized layout: keep it (fail-open)
+    }
+
+    private static boolean hasClipBaseUrl(String period) {
+        Matcher m = BASE_URL.matcher(period);
+        while (m.find()) if (m.group(1).contains("/clip/")) return true;
+        return false;
     }
 
     private static double seconds(String iso) {
