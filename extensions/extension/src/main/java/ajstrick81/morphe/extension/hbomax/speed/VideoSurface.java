@@ -25,16 +25,26 @@ final class VideoSurface {
     }
 
     static View find(View root) {
-        return findLargest(root, null);
+        return find(root, MINIMUM_EDGE_PIXELS, MINIMUM_EDGE_PIXELS);
     }
 
-    private static View findLargest(View view, View best) {
+    /**
+     * Largest visible surface at least {@code minWidth} x {@code minHeight}.
+     * The controller passes ~75% of the window so home-screen hero/trailer
+     * surfaces don't count as "the player" (issue #258 launch flicker).
+     */
+    static View find(View root, int minWidth, int minHeight) {
+        return findLargest(root, null,
+                Math.max(minWidth, MINIMUM_EDGE_PIXELS), Math.max(minHeight, MINIMUM_EDGE_PIXELS));
+    }
+
+    private static View findLargest(View view, View best, int minWidth, int minHeight) {
         if (view == null) return best;
 
         if (view instanceof SurfaceView || view instanceof TextureView) {
-            if (view.getWidth() >= MINIMUM_EDGE_PIXELS
-                    && view.getHeight() >= MINIMUM_EDGE_PIXELS
-                    && view.getVisibility() == View.VISIBLE
+            if (view.getWidth() >= minWidth
+                    && view.getHeight() >= minHeight
+                    && view.isShown()
                     && (best == null || area(view) > area(best))) {
                 best = view;
             }
@@ -44,7 +54,7 @@ final class VideoSurface {
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
             for (int i = 0; i < group.getChildCount(); i++) {
-                best = findLargest(group.getChildAt(i), best);
+                best = findLargest(group.getChildAt(i), best, minWidth, minHeight);
             }
         }
 
