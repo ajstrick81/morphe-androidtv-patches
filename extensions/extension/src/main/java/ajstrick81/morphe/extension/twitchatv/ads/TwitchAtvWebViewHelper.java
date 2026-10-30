@@ -31,12 +31,12 @@ import java.io.OutputStream;
 import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URI;
 import java.net.URLEncoder;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.json.JSONObject;
 import java.nio.charset.StandardCharsets;
@@ -159,11 +159,14 @@ public final class TwitchAtvWebViewHelper {
     private static final String USHER_HOST = "usher.ttvnw.net";
     private static final String USHER_PATH = "/api/channel/hls/";
 
-    /** Usher master playlist request (the per-channel entry point): exact host + path. */
+    /** Usher master playlist request (the per-channel entry point): exact host + path.
+     *  Uses java.net.URL (lenient) rather than java.net.URI (RFC-strict), so a valid
+     *  usher URL carrying a character URI would reject is still matched instead of
+     *  silently skipping the whole ad-free path. */
     static boolean isUsherMaster(String url) {
         if (url == null) return false;
         try {
-            URI u = new URI(url);
+            URL u = new URL(url);
             String path = u.getPath();
             return USHER_HOST.equalsIgnoreCase(u.getHost())
                 && path != null && path.startsWith(USHER_PATH) && path.endsWith(".m3u8");
@@ -177,7 +180,7 @@ public final class TwitchAtvWebViewHelper {
         if (!isUsherMaster(url)) return null;
         String path;
         try {
-            path = new URI(url).getPath();
+            path = new URL(url).getPath();
         } catch (Throwable t) {
             return null;
         }
@@ -211,10 +214,15 @@ public final class TwitchAtvWebViewHelper {
         final String login = channelFromUsher(url);
         if (login == null) return null;
         final long deadline = System.currentTimeMillis() + AD_FREE_BUDGET_MS;
+        // The worker publishes its current connection here so the timeout path below can
+        // disconnect() it: f.cancel(true) only interrupts the thread, which HttpURLConnection
+        // ignores, so without this an orphaned worker keeps blocking the socket until its own
+        // per-call timeout and the cached pool accumulates threads under repeated stalls.
+        final AtomicReference<HttpURLConnection> inFlight = new AtomicReference<>();
         Future<String> f = AD_FREE_POOL.submit(() -> {
             for (String playerType : AD_FREE_PLAYER_TYPES) {
                 if (System.currentTimeMillis() >= deadline) return null;
-                String body = fetchAdFreeMaster(url, login, playerType, deadline);
+                String body = fetchAdFreeMaster(url, login, playerType, deadline, inFlight);
                 if (body == null || !body.contains("#EXT-X-STREAM-INF")) continue;
                 Log.i(TAG, "ad-free master playlist via playerType=" + playerType + " for " + login);
                 return body;
@@ -226,6 +234,10 @@ public final class TwitchAtvWebViewHelper {
             return body == null ? null : m3u8Response(body);
         } catch (Throwable t) {
             f.cancel(true);
+            HttpURLConnection c = inFlight.getAndSet(null);
+            if (c != null) {
+                try { c.disconnect(); } catch (Throwable ignored) { }
+            }
             Log.i(TAG, "ad-free token path gave up (" + t.getClass().getSimpleName()
                 + "); using the app's own playlist");
             return null;
@@ -233,11 +245,11 @@ public final class TwitchAtvWebViewHelper {
     }
 
     private static String fetchAdFreeMaster(String originalUrl, String login, String playerType,
-                                            long deadline) {
+                                            long deadline, AtomicReference<HttpURLConnection> inFlight) {
         String query = "{\"query\":\"query{streamPlaybackAccessToken(channelName:\\\""
             + login + "\\\",params:{platform:\\\"web\\\",playerBackend:\\\"mediaplayer\\\","
             + "playerType:\\\"" + playerType + "\\\"}){value signature}}\"}";
-        String json = httpPost(TWITCH_GQL, query, remaining(deadline));
+        String json = httpPost(TWITCH_GQL, query, remaining(deadline), inFlight);
         if (json == null) return null;
         String[] token = parseAccessToken(json);
         if (token == null) {
@@ -247,7 +259,7 @@ public final class TwitchAtvWebViewHelper {
         String usher = withToken(originalUrl, token[0], token[1]);
         if (usher == null) return null;
         int left = remaining(deadline);
-        return left <= 0 ? null : httpGet(usher, left);
+        return left <= 0 ? null : httpGet(usher, left, inFlight);
     }
 
     private static int remaining(long deadline) {
@@ -299,10 +311,16 @@ public final class TwitchAtvWebViewHelper {
 
     /** POSTs a GQL query with the public web Client-ID. */
     private static String httpPost(String url, String body, int timeoutMs) {
+        return httpPost(url, body, timeoutMs, null);
+    }
+
+    private static String httpPost(String url, String body, int timeoutMs,
+                                   AtomicReference<HttpURLConnection> inFlight) {
         if (timeoutMs <= 0) return null;
         HttpURLConnection conn = null;
         try {
             conn = (HttpURLConnection) new URL(url).openConnection();
+            if (inFlight != null) inFlight.set(conn);
             conn.setRequestMethod("POST");
             conn.setConnectTimeout(timeoutMs);
             conn.setReadTimeout(timeoutMs);
@@ -321,6 +339,7 @@ public final class TwitchAtvWebViewHelper {
             Log.e(TAG, "gql request failed: " + t);
             return null;
         } finally {
+            if (inFlight != null) inFlight.compareAndSet(conn, null);
             if (conn != null) conn.disconnect();
         }
     }
@@ -1177,10 +1196,16 @@ public final class TwitchAtvWebViewHelper {
     }
 
     private static String httpGet(String url, int timeoutMs) {
+        return httpGet(url, timeoutMs, null);
+    }
+
+    private static String httpGet(String url, int timeoutMs,
+                                  AtomicReference<HttpURLConnection> inFlight) {
         if (timeoutMs <= 0) return null;
         HttpURLConnection conn = null;
         try {
             conn = (HttpURLConnection) new URL(url).openConnection();
+            if (inFlight != null) inFlight.set(conn);
             conn.setRequestMethod("GET");
             conn.setConnectTimeout(timeoutMs);
             conn.setReadTimeout(timeoutMs);
@@ -1193,6 +1218,7 @@ public final class TwitchAtvWebViewHelper {
             Log.e(TAG, "httpGet failed: " + t);
             return null;
         } finally {
+            if (inFlight != null) inFlight.compareAndSet(conn, null);
             if (conn != null) conn.disconnect();
         }
     }
