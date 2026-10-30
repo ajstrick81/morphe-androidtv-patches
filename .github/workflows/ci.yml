@@ -9,6 +9,34 @@ on:
       - main
 
 jobs:
+  checks:
+    name: Repo checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Claude Code guard hooks (.claude/hooks/): labelled cases, run through
+      # the real hook processes. Stdlib Python, no network.
+      - name: Guard hook tests
+        run: |
+          python3 .claude/hooks/test_guard_fetch_exec.py
+          python3 .claude/hooks/test_guard_commit_secrets.py
+
+      # Backstop for commits made outside Claude Code (web edits, local git).
+      - name: Secret scan of this branch
+        run: |
+          if git merge-base origin/main HEAD >/dev/null 2>&1; then
+            python3 .claude/hooks/guard_commit_secrets.py --range origin/main...HEAD
+          else
+            echo "No common ancestor with main (pre-2026-08-28 history); skipping."
+          fi
+
+      - name: Docs links and Mermaid
+        run: python3 scripts/check_docs.py
+
   build:
     name: Build
     runs-on: ubuntu-latest
