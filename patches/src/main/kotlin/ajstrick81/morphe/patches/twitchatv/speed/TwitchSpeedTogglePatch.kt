@@ -1,5 +1,7 @@
 package ajstrick81.morphe.patches.twitchatv.speed
 
+// Playback speed controls contributed by Lennart Abeln (github.com/lennartabeln).
+
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.AppTarget
 import app.morphe.patcher.patch.Compatibility
