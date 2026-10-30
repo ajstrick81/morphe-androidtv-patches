@@ -261,7 +261,7 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 > **About this patch:** No DNS required.
 
-1. Open the **[Peacock TV (Android TV) 7.8.100 release on APKMirror](https://www.apkmirror.com/apk/peacock-tv-llc/peacock-tv-android-tv/peacock-tv-stream-tv-movies-android-tv-7-8-100-apk-release/)** directly (this is version **`7.8.100`** — use this link rather than searching, which can land on a similarly-named build). Versions **`7.10.102`**, **`7.5.102`** and **`7.6.100`** are also supported.
+1. Open the **[Peacock TV (Android TV) 7.8.100 release on APKMirror](https://www.apkmirror.com/apk/peacock-tv-llc/peacock-tv-android-tv/peacock-tv-stream-tv-movies-android-tv-7-8-100-apk-release/)** directly (this is version **`7.8.100`** — use this link rather than searching, which can land on a similarly-named build). Version **`7.10.102`** is also supported. (Peacock now force-updates `7.6.100` and older, so those builds no longer work.)
    > This release has three bundles — pick **`arm64-v8a + armeabi-v7a`** (Android 6.0+). The `armeabi-v7a`-only bundle needs Android 12L+, and the `arm64-v8a`-only one won't run on 32-bit TV boxes.
 2. Download the `.apkm` file
 3. Select it in Morphe Manager
