@@ -6,7 +6,7 @@ import ajstrick81.morphe.patches.pluto.shared.Constants
 
 @Suppress("unused")
 val skipAdsV17Patch = bytecodePatch(
-    name = "Skip ads",
+    name = "Skip ads (v17)",
     description = "Removes Pluto TV's on-demand (VOD) ads on the v17.x rebuild (the " +
         "Paramount+/AVIA player stack). Four layers: (1+2) force AVIA's DAI and IMA " +
         "shouldPlayAd() gates to false so the pre-roll ad pods are skipped natively; " +
