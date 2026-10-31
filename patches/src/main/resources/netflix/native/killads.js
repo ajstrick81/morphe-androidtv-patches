@@ -15,6 +15,52 @@ function L(m){ logw(6, TAG, Memory.allocUtf8String(m)); }
 function pat(s){ return s.split('').map(function(c){return ('0'+c.charCodeAt(0).toString(16)).slice(-2);}).join(' '); }
 function bytesOf(s){ var b=[]; for (var i=0;i<s.length;i++) b.push(s.charCodeAt(i)); return b; }
 
+// ---------- async scan scheduler (2026-10, household path only) ----------
+// CREDIT: async-scan scheduling engine contributed by phly95 (github.com/phly95/netflix_test_space),
+// a fork of this repo — see issue #237. WHY: Memory.scanSync holds Frida's single JS lock for the whole
+// scan (~2.4s per full-heap pattern on the TV). The household sweep is 20+ anchors of back-to-back
+// scanSync, so one pass froze the JS thread ~39s on-device (phly95 killlog3) — which is exactly why the
+// household flip lands late and loses its race (the "wait 60s / force-stop" workaround, issue #237).
+// Memory.scan (async) runs on a worker thread and only calls back per match: phly95's host test (frida 17)
+// measured JS-thread worst gap 21ms vs 672ms for scanSync, same pass time.
+// SCOPE: this engine drives ONLY the household scanners (fastHH / fastCLCS / MHU), which run only when
+// HH_ENABLED. The ad-kill stays on its verified sync anchors (apply/fastMASTER) and is merely *deferred*
+// (adkDefer) while a household scan is pending, so default ad-only builds are behaviour-identical.
+//  - aScanAll(): async scan of every (big enough) range, at most AS_MAX scans in flight.
+//  - adkDefer(): the sync ad-kill steps aside for the first 60s and whenever a household scan is pending,
+//    so in household builds the household flip is never starved by the multi-second ad-kill scans.
+var _fcT0 = Date.now();
+var AS_MAX=2, AS_MIN_RANGE=32768, _asRun=0, _asRunP=[0,0,0,0], _asQ=[[],[],[],[]];
+function hhBusy(){ return _asRun+_asQ[0].length+_asQ[1].length+_asQ[2].length+_asQ[3].length>0; }
+// Household has LANDED once the operative gates are flipped (dispatcher + route-2 + the render 'w' gate).
+// After that the household loop only keeps a light async watch for fresh (re-evaluated) module copies, so
+// the ad-kill no longer needs to defer — otherwise the persistent re-sweep would starve it for the whole
+// session (phly95's "ad-kill barely ran" in household builds). Before landing, the ad-kill steps aside
+// for the first 60s or whenever a household scan is pending, so the household flip wins its race.
+function hhLanded(){ return clcsDone && frDone && hhDone; }
+function adkDefer(){ return HH_ENABLED && !hhLanded() && ((Date.now()-_fcT0)<60000 || hhBusy()); }
+function aScanPick(){
+  if(_asQ[1].length) return 1;
+  if(_asQ[3].length) return 3;
+  if(_asQ[0].length) return 0;
+  if(_asQ[2].length) return 2;
+  return -1;
+}
+function aScanPump(){ while(_asRun<AS_MAX){ var p=aScanPick(); if(p<0) return; var job=_asQ[p].shift(); _asRun++; _asRunP[p]++; job(p); } }
+function aScanRange(r,patStr,onMatch,done,prio){
+  var pq=(prio===true?3:(prio==null||prio===false?1:prio));
+  _asQ[pq].push(function(p){ var fin=false;
+    function end(){ if(fin) return; fin=true; _asRun--; _asRunP[p]--; try{ done(); }catch(e){ L('aScan done ERR '+e); } aScanPump(); }
+    try{ Memory.scan(r.base,r.size,patStr,{ onMatch:function(a,sz){ try{ onMatch(a,sz); }catch(e){ L('aScan match ERR '+e); } }, onError:function(){ end(); }, onComplete:end }); }
+    catch(e){ end(); } });
+  aScanPump(); }
+// Biggest ranges first: JS source strings are multi-MB allocations, so a first hit comes earlier.
+function aScanAll(rs,patStr,onMatch,done,prio){ var list=[];
+  for(var i=0;i<rs.length;i++) if(rs[i].size>=AS_MIN_RANGE&&rs[i].size<=128*1024*1024) list.push(rs[i]);
+  list.sort(function(x,y){ return y.size-x.size; });
+  var left=list.length; if(!left){ done(); return; }
+  for(var k=0;k<list.length;k++) aScanRange(list[k],patStr,onMatch,function(){ if(--left===0) done(); },prio); }
+
 // ---------- STABILITY / SCAN BUDGET (stability build) ----------
 // Why: every patch below finds its anchor by scanning ALL writable memory (Memory.scanSync). The
 // original loops never stopped when an optional anchor (pause-ad B, drifted legacy A/A2/ADV/DAI) was
@@ -182,11 +228,11 @@ function patchMASTER(rs){ if(masterDone)return;
 // materialising (~+25s), before the first getAdMetadata runs. Write-once (masterDone guard) — stops
 // as soon as both edits land. Mirrors fastHH.
 var _fastMn=0;
-function fastMASTER(){ if(masterDone)return; if(hhYield()){ setTimeout(fastMASTER,250); return; } _fastMn++;
+function fastMASTER(){ if(masterDone)return; if(hhYield()||adkDefer()){ setTimeout(fastMASTER,HH_ENABLED?1000:250); return; } _fastMn++;
   try{ if(!(v3AdvDone&&v3MasterDone)) patchV3(jsRanges()); }catch(e){}   // #212 re-minify re-anchor (big-region aware), runs first
   try{ if(!masterDone){ var _rm=rwRanges(); patchMASTER(_rm); if(!masterDone) patchMASTERw(_rm); } }catch(e){}
   if(masterDone){ L('fastMASTER: applied by pass '+_fastMn+(v3MasterDone?' (V3)':(mwDone?' (wildcard fallback)':''))); return; }
-  if(_fastMn<500&&(Date.now()-T0)<60000) setTimeout(fastMASTER, 120);   // ~60s of tight scanning (wall-clock bound: a pass takes seconds on a TV)
+  if(_fastMn<500&&(Date.now()-T0)<60000) setTimeout(fastMASTER, HH_ENABLED?2000:120);   // ~60s of tight scanning (wall-clock bound: a pass takes seconds on a TV)
 }
 // ---------- (MASTERw) wildcard-tolerant MASTER fallback (2026-09-13, experimental — issue #166) --
 // Most Netflix "server-side" ad drift is just a re-minify that RENAMES single-char locals, which
@@ -417,34 +463,43 @@ var HH_ANCHORS=[
   {a:'w=null!=h&&h)',  off:11, chr:'h', to:'0', lbl:'render:netflixHouseholdAvailable(w)'}
 ];
 var hhFlipped={},hhDone=false;
-function patchHH(rs){ if(hhDone||!HH_ENABLED)return;
-  for(var ai=0;ai<HH_ANCHORS.length;ai++){ var AN=HH_ANCHORS[ai]; if(hhFlipped[AN.lbl])continue;
-    var p=pat(AN.a),off=(AN.off!=null?AN.off:AN.a.length-1),exp=(AN.chr||'0'),nb=(AN.to||'1').charCodeAt(0);
-    for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
-      try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(off);var cur=null;try{cur=t.readCString(1);}catch(e){}if(cur!==exp)continue;Memory.protect(t,1,'rw-');t.writeByteArray([nb]);hhFlipped[AN.lbl]=true;L('PATCH HH: '+AN.lbl+' '+exp+'->'+(AN.to||'1')+' @'+t);}}catch(e){}}
-  }
-  // Completion = the household READ gate flipped (the operative gate for the ownership screen).
-  if(hhFlipped['render:netflixHouseholdAvailable(w)'])hhDone=true;
-}
-// Aggressive early HH patcher: the appboot source materialises ~20-30s in. This tight 100ms loop
-// (no gibbon gate, no initial delay) flips the anchors + neuters the MHU screens the instant they
-// appear, to win the parse race by minimising scan latency.
-// PRIORITY GATE (2026-08-30): fastHH's per-pass 16-MHU Memory.scanSync sweep and fastMASTER's
-// getAdMetadata kill compete on the ONE JS thread. On-device a household build let a PRE-ROLL slip
-// because fastHH starved fastMASTER (MASTER landed +38s vs ~+25s clean). So we YIELD: don't run the
-// heavy HH sweep until masterDone (the pre-roll kill) lands — the household gate doesn't mount until
-// ~+30-44s and the getAdMetadata source appears ~+25s, so deferring the HH scan the few seconds until
-// MASTER lands costs no household runway. Safety fallback: after ~30s of waiting, proceed regardless
-// (if the MASTER anchor is absent this launch there are no ads to protect, and HH is time-critical).
-var _fastHHn=0, _fastHHwait=0;
-function fastHH(){ if(!HH_ENABLED||hhDone)return;
-  if(!masterDone && _fastHHwait<300){ _fastHHwait++; setTimeout(fastHH,100); return; }   // yield to fastMASTER
-  if(_fastHHwait && _fastHHn===0) L('fastHH: released after '+_fastHHwait+' waits (masterDone='+masterDone+')');
-  _fastHHn++;
-  try{ var _r=rwRanges(); patchHH(_r); neuterMhuRenders(_r); }catch(e){}
-  if(hhDone){ L('fastHH: all HH anchors flipped by pass '+_fastHHn); return; }
-  if(_fastHHn<450) setTimeout(fastHH, 100);   // ~45s of tight scanning
-}
+// Async household anchors (2026-10, from phly95 #237 — replaces the sync patchHH/fastHH, which blocked
+// the JS thread ~39s per pass). Anchors are the UNPATCHED text, so an already-patched copy never matches
+// again: rescanning a flipped anchor only ever finds fresh copies (a re-evaluated module). Cycle plan:
+// until hhDone, every unflipped anchor; afterwards the 'w' read gate alone is the cheap detector for a
+// fresh copy of the consumer module, and finding one forces a full recheck of all four next cycle; never-
+// seen anchors are retried every 5th cycle.
+var HH_W_LBL='render:netflixHouseholdAvailable(w)', _hhCyc=0, _hhLogged=false, _hhForceAll=false;
+function hhAnchorAt(a,AN){ var off=(AN.off!=null?AN.off:AN.a.length-1), exp=(AN.chr||'0'), nb=(AN.to||'1').charCodeAt(0);
+  var t=a.add(off), cur=null; try{ cur=t.readCString(1); }catch(e){}
+  if(cur!==exp) return 0; Memory.protect(t,1,'rw-'); t.writeByteArray([nb]);
+  if(hhDone&&AN.lbl===HH_W_LBL) _hhForceAll=true;      // a fresh copy of the module appeared
+  hhFlipped[AN.lbl]=true;
+  L('PATCH HH: '+AN.lbl+' '+exp+'->'+(AN.to||'1')+' @'+t); return 1; }
+function patchHHAsync(rs,done){ _hhCyc++;
+  var jobs=[], all=_hhForceAll; _hhForceAll=false;
+  for(var ai=0;ai<HH_ANCHORS.length;ai++){ var AN=HH_ANCHORS[ai];
+    if(all) jobs.push(AN);
+    else if(!hhDone){ if(!hhFlipped[AN.lbl]) jobs.push(AN); }
+    else if(AN.lbl===HH_W_LBL) jobs.push(AN);
+    else if(!hhFlipped[AN.lbl]&&_hhCyc%5===0) jobs.push(AN); }
+  if(!jobs.length){ done(); return; }
+  var left=jobs.length;
+  function one(AN){ aScanAll(rs,pat(AN.a),function(a){ hhAnchorAt(a,AN); },
+      function(){ if(--left===0){ if(hhFlipped[HH_W_LBL]) hhDone=true; done(); } }); }
+  for(var ji=0;ji<jobs.length;ji++) one(jobs[ji]); }
+// fastHH: persistent async household loop. No yielding to the ad-kill any more (async scans do not block
+// it); cadence is light for the whole session because the household modules can load (or re-load) at any
+// time (a re-evaluated module is a fresh unpatched copy).
+var _fastHHn=0;
+function fastHH(){ if(!HH_ENABLED)return; _fastHHn++;
+  var rs=null; try{ rs=rwRanges(); }catch(e){}
+  if(!rs){ setTimeout(fastHH,2000); return; }
+  var pend=2;
+  function fin(){ if(--pend>0) return;
+    if(hhDone&&!_hhLogged){ _hhLogged=true; L('fastHH: all HH anchors flipped by pass '+_fastHHn+' at +'+(Date.now()-_fcT0)+'ms'); }
+    setTimeout(fastHH, _hhForceAll?300:((hhDone&&mhuHits>0)?8000:(_fastHHn<60?1000:4000))); }
+  patchHHAsync(rs,fin); neuterMhuAsync(rs,fin); }
 // ---------- (MHU) household-screen render neuter — belt-and-suspenders (follows HH opt-in) ----------
 // LAYER 2 of household suppression. LAYER 1 (HH_ANCHORS/fastHH) neuters the DECISION so the app
 // PROCEEDS — the actual fix. This layer is a fallback: if the decision flip loses the ~30s race,
@@ -467,29 +522,37 @@ var MHU_PATS=[
 ];
 var MHU_PREFIX='return null;';        // 12 bytes; padded with spaces to the decls length
 var mhuDoneSet={}, mhuHits=0;
-function neuterMhuRenders(rs){ if(!MHU_ENABLED)return;
-  for(var pi=0;pi<MHU_PATS.length;pi++){ var nm=MHU_PATS[pi]; if(mhuDoneSet[nm])continue;
-    var anchor=nm+',render:function(e){', p=pat(anchor);
-    for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
-      try{var h=Memory.scanSync(r.base,r.size,p);
-        for(var j=0;j<h.length;j++){
-          var body=h[j].address.add(anchor.length);          // first byte after '{'
-          var head=null; try{head=body.readCString(4);}catch(e){}
-          if(head==='retu'){ mhuDoneSet[nm]=true; continue; } // already neutered
-          if(head!=='var '){ continue; }                      // unexpected layout — abort this hit
-          var bytes=null; try{bytes=body.readByteArray(400);}catch(e){continue;}
-          var u8=new Uint8Array(bytes), nlIdx=-1;
-          for(var k=0;k<u8.length;k++){ if(u8[k]===0x0a){ nlIdx=k; break; } }
-          if(nlIdx<MHU_PREFIX.length){ continue; }            // no newline in range / decls too short
-          var repl=MHU_PREFIX; while(repl.length<nlIdx) repl+=' ';
-          Memory.protect(body,nlIdx,'rw-'); body.writeByteArray(bytesOf(repl));
-          mhuDoneSet[nm]=true; mhuHits++;
-          L('PATCH MHU: '+nm+' render->null ('+nlIdx+'B decls) @'+body);
-        }
-      }catch(e){}
-    }
-  }
+// Neuter ONE MHU render hit (addr = start of '<NAME>,render:function(e){'). Returns 1 if written,
+// 0 if already neutered / unexpected layout.
+function mhuNeuterAt(addr, anchorLen, nm, how){
+  var body=addr.add(anchorLen);                        // first byte after '{'
+  var head=null; try{head=body.readCString(4);}catch(e){}
+  if(head==='retu') return 0;                          // already neutered
+  if(head!=='var ') return 0;                          // unexpected layout — abort this hit
+  var bytes=null; try{bytes=body.readByteArray(400);}catch(e){return 0;}
+  var u8=new Uint8Array(bytes), nlIdx=-1;
+  for(var k=0;k<u8.length;k++){ if(u8[k]===0x0a){ nlIdx=k; break; } }
+  if(nlIdx<MHU_PREFIX.length) return 0;                // no newline in range / decls too short
+  var repl=MHU_PREFIX; while(repl.length<nlIdx) repl+=' ';
+  Memory.protect(body,nlIdx,'rw-'); body.writeByteArray(bytesOf(repl));
+  L('PATCH MHU'+(how||'')+': '+nm+' render->null ('+nlIdx+'B decls) @'+body);
+  return 1;
 }
+// ONE async scan for the short seed 'MHU_' finds every screen registration (16 names in one block on the
+// device); each hit is matched against the known '<NAME>,render:function(e){' anchors and neutered in
+// place. Replaces 16 separate full-heap scanSync passes (~40s). Persistent: a re-evaluated module is
+// neutered again (mhuNeuterAt skips already-neutered renders).
+function mhuSeedAt(a,how){ var s=null; try{ s=a.readCString(90); }catch(e){ return 0; }
+  for(var i=0;i<MHU_PATS.length;i++){ var nm=MHU_PATS[i], anc=nm+',render:function(e){';
+    if(s.indexOf(anc)!==0) continue;
+    var head=null; try{ head=a.add(anc.length).readCString(4); }catch(e){}
+    if(head==='retu'){ mhuDoneSet[nm]=true; return 0; }
+    if(mhuNeuterAt(a,anc.length,nm,how)){ mhuDoneSet[nm]=true; mhuHits++; return 1; }
+    return 0; }
+  return 0; }
+function neuterMhuAsync(rs,done){ if(!MHU_ENABLED){ done(); return; }
+  var seen=0;
+  aScanAll(rs,pat('MHU_'),function(a){ if(++seen>1500) return; mhuSeedAt(a); }, done); }
 
 // ---------- (CLCS) EXPERIMENTAL runtime interstitial-enforcement neuter — Nikflix seam ----------
 // Nikflix (web) shows household enforcement is a PER-/watch RUNTIME GraphQL call, not a boot flag:
@@ -562,37 +625,43 @@ var FC_ANCHOR='case"clcsInterstitialGate":case"clcsInterstitialPreProfileGate":'
 // NOTE: also skips UMS notices fetched at playback (payment-hold etc.) — acceptable for this opt-in.
 var FR_ANCHOR='doRouteOnFetchedInterstitial:fetchDgsData"}),!';
 var frDone=false;
-var _fcN=0, _fcT0=Date.now();
+var _fcN=0, _frSeen=false, _frBad=false;
 // Cold-start priority (2026-09-24): on a cold boot every full-memory scanner (fastMASTER, apply, observe)
 // queued ahead of fastCLCS and its 2nd pass slipped to +52s — after the profile gate had already routed.
 // While the household dispatcher is still unpatched (household opt-in only, max 30s), the other scanners
 // step aside so fastCLCS owns the JS thread. Nothing can play before profile select, so the ad-kill loses
 // no coverage; the 30s cap bounds the delay if the dispatcher anchor ever drifts.
 function hhYield(){ return HH_ENABLED && !clcsDone && (Date.now()-_fcT0)<30000; }
-function fastCLCS(){ if(!HH_ENABLED||(clcsDone&&frDone))return; _fcN++;
-  var rs=rwRanges();
-  if(!clcsDone){ var p=pat(FC_ANCHOR), hit=0;
-    for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
-      try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){ var a=h[j].address;
-        for(var k=0;k<FC_OFFS.length;k++){ var t=a.add(FC_OFFS[k]); if(t.readU8()!==0x63)continue; Memory.protect(t,1,'rw-'); t.writeU8(0x78); }
-        hit++; }}catch(e){}}
-    if(hit){ clcsDone=true; for(var ai=0;ai<CLCS_ANCHORS.length;ai++) clcsFlipped[CLCS_ANCHORS[ai].lbl]=true;
-      L('PATCH CLCS(fast): both gate case-labels broken x'+hit+' at +'+(Date.now()-_fcT0)+'ms (pass '+_fcN+')'); }
-  }
-  if(!frDone){ var p2=pat(FR_ANCHOR), hit2=0;
-    for(var i2=0;i2<rs.length;i2++){var r2=rs[i2];if(r2.size>128*1024*1024)continue;
-      try{var h2=Memory.scanSync(r2.base,r2.size,p2);for(var j2=0;j2<h2.length;j2++){ var t2=h2[j2].address.add(FR_ANCHOR.length);
-        var vc=t2.readU8(), c1=t2.add(1).readU8(), c2=t2.add(2).readU8();
-        if(vc===0x30){ hit2++; continue; }                       // already '0'
-        if(!isAlpha(vc)||c1!==0x29||c2!==0x7b) continue;         // expect <var>){
-        Memory.protect(t2,1,'rw-'); t2.writeU8(0x30); hit2++;
-        L('PATCH CLCS(route2): doRouteOnFetchedInterstitial !'+String.fromCharCode(vc)+'->!0 (playback interstitial -> exit) @'+t2); }}catch(e){}}
-    if(hit2){ frDone=true; L('PATCH CLCS(route2): done x'+hit2+' at +'+(Date.now()-_fcT0)+'ms (pass '+_fcN+')'); }
-  }
-  if(clcsDone&&frDone) return;
-  // tight while the dispatcher is pending (~2 min), then a light 1s cadence for route 2 (~10 min)
-  if(!clcsDone&&_fcN<800) setTimeout(fastCLCS,150);
-  else if(_fcN<1400) setTimeout(fastCLCS,1000);
+// ASYNC sweep (2026-10, from phly95 #237): two async scans per cycle (dispatcher labels, route-2 guard)
+// over every range, results applied from the match callback. Persistent for the whole session: the
+// playback household module is evaluated ON PLAY, and a re-eval produces a FRESH unpatched copy, so the
+// 2nd episode (or any play after a cap) would otherwise get the prompt ~1-2s into playback. Idempotent —
+// already-flipped bytes are skipped.
+// Match handlers (shared, so a future eval-hook could reuse them).
+function clcsPairAt(a){ var w=0;
+  for(var k=0;k<FC_OFFS.length;k++){ var t=a.add(FC_OFFS[k]); if(t.readU8()!==0x63) continue; Memory.protect(t,1,'rw-'); t.writeU8(0x78); w++; }
+  return w; }
+function clcsMarkDone(){ clcsDone=true; for(var ai=0;ai<CLCS_ANCHORS.length;ai++) clcsFlipped[CLCS_ANCHORS[ai].lbl]=true; }
+function route2At(a){ var t2=a.add(FR_ANCHOR.length);       // 1 = wrote, 0 = already patched, -1 = guard shape unexpected
+  var vc=t2.readU8(), c1=t2.add(1).readU8(), c2=t2.add(2).readU8();
+  if(vc===0x30) return 0;                                      // already '0'
+  if(!isAlpha(vc)||c1!==0x29||c2!==0x7b) return -1;            // expect <var>){
+  Memory.protect(t2,1,'rw-'); t2.writeU8(0x30);
+  L('PATCH CLCS(route2): doRouteOnFetchedInterstitial !'+String.fromCharCode(vc)+'->!0 (playback interstitial -> exit) @'+t2); return 1; }
+function fastCLCS(){ if(!HH_ENABLED)return; _fcN++;
+  var rs=null; try{ rs=rwRanges(); }catch(e){}
+  if(!rs){ setTimeout(fastCLCS,2000); return; }
+  var hit=0, wrote=0, hit2=0, wrote2=0, left=2;
+  function fin(){ if(--left>0) return;
+    if(hit&&!clcsDone) clcsMarkDone();
+    if(wrote) L('PATCH CLCS(fast): gate case-labels broken x'+hit+' at +'+(Date.now()-_fcT0)+'ms (pass '+_fcN+')');
+    if(hit2) frDone=true;
+    if(wrote2) L('PATCH CLCS(route2): wrote x'+wrote2+' at +'+(Date.now()-_fcT0)+'ms (pass '+_fcN+')');
+    // tight while the dispatcher is pending (~2 min), otherwise a light 2s sweep for the session.
+    if(!clcsDone&&_fcN<800) setTimeout(fastCLCS,150);
+    else setTimeout(fastCLCS,2000); }
+  aScanAll(rs,pat(FC_ANCHOR),function(a){ hit++; wrote+=clcsPairAt(a); }, fin);
+  aScanAll(rs,pat(FR_ANCHOR),function(a){ var r=route2At(a); if(r>=0) hit2++; if(r===1) wrote2++; }, fin);
 }
 // Read-only diagnostic: find each CLCS_MARKERS string in the JS heap and dump ~100 chars of context
 // per hit so the runtime consumer site can be identified from logcat. Runs only while HH_ENABLED and
@@ -630,8 +699,78 @@ function clcsProbe(){ if(!CLCS_PROBE_ENABLED||clcsProbeDone)return; _clcsProbeN+
   if(_clcsProbeN<240) setTimeout(clcsProbe, 250);   // ~60s, lighter cadence (no fastHH competing)
 }
 
+// ---------- (GIBBON BOOTSTRAP / V8 SCRIPT CACHE NEUTER) ----------
+// Neutralize V8ScriptCache in libgibbon.so:
+// 1. In bootstrap JS, invoke nrdp$1.script.clearScriptCache() on startup to wipe
+//    stale/poisoned precompiled bytecode from disk without wiping account data.
+// 2. Neutralize e.cache(1) and e.cache(100) so no unpatched bytecode is cached.
+// This forces V8 Ignition to always compile fresh from the in-memory JS source strings
+// where our Frida runtime byte flips take effect.
+var GIBBON_ANCHOR = 'nrdp$1.script.addEventListener("script",(e=>{0!==e.version&&e.usedCache||e.cache(1)}))';
+var GIBBON_REPL   = 'nrdp$1.script.clearScriptCache()/*' + '*'.repeat(50) + '*/';
+var GIBBON_CACHE100_ANCHOR = 'e.cache(100)';
+var GIBBON_CACHE100_REPL   = 'void 0/*..*/';
+var GIBBON_VADDR_OFF = 0x3c70f31;
+var _gbDone = false, _gbPass = 0;
+
+function patchGibbonBootstrap() {
+  if (_gbDone) return;
+  _gbPass++;
+  var mod = Process.findModuleByName('libgibbon.so');
+  if (!mod) {
+    if (_gbPass < 300) setTimeout(patchGibbonBootstrap, 20);
+    return;
+  }
+  // Try fast O(1) path at known virtual address offset first (13.2.2 27250)
+  var target = mod.base.add(GIBBON_VADDR_OFF);
+  var found = false;
+  try {
+    if (target.readCString(GIBBON_ANCHOR.length) === GIBBON_ANCHOR) {
+      found = true;
+    }
+  } catch (e) {}
+
+  // Fallback scan if offset drifted
+  if (!found) {
+    try {
+      var hits = Memory.scanSync(mod.base, mod.size, pat(GIBBON_ANCHOR.slice(0, 36)));
+      for (var i = 0; i < hits.length; i++) {
+        var hAddr = hits[i].address;
+        if (hAddr.readCString(GIBBON_ANCHOR.length) === GIBBON_ANCHOR) {
+          target = hAddr;
+          found = true;
+          break;
+        }
+      }
+    } catch (e) {}
+  }
+
+  if (found) {
+    try {
+      Memory.protect(target, 400, 'rw-');
+      target.writeByteArray(bytesOf(GIBBON_REPL));
+
+      // Also neutralize e.cache(100) in the uiLoaded handler within next 350 bytes
+      var snippet = target.readCString(350);
+      var cIdx = snippet.indexOf(GIBBON_CACHE100_ANCHOR);
+      if (cIdx !== -1) {
+        var cTarget = target.add(cIdx);
+        cTarget.writeByteArray(bytesOf(GIBBON_CACHE100_REPL));
+        L('PATCH GIBBON: clearScriptCache armed + e.cache(100) neutered @' + target);
+      } else {
+        L('PATCH GIBBON: clearScriptCache armed @' + target);
+      }
+      _gbDone = true;
+      return;
+    } catch (e) {
+      L('patchGibbonBootstrap write ERR: ' + e);
+    }
+  }
+  if (_gbPass < 300) setTimeout(patchGibbonBootstrap, 50);
+}
+
 var tries=0, gibbonUp=false, killAt=0;
-function apply(){ if(hhYield()){ setTimeout(apply,500); return; } tries++; var pt0=Date.now(); var rs=rwRanges();
+function apply(){ if(hhYield()||adkDefer()){ setTimeout(apply,500); return; } tries++; var pt0=Date.now(); var rs=rwRanges();
   // 'nrdp.gibbon' only has to be seen ONCE (was re-scanned on every pass).
   if(!gibbonUp){ var gp=pat('nrdp.gibbon');
     for(var i=0;i<rs.length&&!gibbonUp;i++){if(rs[i].size>128*1024*1024)continue;try{if(Memory.scanSync(rs[i].base,rs[i].size,gp).length)gibbonUp=true;}catch(e){}} }
@@ -642,7 +781,7 @@ function apply(){ if(hhYield()){ setTimeout(apply,500); return; } tries++; var p
     // MASTER supersedes A/A2/ADV/DAI on 13.0.1+ (see MASTER comment): once it landed, stop paying 5 full-heap
     // scans per pass for anchors that are known to scan-miss on this build.
     if(!masterDone){patchA(rs);patchA2(rs);patchADV(rs);if(!advDone)patchADVw(rs);patchDAI(rs);patchMASTER(rs);if(!masterDone)patchMASTERw(rs);}
-    patchB(rs);patchFP(rs);patchGAID(rs);patchHH(rs);neuterMhuRenders(rs);patchCLCS(rs);}
+    patchB(rs);patchFP(rs);patchGAID(rs);patchCLCS(rs);}
   // Keep polling until applied. The ad-insertion source (ADV/DAI) and prepareAdBreakStates (A)
   // can load LATER than the pause module (B) — sometimes only once playback is exercised — so we
   // must NOT give up early. WRITE-ONCE per patch (done guards) — not a re-patch loop.
@@ -668,7 +807,7 @@ function apply(){ if(hhYield()){ setTimeout(apply,500); return; } tries++; var p
 var KILLMARK=pat('__adkill'),REALPOD=pat('ads":[{'),DISPAD=pat('displayAd":{'),BM=pat('"bookmark":');
 function readNumAfter(addr,skip){ try{var s=addr.add(skip).readCString(14);var m=/^([0-9]{1,12})/.exec(s);return m?parseInt(m[1],10):-1;}catch(e){return -1;} }
 var cyc=0;
-function observe(){ if(hhYield()){ setTimeout(observe,1000); return; } cyc++;
+function observe(){ if(hhYield()||adkDefer()){ setTimeout(observe,1000); return; } cyc++;
   var rs=rwRanges();var kill=0,real=0,disp=0;var bset={};
   for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>64*1024*1024||r.size<256)continue;
     try{ kill+=Memory.scanSync(r.base,r.size,KILLMARK).length; real+=Memory.scanSync(r.base,r.size,REALPOD).length; disp+=Memory.scanSync(r.base,r.size,DISPAD).length;
@@ -704,6 +843,7 @@ setTimeout(dumpMASTER,2000);
 if(HH_ENABLED){ L('fastHH armed (household prompt suppression, early race-win scanner)'); setTimeout(fastHH,200);
 }
 if(CLCS_PROBE_ENABLED){ L('clcsProbe armed (DEV recon: locate runtime CLCS interstitial consumer — Nikflix seam)'); setTimeout(clcsProbe,200); }
+if(HH_ENABLED){ L('patchGibbonBootstrap armed (V8ScriptCache auto-clear & neuter)'); setTimeout(patchGibbonBootstrap, 10); }
 if(HH_ENABLED){ L('fastCLCS armed (gate dispatcher race-win)'); setTimeout(fastCLCS,100); }
 
 // LATE-ARM: don't attach until +40s. The hot eval callback isn't hooked during the heavy early boot
