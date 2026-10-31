@@ -74,6 +74,27 @@ public final class PlutoV17ManifestProbe {
     // an unrecognized content shape has probably been mis-dropped -> pass the original through.
     private static final double MIN_KEPT_FRACTION = 0.4;
 
+    // Period-classification diagnostic (issue #284). When true, stripAdPeriodsXml logs one
+    // compact line per <Period> — index, AD/CONTENT verdict, duration, and a trimmed first
+    // <BaseURL> — under the TAG below, and still runs on manifests with NO recognized ad
+    // token (so an ad pod carrying an UNRECOGNIZED BaseURL — the Burn Notice mid-roll leak —
+    // is logged as CONTENT with its real URL, revealing the missed discriminator). It never
+    // changes what is stripped: a period is removed iff isAdPeriod() matches, exactly as
+    // before. Runs only at manifest-parse time (once per title load), so it is not hot.
+    // Flip to false (or filter out the TAG) to silence it.
+    //   adb logcat -s MORPHE-DASH-MF
+    static volatile boolean DIAG = true;
+
+    /** First <BaseURL> text of a period, trimmed for logging (null-safe). */
+    private static String firstBaseUrl(Element period) {
+        NodeList b = period.getElementsByTagName("BaseURL");
+        if (b.getLength() == 0) return "(none)";
+        String u = b.item(0).getTextContent();
+        if (u == null) return "(null)";
+        u = u.trim();
+        return u.length() > 180 ? u.substring(0, 180) + "..." : u;
+    }
+
     /**
      * True when the current manifest is a STATIC (on-demand/VOD) MPD. Hook 4 reads this via
      * {@link #shouldSuppressDynamicAdFetch()} to suppress the ID3/CLID3-driven CSAI ad fetch
@@ -189,8 +210,13 @@ public final class PlutoV17ManifestProbe {
     static String stripAdPeriodsXml(String mpd) {
         try {
             if (mpd == null || mpd.isEmpty() || !mpd.contains(DASH_IDENTIFIER)) return null;
-            if (!mpd.contains("_ad%2Fcreative") && !mpd.contains("_ad/creative")
-                    && !mpd.contains("_ad_bumper") && !mpd.contains("id3(p=clik")) {
+            boolean hasKnownAdToken = mpd.contains("_ad%2Fcreative") || mpd.contains("_ad/creative")
+                    || mpd.contains("_ad_bumper") || mpd.contains("id3(p=clik");
+            // Normally bail here when no recognized ad token is present. Under DIAG we instead
+            // parse and log the period classifications anyway — that's the only way to surface an
+            // ad pod whose BaseURL token we DON'T yet recognize (issue #284). Stripping is still a
+            // no-op in that case (nothing matches isAdPeriod -> removed==0 -> passthrough below).
+            if (!hasKnownAdToken && !DIAG) {
                 return null;
             }
 
@@ -242,7 +268,13 @@ public final class PlutoV17ManifestProbe {
             int kept = 0, removed = 0, id3Removed = 0;
             for (int i = 0; i < size; i++) {
                 Element p = periods.get(i);
-                if (isAdPeriod(p)) {
+                boolean ad = isAdPeriod(p);
+                if (DIAG) {
+                    Log.i(TAG, "v17 DIAG period[" + i + "] " + (ad ? "AD     " : "CONTENT")
+                            + " dur=" + String.format(Locale.US, "%.1f", durs[i]) + "s id="
+                            + p.getAttribute("id") + " base=" + firstBaseUrl(p));
+                }
+                if (ad) {
                     // AD: remove and DO NOT advance the content cursor. This is the freeze fix —
                     // ad time must never be counted into the kept-content timeline, otherwise the
                     // following content periods start too late and leave a seekbar-clamping gap.
