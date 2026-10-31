@@ -1,5 +1,5 @@
 {
-  "version": "1.46.2",
+  "version": "1.47.0",
   "appNames": {
     "com.disney.disneyplus": "Disney+ Android TV",
     "com.espn.score_center": "ESPN Android TV",
@@ -720,6 +720,49 @@
       "description": "Loads HBO's own ad-free FALLBACK manifest instead of the ad-stitched PRIMARY one by remapping the stream selection in getStreamInfo (only when a FALLBACK stream exists). Ad-free on fresh start and resume with no markers, no timeline gaps, and no 'Couldn't Play Content' (39999) error — and loads faster since no ads are stitched. On by default; field-verified on 7.9.0.61.",
       "use": true,
       "dependencies": [],
+      "compatiblePackages": {
+        "com.wbd.hbomax": [
+          "7.9.0.61",
+          "7.7.0.78",
+          "7.5.0.73",
+          "7.2.0.41"
+        ]
+      },
+      "compatibility": [
+        {
+          "name": "HBO Max Android TV",
+          "packageName": "com.wbd.hbomax",
+          "description": null,
+          "appIconColor": 16777215,
+          "targets": [
+            {
+              "version": "7.9.0.61",
+              "experimental": false
+            },
+            {
+              "version": "7.7.0.78",
+              "experimental": false
+            },
+            {
+              "version": "7.5.0.73",
+              "experimental": false
+            },
+            {
+              "version": "7.2.0.41",
+              "experimental": false
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "HBO Max - Remove Ad Periods (keep 5.1)",
+      "description": "Keeps the normal PRIMARY stream (with 5.1 / E-AC-3 audio) but removes the stitched ad periods from its DASH manifest before playback. Overrides 'Prefer Ad-Free Stream' (its stereo-only fallback remap is switched off automatically). Fail-open: if the manifest cannot be matched, it is left unchanged.",
+      "use": false,
+      "dependencies": [
+        "BytecodePatch"
+      ],
       "compatiblePackages": {
         "com.wbd.hbomax": [
           "7.9.0.61",

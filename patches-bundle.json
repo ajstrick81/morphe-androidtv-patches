@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-10-30T16:17:18",
-  "description": "## [1.46.2](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.46.1...v1.46.2) (2026-10-30)\n\n\n### Bug Fixes\n\n* **disney:** re-pin out-of-household fingerprint for 26.16.0 ([#278](https://github.com/ajstrick81/morphe-androidtv-patches/issues/278)) ([7027d0c](https://github.com/ajstrick81/morphe-androidtv-patches/commit/7027d0c974fad91c4c3c00d09e4de76696392554)), closes [#119](https://github.com/ajstrick81/morphe-androidtv-patches/issues/119)",
-  "download_url": "https://github.com/ajstrick81/morphe-androidtv-patches/releases/download/v1.46.2/patches-1.46.2.mpp",
+  "created_at": "2026-10-31T18:49:13",
+  "description": "# [1.47.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.46.2...v1.47.0) (2026-10-31)\n\n\n### Features\n\n* **hbomax:** remove ad periods, keep 5.1 audio ([#285](https://github.com/ajstrick81/morphe-androidtv-patches/issues/285)) ([d887b59](https://github.com/ajstrick81/morphe-androidtv-patches/commit/d887b59a31c3bb865d3b0ae3ae3a5edba070474f))",
+  "download_url": "https://github.com/ajstrick81/morphe-androidtv-patches/releases/download/v1.47.0/patches-1.47.0.mpp",
   "signature_download_url": "",
-  "version": "1.46.2"
+  "version": "1.47.0"
 }

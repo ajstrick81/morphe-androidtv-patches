@@ -1,3 +1,10 @@
+# [1.47.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.46.2...v1.47.0) (2026-10-31)
+
+
+### Features
+
+* **hbomax:** remove ad periods, keep 5.1 audio ([#285](https://github.com/ajstrick81/morphe-androidtv-patches/issues/285)) ([d887b59](https://github.com/ajstrick81/morphe-androidtv-patches/commit/d887b59a31c3bb865d3b0ae3ae3a5edba070474f))
+
 ## [1.46.2](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.46.1...v1.46.2) (2026-10-30)
 
 
