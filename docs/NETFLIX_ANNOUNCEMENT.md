@@ -1,8 +1,8 @@
 # 🍿 Netflix (Android TV) Ad Patch — Current State
 
-*Last updated: 2026-10-25 · Ships in release `v1.37.4`+ · Target APKs
-`13.0.1 build 25028` (stable) and `13.2.1 build 27207` (**experimental**) —
-both armeabi-v7a*
+*Last updated: 2026-10-31 · Target APKs
+`13.0.1 build 25028` (stable), `13.2.1 build 27207` (**experimental**), and
+`13.2.2 build 27250` (**experimental**) — all armeabi-v7a*
 
 > This is the up-to-date write-up for the Netflix Android TV patch. It replaces
 > the details in the original Reddit post where they differ. That earlier Reddit
@@ -106,11 +106,12 @@ you open the clone instead. Log into the clone once and you're set.
    <https://morphe.software/add-source?github=ajstrick81/morphe-androidtv-patches>
 2. **Get the right APK.** On APKMirror, open the **Netflix (Android TV)** listing
    (publisher *Netflix, Inc.*, package `com.netflix.ninja`) and get version
-   **`13.0.1 build 25028`** (stable) or **`13.2.1 build 27207`** (experimental —
-   see note below). This listing has **no App Bundle** — download the single
-   **`armeabi-v7a`** APK. Morphe Manager flags 13.2.1 as experimental; it's
-   device-verified ad-free but still leans on a drift-tolerant re-anchor (details
-   under [Verified](#verified)).
+   **`13.0.1 build 25028`** (stable), **`13.2.1 build 27207`** (experimental), or
+   **`13.2.2 build 27250`** (experimental — see note below). This listing has
+   **no App Bundle** — download the single **`armeabi-v7a`** APK. Morphe Manager
+   flags 13.2.1 and 13.2.2 as experimental. Note that the household suppression
+   layers (`Suppress Household Prompt`) are client-side prompt and UI suppression
+   only.
 3. **Patch it.** In Morphe, select **Netflix** and apply the patch set:
    - **Remove Netflix ads** — the ad kill (on by default)
    - **Clone Netflix** — required; makes it installable alongside stock (on by
@@ -195,6 +196,14 @@ code on this build, so the kill currently rests on the patch's drift-tolerant
 re-anchor rather than the pristine exact anchors — safe and verify-checked, but
 a cleaner exact re-pin is still planned. If you prefer the most battle-tested
 build, stay on `13.0.1 build 25028`.
+
+**13.2.2 build 27250 (experimental):** verified on-device on a Fire TV Stick 4K Max
+2nd gen (AFTKM, Fire OS 8, armv7a). Features full client-side household prompt
+suppression (`Suppress Household Prompt`) via an async scan scheduler and V8ScriptCache
+auto-clearing (`nrdp$1.script.clearScriptCache()` + `e.cache(100)` neutralization in
+`libgibbon.so`). Confirmed clean across cold reboots, profile selections, and title
+playbacks with the V3 ad-kill and pause overlay fully active. Note that household
+suppression is client-side only; server-side misdetection is determined by your public IP.
 
 ---
 
