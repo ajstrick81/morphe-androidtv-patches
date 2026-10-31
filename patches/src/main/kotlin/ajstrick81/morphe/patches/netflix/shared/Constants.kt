@@ -42,7 +42,7 @@ object Constants {
             // Application anchor re-verified against real bytecode (onCreate .locals 4,
             // instr 0 const-string v0); CertCheck literal present.
             // Verified on-device (AFTKM, Fire OS 8, armv7a).
-            AppTarget("13.2.2", isExperimental = true),
+            AppTarget("13.2.2 build 27250", isExperimental = true),
         )
     )
 }
