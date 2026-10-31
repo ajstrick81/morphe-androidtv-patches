@@ -1,3 +1,10 @@
+# [1.48.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.47.0...v1.48.0) (2026-10-31)
+
+
+### Features
+
+* **netflix:** support 13.2.2 (27250) for household suppression ([#283](https://github.com/ajstrick81/morphe-androidtv-patches/issues/283)) ([220c1f7](https://github.com/ajstrick81/morphe-androidtv-patches/commit/220c1f71bb1ce44bd628e092d803bc3885ee4f6a)), closes [#237](https://github.com/ajstrick81/morphe-androidtv-patches/issues/237)
+
 # [1.47.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.46.2...v1.47.0) (2026-10-31)
 
 
