@@ -151,6 +151,10 @@
             {
               "version": "13.2.1 build 27207",
               "experimental": true
+            },
+            {
+              "version": "13.2.2",
+              "experimental": true
             }
           ]
         }
@@ -273,6 +277,10 @@
             },
             {
               "version": "13.2.1 build 27207",
+              "experimental": true
+            },
+            {
+              "version": "13.2.2",
               "experimental": true
             }
           ]
@@ -863,6 +871,10 @@
             {
               "version": "13.2.1 build 27207",
               "experimental": true
+            },
+            {
+              "version": "13.2.2",
+              "experimental": true
             }
           ]
         }
@@ -1081,6 +1093,10 @@
             {
               "version": "13.2.1 build 27207",
               "experimental": true
+            },
+            {
+              "version": "13.2.2",
+              "experimental": true
             }
           ]
         }
@@ -1112,6 +1128,10 @@
             },
             {
               "version": "13.2.1 build 27207",
+              "experimental": true
+            },
+            {
+              "version": "13.2.2",
               "experimental": true
             }
           ]
@@ -1513,6 +1533,10 @@
             },
             {
               "version": "13.2.1 build 27207",
+              "experimental": true
+            },
+            {
+              "version": "13.2.2",
               "experimental": true
             }
           ]
