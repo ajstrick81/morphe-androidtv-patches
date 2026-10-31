@@ -84,4 +84,12 @@ Modifications:
   Contributed code, used with credit under GPL-3.0.
   Source: https://github.com/michaelbompani/morphe-androidtv-patches
 
+- Joker4Life12 (github.com/Joker4Life12)
+  HBO Max "Remove Ad Periods (keep 5.1)": keeps the PRIMARY (E-AC-3 5.1) DASH
+  manifest and strips its stitched ad <Period>s instead of falling back to the
+  stereo-only ad-free stream. Captured and tested on-device by the author on
+  HBO Max (Android TV) 7.14.0.69.
+  Contributed code, used with credit under GPL-3.0.
+  Source: https://github.com/Joker4Life12/morphe-androidtv-patches (PR #285)
+
 All original authors retain credit for their contributions.
