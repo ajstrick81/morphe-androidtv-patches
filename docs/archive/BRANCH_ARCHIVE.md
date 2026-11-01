@@ -81,3 +81,35 @@ current `main`.
 `claude-push-test-1782171992`, `chore/espn-readme-and-desc`,
 `feat/espn-live-slate`, `fix/paramount-harden-fingerprints-1619`,
 `fix/paramount-slate-revert-hotpath`.
+
+## 2026-11-01 batch (monthly stale report, issue #291)
+
+Nine branches flagged by the monthly **Stale branch report** (no commits in
+30+ days) were archived + deleted. They predated the 2026-08-28 history
+rewrite, so GitHub showed them as ~1000 commits ahead; compared by file
+content, each held only **older versions of files `main` has since evolved
+past** (pre-26.12.1 Disney fingerprints, pre-rewrite `killads.js`, older
+`SEAM_MAP`, etc.) plus one byte-identical, superseded scaffold
+(`extensions/.../peacock/ads/OkHttpWorkaroundInterceptor.kt`, removed from
+`main` on purpose — the `OkHttpWorkaroundInterceptor` name on `main` refers to
+Peacock's own app class, a fingerprint target). All the shipping work these
+branches represent (RaiPlay #217/#220, ESPN scoreboard #221, Netflix #212 via
+#250, Peacock 7.10.102) already landed on `main`. Nothing copied; the tag is
+the record.
+
+| Tag `archive/…` | Tip SHA | Last commit | Notes |
+|---|---|---|---|
+| `claude/github-repo-cleanup-dpn5fl` | `a15e721b` | 2026-09-24 | Pre-rewrite repo-cleanup snapshot; superseded |
+| `fix/seam-map-case-index` | `c87e45a6` | 2026-09-25 | Older seam-map; `main`'s is newer |
+| `claude/sleepy-ramanujan-52uk53` | `518b6085` | 2026-09-26 | Older patch tree snapshot |
+| `feat/raiplay-skip-ads` | `47cac2f7` | 2026-09-27 | RaiPlay skip-ads shipped via #217/#220 |
+| `feat/espn-scoreboard-card` | `d53b6b74` | 2026-09-28 | ESPN scoreboard seam shipped via #221 |
+| `chore/smali-search-tool` | `12ba5c2c` | 2026-09-28 | Older smali-search snapshot |
+| `fix/netflix-212-fastadv` | `cb03d71e` | 2026-09-29 | Netflix #212 shipped via #250 |
+| `fix/peacock-v7.10.102` | `59a55074` | 2026-10-02 | Peacock 7.10.102 bump, landed |
+| `fix/peacock-live-dai-origin-swap` | `4b850a2b` | 2026-10-02 | Peacock LIVE DAI origin-swap research; VOD shipped via #228 |
+
+`claude/jev-implementation-analysis-kwhty2` was on the same report but **kept**:
+it has an open PR (#207) and unique tooling not on `main` (`.claude/hooks/`
+secret-guard hooks + tests, `scripts/check_docs.py`). Resolve #207 before
+archiving it.
