@@ -43,7 +43,7 @@ That line is the reason this project exists. If you own the TV and pay for the s
 | 🟢 ViX | Ads | `4.47.2_tv` | 7/11/26 |
 | 🟢 Pluto TV | VOD ads · live breaks masked (opt-in) | `5.66.0-leanback` | 9/7/26 |
 | 🟢 Paramount+ | VOD + pause ads · live untouched | `16.17.0` | 8/4/26 |
-| 🟢 Twitch | Ad overlay + blanked live ads · TV build only | `13.0.0.2` | 8/22/26 |
+| 🟢 Twitch | Ad-free token + blanked live ads · TV build only | `13.0.0.2` | 10/26/26 |
 | 🟢 ESPN | Live breaks masked (slate + mute) · VOD ads | `6.11.1` | 9/5/26 |
 | 🟢 RTÉ Player | VOD ads · 🇮🇪 geo-locked | `3.160.3` | 9/14/26 |
 | 🔴 Fox One | Under development | — | — |
@@ -282,22 +282,31 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 ### 💜 Twitch
 
-> **About this patch:** **Android TV "Starshot" build only — install exactly `13.0.0.2`** (the phone app is not supported). Removes the on-screen ad-pod overlay/countdown ("Ad · 1 of 3") and blanks stitched (SSAI) ad video on live streams. A brief black gap can remain during a break; a VPN set to Albania is fully ad-free.
+> **About this patch:** **Android TV "Starshot" build only — install exactly `13.0.0.2`** (the phone app is not supported). Removes the on-screen ad-pod overlay/countdown ("Ad · 1 of 3") and gets Twitch to serve an **ad-free live stream** instead of blanking it. If Twitch refuses the clean stream it falls back to blanking the stitched ad video, in which case a brief black gap can remain during a break.
 
 > 🟢 **Working — Android TV "Starshot" build only (`13.0.0.2`).** Twitch live ads
 > are **server-side stitched (SSAI)** into the same stream as the content, and the
-> TV app runs Twitch's web player inside a WebView. This patch intercepts the live
-> HLS playlist and both **(a)** strips the client-side ad-pod tags that drive the
-> on-screen **"Ad · 1 of 3"** countdown/overlay and **(b)** blanks the stitched ad
-> video. Real ad breaks no longer play as an ad. Because the ad occupies real
-> **live** stream time, a brief **black gap** can remain during a break — the ad
-> video is gone, but that slice of live time still has to pass. DNS filters do
-> **not** help here.
+> TV app runs Twitch's web player inside a WebView. Twitch only stitches those ads
+> into the **`site`** player context, so the patch first swaps the channel's usher
+> master playlist for one requested under a **`popout`** playback token — that
+> stream arrived with **no ad segments** in the contributor's tests, so the preroll
+> black screen should disappear. This is the same *playerType spoofing* idea
+> TwitchAdSolutions' `vaft` uses (contributed by [Lennart Abeln](https://github.com/lennartabeln)).
+> It is **experimental**: it holds the app's playlist request for at most 3 s while
+> it tries, then gives up and uses the app's own playlist.
 >
-> 💡 **Want zero ads and no black gap?** Point a VPN at **Albania** — Twitch serves
-> that region genuinely ad-free playlists (no ad is stitched at all). Verified
-> first-hand with **NordVPN → Albania**; pair it with the patch and you're fully
-> covered.
+> If that token is refused (or an ad still slips through, e.g. a stitched mid-roll),
+> the patch falls back to the older behaviour: it intercepts the live HLS playlist,
+> strips the client-side ad-pod tags that drive the **"Ad · 1 of 3"**
+> countdown/overlay, and blanks the stitched ad video. Because the ad occupies real
+> **live** stream time, a brief **black gap** can remain during that break — the ad
+> video is gone, but that slice of live time still has to pass. DNS filters do
+> **not** help here. Details and measurements:
+> [docs/TWITCH_ATV_AD_FREE_TOKEN.md](docs/TWITCH_ATV_AD_FREE_TOKEN.md).
+>
+> 💡 **Backup plan:** point a VPN at **Albania** — Twitch serves that region
+> genuinely ad-free playlists (no ad is stitched at all). Verified first-hand with
+> **NordVPN → Albania**; pair it with the patch and you're fully covered.
 
 1. Open the **[Twitch: Live Streaming (Android TV) 13.0.0.2 release on APKMirror](https://www.apkmirror.com/apk/twitch-interactive-inc/twitch-android-tv/twitch-live-streaming-android-tv-13-0-0-2-release/)** (version **`13.0.0.2`**)
 2. ⚠️ Use this **Android TV** listing and the exact **`13.0.0.2`** "Starshot" build — not the phone or Fire TV build (the patch targets this TV build specifically). The release has two bundles; either works — **`arm64-v8a + armeabi-v7a`** is the safe pick.
@@ -367,9 +376,10 @@ This patch template is based on the prior work of [ReVanced](https://github.com/
 **Twitch ad-suppression techniques** are informed by:
 - [Purple TV](https://github.com/AdrianLxM/PurpleTV) (nyanarchive/purpletv) — GrandDads ad-eligibility short-circuit approach
 - [TwitchAdSolutions](https://github.com/pixeltris/TwitchAdSolutions) (pixeltris) — playerType spoofing concept
+- [Lennart Abeln](https://github.com/lennartabeln) (lennartabeln) — ad-free playback token (popout master-playlist swap) and playback speed controls, contributed code
 - [Xtra for Twitch](https://github.com/crackededed/Xtra) (crackededed) — Android-side Twitch ad mitigation prior art
 
-All Twitch techniques were independently re-derived via dex disassembly and are not copied from these projects' source code. See [NOTICE](NOTICE) for full attribution details.
+Except for Lennart Abeln's contributed code, all Twitch techniques were independently re-derived via dex disassembly and are not copied from these projects' source code. See [NOTICE](NOTICE) for full attribution details.
 
 **Community contributions** — code written by people who forked this repo, ported here with their authorship preserved. Thank you for your time and hard work:
 - [Michael Bompani](https://github.com/michaelbompani) — RaiPlay 5.0.1 support and the live-channel (Rai 2) 404 fix

@@ -1,5 +1,7 @@
 package ajstrick81.morphe.patches.twitchatv.speed
 
+// Playback speed controls contributed by Lennart Abeln (github.com/lennartabeln).
+
 import app.morphe.patcher.Fingerprint
 
 /**
