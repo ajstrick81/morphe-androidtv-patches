@@ -34,6 +34,11 @@ object AppCompatibilities {
     packageName = "com.wbd.hbomax",
     appIconColor = 0xFFFFFF,
     targets = listOf(
+        // 7.14.0.69: all shipped HBO fingerprints verified present at the method level
+        // on this build (SSAI synthetic accessor gone but optional; Patch 3 covers it).
+        // Remove Ad Periods (keep 5.1) device-proven here by @Joker4Life12; the other HBO
+        // patches are not yet 7.14.x device-tested, so this target ships experimental.
+        AppTarget("7.14.0.69", isExperimental = true),
         AppTarget("7.9.0.61"),
         AppTarget("7.7.0.78"),
         AppTarget("7.5.0.73"),
