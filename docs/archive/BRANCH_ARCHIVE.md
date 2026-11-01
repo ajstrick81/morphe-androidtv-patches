@@ -81,3 +81,37 @@ current `main`.
 `claude-push-test-1782171992`, `chore/espn-readme-and-desc`,
 `feat/espn-live-slate`, `fix/paramount-harden-fingerprints-1619`,
 `fix/paramount-slate-revert-hotpath`.
+
+# Branch archive (cleanup of 2026-10-30)
+
+A second sweep after the PR triage of 2026-10-30. 16 branches archived as
+`archive/<branch>` tags and deleted, leaving `main` and the 7 open-PR branches
+(#281, #276, #270, #269, #268, #263, #207). Content was compared file-by-file
+against `main` before deleting; **no commit was lost** (every tip is a tag).
+
+**Already fully in `main`.** Merged PRs (or superseded by newer `main` code);
+nothing unique on the branch:
+
+| Tag `archive/…` | Last commit | PR / notes |
+|---|---|---|
+| `fix/hbomax-speed-remote-258` | 2026-10-29 | Merged #277 |
+| `raiplay-501-live-fix` | 2026-10-28 | Merged #271 |
+| `fix/tubi-10.40.5000` | 2026-10-22 | Merged #256 |
+| `feat/f1tv-uhd` | 2026-10-16 | Merged #245 |
+| `claude/practical-mayer-dp16pq` | 2026-10-04 | Merged #231 |
+| `chore/smali-search-tool` | 2026-09-27 | Merged #222 |
+| `feat/espn-scoreboard-card` | 2026-09-27 | Merged #221 |
+| `feat/raiplay-skip-ads` | 2026-09-27 | Merged #220 |
+| `claude/sleepy-ramanujan-52uk53` | 2026-09-26 | Merged #213 |
+| `fix/seam-map-case-index` | 2026-09-25 | Merged #210 |
+| `claude/github-repo-cleanup-dpn5fl` | 2026-09-24 | Merged #201 |
+| `fix/netflix-212-reminify` | 2026-10-06 | No PR. Its V3 re-minify ad-kill (#212) shipped via #250; `main`'s `killads.js` has it plus a newer stability layer. Superseded |
+
+**Abandoned or superseded code.** Nothing copied; the tag is the record:
+
+| Tag `archive/…` | Last commit | Notes |
+|---|---|---|
+| `feat/netflix-async-scan-scheduler` | 2026-10-11 | PR #240 (closed). Async-scan scheduler for the household prompt (#237). Household/ad-drift work shipped another way via #250/#261; #237 closed. Idea credited to @phly95 in project notes |
+| `fix/netflix-212-fastadv` | 2026-09-28 | PR #225 (closed). Persistent fastADV scanner for #212. Superseded by the V3 selective-token scan shipped in #250; #212 closed |
+| `fix/peacock-v7.10.102` | 2026-10-02 | PR #229 (closed). 7.10.102 target support landed separately (current compat: 7.8.100, 7.10.102) |
+| `fix/peacock-live-dai-origin-swap` | 2026-10-02 | No PR. WIP "Layer 13 live SLE DAI origin swap" — explicitly NOT verified, do not ship. Finding recorded in project notes (event-class-dependent; VOD shipped #228). Prototype kept in the tag |
