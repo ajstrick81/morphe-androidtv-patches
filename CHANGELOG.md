@@ -1,3 +1,10 @@
+## [1.48.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.48.0...v1.48.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* **pluto:** hide v17 pause ads and stop impression beacons for stripped breaks ([#294](https://github.com/ajstrick81/morphe-androidtv-patches/issues/294)) ([4c07b1c](https://github.com/ajstrick81/morphe-androidtv-patches/commit/4c07b1ca27b7b231d9a83d39c5b843235e8d7d74)), closes [#284](https://github.com/ajstrick81/morphe-androidtv-patches/issues/284)
+
 # [1.48.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.47.0...v1.48.0) (2026-10-31)
 
 
