@@ -420,13 +420,13 @@ Runtime evidence (tags `MORPHE-PCK-WV`; first 12 of 6):
 | Skip ads | `StitcherSessionGetAdBreaksFingerprint` | `data/StitcherSession`.`getAdBreaks` | `Ljava/util/List;` |  | addInstructions |
 | Skip ads | `DashManifestParserParseFingerprint` | `manifest/DashManifestParser`.`parse` | `Landroidx/media3/exoplayer/dash/manifest/DashManifest;` |  | apply `skipAdsPatch Hook 5: no return-object in parse()` |
 | Skip ads | `AviaStartExoplayerFingerprint` | `core/AviaPlayer`.`startExoplayer` | `V` |  | apply |
-| Skip ads | `AviaDaiShouldPlayAdFingerprint` | `(custom matcher)`.— | `Z` |  | addInstructions `                 const/4 v0, 0x0                 return v0             ` |
-| Skip ads | `AviaImaShouldPlayAdFingerprint` | `(custom matcher)`.— | `Z` |  | addInstructions `                 const/4 v0, 0x0                 return v0             ` |
-| Skip ads | `AviaDashParserParseFingerprint` | `(custom matcher)`.— | — |  | apply |
-| Skip ads | `Clid3ProcessAdPodStartFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions |
-| Skip ads | `ImaPauseAdDisplayFingerprint` | — | — |  | addInstructions `return-void` |
-| Skip ads | `CbsPauseOverlayRenderFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `return-void` |
-| Skip ads | `BeaconConsumeAdsFingerprint` | `(custom matcher)`.— | `V` | `Feature is disabled, can't consume the adsData` | addInstructions `return-void` |
+| Skip ads (v17) | `AviaDaiShouldPlayAdFingerprint` | `(custom matcher)`.— | `Z` |  | addInstructions `                 const/4 v0, 0x0                 return v0             ` |
+| Skip ads (v17) | `AviaImaShouldPlayAdFingerprint` | `(custom matcher)`.— | `Z` |  | addInstructions `                 const/4 v0, 0x0                 return v0             ` |
+| Skip ads (v17) | `AviaDashParserParseFingerprint` | `(custom matcher)`.— | — |  | apply |
+| Skip ads (v17) | `Clid3ProcessAdPodStartFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions |
+| Skip ads (v17) | `ImaPauseAdDisplayFingerprint` | — | — |  | addInstructions `return-void` |
+| Skip ads (v17) | `CbsPauseOverlayRenderFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `return-void` |
+| Skip ads (v17) | `BeaconConsumeAdsFingerprint` | `(custom matcher)`.— | `V` | `Feature is disabled, can't consume the adsData` | addInstructions `return-void` |
 | Clone Pluto TV _(opt-in)_ | — | — | — |  |  |
 | Override certificate pinning _(opt-in)_ | — | — | — |  |  |
 | Disable auto-updates | — | — | — |  |  |
