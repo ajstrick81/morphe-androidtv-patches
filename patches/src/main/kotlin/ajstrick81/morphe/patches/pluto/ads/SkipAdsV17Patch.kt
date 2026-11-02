@@ -3,10 +3,11 @@ package ajstrick81.morphe.patches.pluto.ads
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import ajstrick81.morphe.patches.pluto.shared.Constants
+import ajstrick81.morphe.patches.shared.ads.ImaPauseAdDisplayFingerprint
 
 @Suppress("unused")
 val skipAdsV17Patch = bytecodePatch(
-    name = "Skip ads",
+    name = "Skip ads (v17)",
     description = "Removes Pluto TV's on-demand (VOD) ads on the v17.x rebuild (the " +
         "Paramount+/AVIA player stack). Four layers: (1+2) force AVIA's DAI and IMA " +
         "shouldPlayAd() gates to false so the pre-roll ad pods are skipped natively; " +
@@ -14,7 +15,8 @@ val skipAdsV17Patch = bytecodePatch(
         "AVIA's own DashParser and re-base the content periods into a contiguous " +
         "timeline, so the mid-roll ad VIDEO is never played AND the seekbar tracks " +
         "correctly; (4) suppress the ID3/CLID3-driven CSAI ad call on static VOD " +
-        "manifests. Fail-open: a manifest it can't rewrite is passed through unchanged " +
+        "manifests. Also hides pause ads and stops ad impression beacons for the " +
+        "removed breaks. Fail-open: a manifest it can't rewrite is passed through unchanged " +
         "(ads remain, playback never breaks). LIVE TV ads are real broadcast time in " +
         "the linear feed and are not removable. Validated on-device, 17.2.0.",
 ) {
@@ -87,5 +89,17 @@ val skipAdsV17Patch = bytecodePatch(
                 nop
             """,
         )
+
+        // Hook 5 — IMA pause ads: return at entry of IMA's pause-ad display handler
+        // (shared fingerprint, anchored on its error string). [optional]
+        ImaPauseAdDisplayFingerprint.methodOrNull?.addInstructions(0, "return-void")
+
+        // Hook 6 — TV pause ads: CbsPauseWithAdsOverlay's render dispatch returns at
+        // entry, so the ad image is never loaded and the overlay never fades in.
+        CbsPauseOverlayRenderFingerprint.methodOrNull?.addInstructions(0, "return-void")
+
+        // Hook 7 — ad impression beacons: the beacon tracker's consumeAds returns at
+        // entry (its own feature-disabled path), so stripped breaks are not reported.
+        BeaconConsumeAdsFingerprint.methodOrNull?.addInstructions(0, "return-void")
     }
 }

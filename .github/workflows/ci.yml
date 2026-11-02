@@ -68,3 +68,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew clean :patches:buildAndroid generatePatchesList
+
+      # Expose the built patch bundle so testers can grab it from the run's
+      # "Artifacts" section (requires being signed in to GitHub).
+      - name: Upload .mpp artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: patches-${{ github.event.pull_request.head.sha || github.sha }}
+          path: patches/build/libs/patches-*.mpp
+          if-no-files-found: error
+          retention-days: 14

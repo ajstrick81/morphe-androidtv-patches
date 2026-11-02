@@ -26,18 +26,19 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 | [f1tv](#f1tv) | ? | 3.0.49.4-SP166.4.1-release-R54.2-tv | 1 | 5 | **no** | **no** |
 | [foxone](#foxone) | Google IMA / DAI client SDK | 1.9.2 | 1 | 8 | **no** | **no** |
 | [future](#future) | ? | 19.7, 20.1 | 2 | 5 | **no** | **no** |
-| [hbomax](#hbomax) | Server-side stitching (SSAI) via manifest | 7.9.0.61, 7.7.0.78, 7.5.0.73, 7.2.0.41 | 3 | 8 | yes (2 lines) | **no** |
+| [hbomax](#hbomax) | Server-side stitching (SSAI) via manifest | 7.9.0.61, 7.7.0.78, 7.5.0.73, 7.2.0.41 | 5 | 12 | yes (23 lines) | **no** |
 | [mlbtv](#mlbtv) | Google IMA / DAI client SDK | 26.8.1.1 | 1 | 9 | yes (7 lines) | **no** |
-| [netflix](#netflix) | Proprietary native / JS ad engine | 13.0.1 build 25028, 13.2.1 build 27207 | 6 | 2 | **no** | **no** |
+| [netflix](#netflix) | Proprietary native / JS ad engine | 13.0.1 build 25028, 13.2.1 build 27207, 13.2.2 build 27250 | 6 | 2 | **no** | **no** |
 | [paramount](#paramount) | Google IMA / DAI client SDK | 16.19.0, 16.17.0, 16.12.0, 16.8.0 | 1 | 3 | **no** | **no** |
 | [peacock](#peacock) | Server-side stitching (SSAI) via manifest | 7.5.102, 7.6.100, 7.8.100, 7.10.102 | 3 | 10 | yes (6 lines) | **no** |
-| [pluto](#pluto) | Server-side stitching (SSAI) via manifest | 5.66.0-leanback | 5 | 10 | yes (26 lines) | yes |
-| [primevideo](#primevideo) | Proprietary native / JS ad engine | 6.23.23+v15.5.0.70-armv7a | 7 | 5 | yes (37 lines) | yes |
+| [pluto](#pluto) | Server-side stitching (SSAI) via manifest | 5.66.0-leanback, 17.2.0 | 6 | 16 | yes (33 lines) | yes |
+| [primevideo](#primevideo) | Proprietary native / JS ad engine | 6.23.23+v15.5.0.70-armv7a | 7 | 5 | yes (42 lines) | yes |
 | [raiplay](#raiplay) | ? | 5.0.1, 5.0.0 | 3 | 3 | **no** | **no** |
 | [rte](#rte) | Google IMA / DAI client SDK | 3.160.3 | 1 | 3 | **no** | **no** |
 | [tubi](#tubi) | Google IMA / DAI client SDK | 10.40.5000 | 2 | 13 | yes (2 lines) | **no** |
-| [twitchatv](#twitchatv) | Proprietary native / JS ad engine | 13.0.0.2 | 1 | 1 | yes (5 lines) | **no** |
+| [twitchatv](#twitchatv) | Proprietary native / JS ad engine | 13.0.0.2 | 2 | 2 | yes (22 lines) | **no** |
 | [vix](#vix) | Google IMA / DAI client SDK | 4.46.0_tv, 4.47.2_tv, 4.50.1_tv, 4.51.0_tv | 2 | 2 | **no** | **no** |
+| [xumo](#xumo) | ? | 4.9.147 | 1 | 2 | **no** | **no** |
 
 ## disney
 
@@ -59,7 +60,7 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 
 | Patch | Fingerprint | Class / method | Returns | Strings | Action |
 |---|---|---|---|---|---|
-| Disney+ Android TV | `PauseAdStartedFingerprint` | `(custom matcher)`.— | `V` | `pauseData` | addInstructions `                     return-void                 ` |
+| Disney+ Android TV | `PauseAdStartedFingerprint` | `(custom matcher)`.— | `V` | `pauseData` | addInstructions `                     return-void                 ` |
 | Disney+ Android TV | `InsertionGetPointsFingerprint` | `(custom matcher)`.— | `Ljava/util/List` |  | passed to helper/list |
 | Disney+ Android TV | `InsertionGetRangesFingerprint` | `(custom matcher)`.— | `Ljava/util/List` |  | passed to helper/list |
 | Disney+ Android TV | `DmpInsertionGetPointsFingerprint` | `(custom matcher)`.— | `Ljava/util/List` |  | passed to helper/list |
@@ -134,9 +135,9 @@ Runtime evidence (tags `MORPHE-ESPN-SLATE`; first 12 of 50):
 | Patch | Fingerprint | Class / method | Returns | Strings | Action |
 |---|---|---|---|---|---|
 | Unlock UHD (4K) | `DoesDisplaySupportFingerprint` | `(custom matcher)`.— | `Z` |  |  `/RenderTargetConfig;` |
-| Unlock UHD (4K) | `DeviceNeedsNoPostProcessFingerprint` | `(custom matcher)`.— | `Z` |  | addInstructions `                 const/4 v0, 0x0                 return v0             ` |
+| Unlock UHD (4K) | `DeviceNeedsNoPostProcessFingerprint` | `(custom matcher)`.— | `Z` |  | addInstructions `                 const/4 v0, 0x0                 return v0             ` |
 | Unlock UHD (4K) | `GetDefaultDisplaySizeFingerprint` | `(custom matcher)`.— | `Landroid/graphics/Point;` |  | addInstructions |
-| Unlock UHD (4K) | `IsVideoQualityEnabledFingerprint` | `(custom matcher)`.— | `Z` |  | addInstructions `                 const/4 v0, 0x1                 return v0             ` |
+| Unlock UHD (4K) | `IsVideoQualityEnabledFingerprint` | `(custom matcher)`.— | `Z` |  | addInstructions `                 const/4 v0, 0x1                 return v0             ` |
 
 </details>
 
@@ -163,8 +164,8 @@ Runtime evidence (tags `MORPHE-ESPN-SLATE`; first 12 of 50):
 | Skip ads | `FoxImaAdEventListenerFingerprint` | `listeners/FoxImaAdListeners`.`adEventListener_delegate$lambda$0$0` | — | `adEvent` | addInstructions `return-void` |
 | Skip ads | `FoxImaAdsLoadedListenerFingerprint` | `listeners/FoxImaAdListeners`.`adsLoadedListener_delegate$lambda$0$0` | — | `onAdsManagerLoaded` | addInstructions `return-void` |
 | Skip ads | `FoxPlayerClearVodAdsFingerprint` | `player/FoxPlayer`.`clearVodAds` | — |  | addInstructions `return-void` |
-| Skip ads | `FoxImaVodStreamRequestFingerprint` | `loaders/FoxImaStreamIdLoader`.`requestVODDAIUrl` | `V` | `requestVODDAIUrl() BEGIN...` | addInstructions `                 const-string v0, ` |
-| Skip ads | `FoxImaLiveStreamRequestFingerprint` | `loaders/FoxImaStreamIdLoader`.`requestImaStreamId` | `V` | `requestImaStreamId BEGIN...` | addInstructions `                 const-string v0, ` |
+| Skip ads | `FoxImaVodStreamRequestFingerprint` | `loaders/FoxImaStreamIdLoader`.`requestVODDAIUrl` | `V` | `requestVODDAIUrl() BEGIN...` | addInstructions `                 const-string v0, ` |
+| Skip ads | `FoxImaLiveStreamRequestFingerprint` | `loaders/FoxImaStreamIdLoader`.`requestImaStreamId` | `V` | `requestImaStreamId BEGIN...` | addInstructions `                 const-string v0, ` |
 | Skip ads | `YospaceDispatchAdEventFingerprint` | `listener/YospaceAnalyticEventObserver`.`dispatchAdEvent` | `V` |  | addInstructions `return-void` |
 | Skip ads | `YospaceDispatchSlateEventFingerprint` | `listener/YospaceAnalyticEventObserver`.`dispatchSlateEvent` | `V` |  | addInstructions `return-void` |
 | Skip ads | `YospaceSeekPolicyFingerprint` | `handler/YospaceSeekablePlaybackPolicyHandler`.`setHandleFastForwardSeek` | — |  | addInstructions `return-void` |
@@ -192,7 +193,7 @@ Runtime evidence (tags `MORPHE-ESPN-SLATE`; first 12 of 50):
 | Skip ads | `PlayAdFingerprint` | `(custom matcher)`.— | `V` |  | addInstructionsWithLabels |
 | Skip ads | `ShowBannerVastAdShowBannerAdFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `return-void` |
 | Skip ads | `PlaybarShowPauseBugAdFingerprint` | `(custom matcher)`.— | `V` |  | apply `pauseBanneradbannerVastDto` |
-| Disable update prompt | `CheckCurrentAppVersionFingerprint` | `(custom matcher)`.— | `V` |  | apply `Lcom/future/util/Utilities;->updateAlert(` |
+| Disable update prompt | `CheckCurrentAppVersionFingerprint` | `(custom matcher)`.— | `V` |  | apply |
 | Disable update prompt | `SplashUpdateStateMethodFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `const/4 p1, 0x0` |
 
 </details>
@@ -222,14 +223,29 @@ Runtime evidence (tags `MORPHE-ESPN-SLATE`; first 12 of 50):
 | HBO Max - Disable Ads | `SsaiInfoTimelineBuilderBuildAdBreaksFingerprint` | `(custom matcher)`.— | — |  | addInstructions `return-void` |
 | HBO Max - Disable Ads | `SsaiInfoTimelineBuilderAccessorFingerprint` | `(custom matcher)`.— | — |  | addInstructions `return-void` |
 | HBO Max - Disable Ads | `GenerateLiveTimelineEntriesForAdBreakFingerprint` | `(custom matcher)`.— | — |  | addInstructions |
-| HBO Max - Disable Ads | `NowtilusEnabledFingerprint` | `(custom matcher)`.— | — |  | addInstructions `                 const/4 v0, 0x0                 return v0             ` |
+| HBO Max - Disable Ads | `NowtilusEnabledFingerprint` | `(custom matcher)`.— | — |  | addInstructions `                 const/4 v0, 0x0                 return v0             ` |
 | HBO Max - Block SSAI Ad Origins _(opt-in)_ | `DefaultHttpDataSourceOpenFingerprint` | `(custom matcher)`.— | `J` |  | addInstructions |
+| HBO Max - Playback Speed _(opt-in)_ | `BeamApplicationOnCreateFingerprint` | `beam/BeamApplication`.`onCreate` | `V` |  | addInstructions `Could not find com.wbd.beam.BeamApplication.onCreate(). This patch ` |
+| HBO Max - Playback Speed _(opt-in)_ | `ExoPlayerConstructorFingerprint` | `(custom matcher)`.`<init>` | `V` |  | instructions `No androidx.media3 ExoPlayer implementation found — HBO has ` |
 | HBO Max - Prefer Ad-Free Stream | `GetStreamInfoFingerprint` | `(custom matcher)`.— | — |  | addInstructions |
+| HBO Max - Remove Ad Periods (keep 5.1) _(opt-in)_ | `GetStreamInfoFingerprint` | `(custom matcher)`.— | — |  | addInstructions |
+| HBO Max - Remove Ad Periods (keep 5.1) _(opt-in)_ | `ExoPlayerDashManifestParserParseFingerprint` | `(custom matcher)`.— | — |  | addInstructions |
+| HBO Max - Remove Ad Periods (keep 5.1) _(opt-in)_ | `CreateTimelineUseCaseInvokeFingerprint` | `(custom matcher)`.— | — |  | addInstructions |
 
-Runtime evidence (tags `HboStreamSelector`; first 12 of 2):
+Runtime evidence (tags `HboManifestFilter`, `HboStreamSelector`, `HboSpeed`; first 12 of 23):
 
-- I `remapping PRIMARY -> FALLBACK stream (ad-free manifest)` — HboStreamSelector.java:65
-- W `preferFallbackType failed; using requested type` — HboStreamSelector.java:70
+- W `fallback prefetch failed: ` — HboManifestFilter.java:98
+- I `decision for ` — HboManifestFilter.java:113
+- I `session ` — HboManifestFilter.java:184
+- I `playable has no fallback stream - nothing is filtered for it` — HboManifestFilter.java:190
+- W `captureStreams failed: ` — HboManifestFilter.java:192
+- I `timeline: no fallback bound to ` — HboManifestFilter.java:240
+- I `hook order: timeline hook runs ` — HboManifestFilter.java:246
+- I `timeline: using FALLBACK timeline (len=` — HboManifestFilter.java:282
+- W `timelineStreamInfo failed: ` — HboManifestFilter.java:286
+- W `read failed: ` — HboManifestFilter.java:315
+- W `filter failed, passing manifest through: ` — HboManifestFilter.java:323
+- I `manifest ` — HboManifestFilter.java:335
 
 </details>
 
@@ -255,11 +271,11 @@ Runtime evidence (tags `HboStreamSelector`; first 12 of 2):
 |---|---|---|---|---|---|
 | MLB At Bat Android TV | `VodStreamRequest3ArgFingerprint` | `(custom matcher)`.— | `Lcom/google/ads/interactivemedia/v3/api/StreamRequest;` |  | addInstructions |
 | MLB At Bat Android TV | `VodStreamRequest4ArgFingerprint` | `(custom matcher)`.— | `Lcom/google/ads/interactivemedia/v3/api/StreamRequest;` |  | addInstructions |
-| MLB At Bat Android TV | `SsaiMediaSourceStartupFingerprint` | `(custom matcher)`.— | `V` | `ImaServerSideAdInsertionMediaSource` | addInstructions `                 return-void             ` |
-| MLB At Bat Android TV | `DaiStreamManagerHandlerFingerprint` | `(custom matcher)`.— | `V` | `IMA DAI Stream Event: ` `GSTREAM:DAI` | addInstructions `                 return-void             ` |
-| MLB At Bat Android TV | `ExoMediaPlayerMetadataFingerprint` | `(custom matcher)`.— | `V` | `[ExoMediaPlayer] metadata received from stream` | addInstructions `                 return-void             ` |
+| MLB At Bat Android TV | `SsaiMediaSourceStartupFingerprint` | `(custom matcher)`.— | `V` | `ImaServerSideAdInsertionMediaSource` | addInstructions `                 return-void             ` |
+| MLB At Bat Android TV | `DaiStreamManagerHandlerFingerprint` | `(custom matcher)`.— | `V` | `IMA DAI Stream Event: ` `GSTREAM:DAI` | addInstructions `                 return-void             ` |
+| MLB At Bat Android TV | `ExoMediaPlayerMetadataFingerprint` | `(custom matcher)`.— | `V` | `[ExoMediaPlayer] metadata received from stream` | addInstructions `                 return-void             ` |
 | MLB At Bat Android TV | `SsaiDisplayContainerFingerprint` | `(custom matcher)`.— | — |  | apply `getAdViewGroup` |
-| MLB At Bat Android TV | `AdBreakStartedFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `.trimIndent(),         )          AdBreakEndedFingerprint.method.addInstructions(             0,             ` |
+| MLB At Bat Android TV | `AdBreakStartedFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `.trimIndent(),         )          AdBreakEndedFingerprint.method.addInstructions(             0,             ` |
 | MLB At Bat Android TV | `AdBreakEndedFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions |
 | MLB At Bat Android TV | `OkHttpDataSourceOpenFingerprint` | `(custom matcher)`.— | `J` |  | apply `Ljava/io/InputStream;` |
 
@@ -277,7 +293,7 @@ Runtime evidence (tags `MORPHE-MLB-ADBREAK`, `MORPHE-MLB-MANIFEST`; first 12 of 
 
 ## netflix
 
-**Package** `com.netflix.ninja` · **Targets** `13.0.1 build 25028`, `13.2.1 build 27207` · **Engine** Proprietary native / JS ad engine
+**Package** `com.netflix.ninja` · **Targets** `13.0.1 build 25028`, `13.2.1 build 27207`, `13.2.2 build 27250` · **Engine** Proprietary native / JS ad engine
 
 | Layer | |
 |---|---|
@@ -300,7 +316,7 @@ Runtime evidence (tags `MORPHE-MLB-ADBREAK`, `MORPHE-MLB-MANIFEST`; first 12 of 
 | Minimize Network Fingerprint _(opt-in)_ | — | — | — |  |  |
 | Disable Netflix CertCheck | `DexGuardCertCheckFingerprint` | `(custom matcher)`.— | `V` | `CertCheck failed, crash!!!` | addInstructions `return-void` |
 | Remove Netflix ads (bundle engine) | — | — | — |  |  |
-| Remove Netflix ads (loader) | `NetflixApplicationOnCreateFingerprint` | `ninja/NetflixApplication`.`onCreate` | `V` |  | addInstructions `                 const-string v0, ` |
+| Remove Netflix ads (loader) | `NetflixApplicationOnCreateFingerprint` | `ninja/NetflixApplication`.`onCreate` | `V` |  | addInstructions `                 const-string v0, ` |
 
 </details>
 
@@ -324,8 +340,8 @@ Runtime evidence (tags `MORPHE-MLB-ADBREAK`, `MORPHE-MLB-MANIFEST`; first 12 of 
 
 | Patch | Fingerprint | Class / method | Returns | Strings | Action |
 |---|---|---|---|---|---|
-| Paramount+ Android TV | `ShouldPlayAdFingerprint` | `(custom matcher)`.— | `Z` |  | addInstructions `                 const/4 v0, 0x0                 return v0             ` |
-| Paramount+ Android TV | `PauseAdOverlayFingerprint` | `(custom matcher)`.— | `V` | ` not updating overlay.` | addInstructions `                 return-void             ` |
+| Paramount+ Android TV | `ShouldPlayAdFingerprint` | `(custom matcher)`.— | `Z` |  | addInstructions `                 const/4 v0, 0x0                 return v0             ` |
+| Paramount+ Android TV | `PauseAdOverlayFingerprint` | `(custom matcher)`.— | `V` | ` not updating overlay.` | addInstructions `                 return-void             ` |
 | Paramount+ Android TV | `AviaNetworkInterceptorFingerprint` | `(custom matcher)`.— | `Lokhttp3/Response;` |  | addInstructions |
 
 </details>
@@ -350,10 +366,10 @@ Runtime evidence (tags `MORPHE-MLB-ADBREAK`, `MORPHE-MLB-MANIFEST`; first 12 of 
 
 | Patch | Fingerprint | Class / method | Returns | Strings | Action |
 |---|---|---|---|---|---|
-| Skip ads | `MediaTailorProxyHostFingerprint` | `(custom matcher)`.— | `Ljava/lang/String;` |  | addInstructions `                 const-string v0, ` |
-| Skip ads | `MediaTailorAdServiceMethodFingerprint` | `(custom matcher)`.— | `Ljava/lang/Object;` | `Could not build MT Advertising service` | addInstructions `                 const/4 v0, 0x0                 return-object v0             ` |
-| Skip ads | `SsaiConfigurationProviderFingerprint` | `(custom matcher)`.— | `Lcom/sky/core/player/sdk/addon/SSAIConfigurationProvider;` |  | addInstructions `                 const/4 v0, 0x0                 return-object v0             ` |
-| Skip ads | `HandleAdBreakStartedFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `                 return-void             ` |
+| Skip ads | `MediaTailorProxyHostFingerprint` | `(custom matcher)`.— | `Ljava/lang/String;` |  | addInstructions `                 const-string v0, ` |
+| Skip ads | `MediaTailorAdServiceMethodFingerprint` | `(custom matcher)`.— | `Ljava/lang/Object;` | `Could not build MT Advertising service` | addInstructions `                 const/4 v0, 0x0                 return-object v0             ` |
+| Skip ads | `SsaiConfigurationProviderFingerprint` | `(custom matcher)`.— | `Lcom/sky/core/player/sdk/addon/SSAIConfigurationProvider;` |  | addInstructions `                 const/4 v0, 0x0                 return-object v0             ` |
+| Skip ads | `HandleAdBreakStartedFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `                 return-void             ` |
 | Skip ads | `FreewheelModuleSkipFingerprint` | `(custom matcher)`.— | — |  | apply |
 | Skip ads | `GetOkHttpClientFingerprint` | `(custom matcher)`.— | `Lokhttp3/OkHttpClient;` |  | passed to helper/list |
 | Skip ads | `XtvClientWrapFingerprint` | `(custom matcher)`.— | — |  | passed to helper/list |
@@ -378,7 +394,7 @@ Runtime evidence (tags `MORPHE-PCK-WV`; first 12 of 6):
 
 ## pluto
 
-**Package** `tv.pluto.android` · **Targets** `5.66.0-leanback` · **Engine** Server-side stitching (SSAI) via manifest
+**Package** `tv.pluto.android` · **Targets** `5.66.0-leanback`, `17.2.0` · **Engine** Server-side stitching (SSAI) via manifest
 
 | Layer | |
 |---|---|
@@ -404,11 +420,18 @@ Runtime evidence (tags `MORPHE-PCK-WV`; first 12 of 6):
 | Skip ads | `StitcherSessionGetAdBreaksFingerprint` | `data/StitcherSession`.`getAdBreaks` | `Ljava/util/List;` |  | addInstructions |
 | Skip ads | `DashManifestParserParseFingerprint` | `manifest/DashManifestParser`.`parse` | `Landroidx/media3/exoplayer/dash/manifest/DashManifest;` |  | apply `skipAdsPatch Hook 5: no return-object in parse()` |
 | Skip ads | `AviaStartExoplayerFingerprint` | `core/AviaPlayer`.`startExoplayer` | `V` |  | apply |
+| Skip ads (v17) | `AviaDaiShouldPlayAdFingerprint` | `(custom matcher)`.— | `Z` |  | addInstructions `                 const/4 v0, 0x0                 return v0             ` |
+| Skip ads (v17) | `AviaImaShouldPlayAdFingerprint` | `(custom matcher)`.— | `Z` |  | addInstructions `                 const/4 v0, 0x0                 return v0             ` |
+| Skip ads (v17) | `AviaDashParserParseFingerprint` | `(custom matcher)`.— | — |  | apply |
+| Skip ads (v17) | `Clid3ProcessAdPodStartFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions |
+| Skip ads (v17) | `ImaPauseAdDisplayFingerprint` | — | — |  | addInstructions `return-void` |
+| Skip ads (v17) | `CbsPauseOverlayRenderFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `return-void` |
+| Skip ads (v17) | `BeaconConsumeAdsFingerprint` | `(custom matcher)`.— | `V` | `Feature is disabled, can't consume the adsData` | addInstructions `return-void` |
 | Clone Pluto TV _(opt-in)_ | — | — | — |  |  |
 | Override certificate pinning _(opt-in)_ | — | — | — |  |  |
 | Disable auto-updates | — | — | — |  |  |
 
-Runtime evidence (tags `MORPHE-DASH-MF`, `MORPHE-PLUTO-SLATE`; first 12 of 26):
+Runtime evidence (tags `MORPHE-DASH-MF`, `MORPHE-PLUTO-SLATE`; first 12 of 33):
 
 - I `dynamic (live) manifest -> untouched, periods=` — PlutoDashManifestProbe.java:144
 - W `no content periods kept (of ` — PlutoDashManifestProbe.java:170
@@ -456,7 +479,7 @@ Runtime evidence (tags `MORPHE-DASH-MF`, `MORPHE-PLUTO-SLATE`; first 12 of 26):
 | Bundle native ad-strip hook | — | — | — |  |  |
 | Load native ad-strip hook | `ApplicationOnCreateFingerprint` | `primevideo/PrimeVideoApplication`.`onCreate` | `V` |  | addInstructions |
 
-Runtime evidence (tags `SkipAdsPatch`, `PVNativeHook`; first 12 of 37):
+Runtime evidence (tags `SkipAdsPatch`, `PVNativeHook`; first 12 of 42):
 
 - I `skipAllMedia3AdGroups: entries=` — SkipAdsPatch.java:99
 - E `skipAllMedia3AdGroups failed` — SkipAdsPatch.java:103
@@ -491,9 +514,9 @@ Runtime evidence (tags `SkipAdsPatch`, `PVNativeHook`; first 12 of 37):
 
 | Patch | Fingerprint | Class / method | Returns | Strings | Action |
 |---|---|---|---|---|---|
-| Skip ads | `ParseAdContextFingerprint` | `(custom matcher)`.— | `Lit/rai/raiplay/androidtv/nativeplayer/SmartclipAdContext;` |  | addInstructions `                 const/4 v0, 0x0                 return-object v0             ` |
+| Skip ads | `ParseAdContextFingerprint` | `(custom matcher)`.— | `Lit/rai/raiplay/androidtv/nativeplayer/SmartclipAdContext;` |  | addInstructions `                 const/4 v0, 0x0                 return-object v0             ` |
 | Enable WebView debugging _(opt-in)_ | `RaiPlayApplicationOnCreateFingerprint` | `androidtv/RaiPlayTvApp`.`onCreate` | `V` |  | addInstructions |
-| Fix live HLS variant 404 | `NativePlaybackRequestInitFingerprint` | `nativeplayer/NativePlaybackRequest`.`<init>` | `V` |  | addInstructions `                 const-string v0, ` |
+| Fix live HLS variant 404 | `NativePlaybackRequestInitFingerprint` | `nativeplayer/NativePlaybackRequest`.`<init>` | `V` |  | addInstructions `                 const-string v0, ` |
 
 </details>
 
@@ -519,7 +542,7 @@ Runtime evidence (tags `SkipAdsPatch`, `PVNativeHook`; first 12 of 37):
 |---|---|---|---|---|---|
 | Skip ads | `ClientAdsManagerStartFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `return-void` |
 | Skip ads | `ClientAdEventHandlerFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `return-void` |
-| Skip ads | `CuePointsToTimesFingerprint` | `(custom matcher)`.— | `[J` |  | addInstructions `                 const/4 v0, 0x0                 new-array v0, v0, [J                 return-object v0             ` |
+| Skip ads | `CuePointsToTimesFingerprint` | `(custom matcher)`.— | `[J` |  | addInstructions `                 const/4 v0, 0x0                 new-array v0, v0, [J                 return-object v0             ` |
 
 </details>
 
@@ -547,11 +570,11 @@ Runtime evidence (tags `SkipAdsPatch`, `PVNativeHook`; first 12 of 37):
 | Skip ads | `FoxImaAdsLoadedListenerFingerprint` | `listeners/FoxImaAdListeners`.`adsLoadedListener_delegate$lambda$4$lambda$3` | — | `onAdsManagerLoaded` | addInstructions `return-void` |
 | Skip ads | `FoxPlayerClearVodAdsFingerprint` | `player/FoxPlayer`.`clearVodAds` | — |  | addInstructions `return-void` |
 | Skip ads | `TubiPauseAdsFingerprint` | `pauseads/ImagePauseAds`.`n` | `V` |  | addInstructions `return-void` |
-| Skip ads | `FoxImaVodStreamRequestFingerprint` | `loaders/FoxImaStreamIdLoader`.`requestVODDAIUrl` | `V` | `requestVODDAIUrl() BEGIN...` | addInstructions `                 const-string v0, ` |
-| Skip ads | `FoxImaLiveStreamRequestFingerprint` | `loaders/FoxImaStreamIdLoader`.`requestImaStreamId` | `V` | `requestImaStreamId BEGIN...` | addInstructions `                 const-string v0, ` |
+| Skip ads | `FoxImaVodStreamRequestFingerprint` | `loaders/FoxImaStreamIdLoader`.`requestVODDAIUrl` | `V` | `requestVODDAIUrl() BEGIN...` | addInstructions `                 const-string v0, ` |
+| Skip ads | `FoxImaLiveStreamRequestFingerprint` | `loaders/FoxImaStreamIdLoader`.`requestImaStreamId` | `V` | `requestImaStreamId BEGIN...` | addInstructions `                 const-string v0, ` |
 | Skip ads | `TubiWebClientInterceptFingerprint` | `Fp/C$c`.`shouldInterceptRequest` | `Landroid/webkit/WebResourceResponse;` |  | addInstructionsWithLabels |
-| Skip ads | `TubiWebClientPageFinishedFingerprint` | `Fp/C$c`.`onPageFinished` | `V` |  | addInstructions `                 const-string v0, ` |
-| Skip ads | `QfcSuspendGetAdBreaksFingerprint` | `Of/c`.`suspendGetAdBreaks` | `Ljava/lang/Object;` |  | addInstructions `                 new-instance v0, Ljava/io/IOException;                 const-string v1, ` |
+| Skip ads | `TubiWebClientPageFinishedFingerprint` | `Fp/C$c`.`onPageFinished` | `V` |  | addInstructions `                 const-string v0, ` |
+| Skip ads | `QfcSuspendGetAdBreaksFingerprint` | `Of/c`.`suspendGetAdBreaks` | `Ljava/lang/Object;` |  | addInstructions `                 new-instance v0, Ljava/io/IOException;                 const-string v1, ` |
 | Skip ads | `TubiPauseAdsManagerShowImageFingerprint` | `(custom matcher)`.— | `V` | `show image ad, altText:` | addInstructions `return-void` |
 | Block analytics & tracking _(opt-in)_ | `AdjustInitSdkFingerprint` | `sdk/Adjust`.`initSdk` | `V` |  | addInstructions `return-void` |
 | Block analytics & tracking _(opt-in)_ | `AdjustOnCreateFingerprint` | `sdk/Adjust`.`onCreate` | `V` |  | addInstructions `return-void` |
@@ -586,14 +609,23 @@ Runtime evidence (tags `MORPHE-TUBI-PRIVACY`; first 12 of 2):
 | Patch | Fingerprint | Class / method | Returns | Strings | Action |
 |---|---|---|---|---|---|
 | Block TV ads | `SetWebViewClientFingerprint` | `app/StarshotActivity`.— | — |  | apply `->setWebViewClient(` |
+| Playback speed controls _(opt-in)_ | `SetWebViewClientFingerprint` | `app/StarshotActivity`.— | — |  | addInstructions `invoke-static {}, $EXTENSION_CLASS->setSpeedEnabled()V` |
+| Playback speed controls _(opt-in)_ | `StarshotKeyFingerprint` | `app/StarshotActivity`.— | — |  |  |
 
-Runtime evidence (tags `MORPHE-TW-ATV-WV`; first 12 of 5):
+Runtime evidence (tags `MORPHE-TW-ATV-WV`; first 12 of 22):
 
-- D `wrapClient — Twitch ATV HLS scrubber active` — TwitchAtvWebViewHelper.java:109
-- E `playback-fix injection failed` — TwitchAtvWebViewHelper.java:128
-- E `shouldInterceptRequest error` — TwitchAtvWebViewHelper.java:173
-- I `blanked stitched-ad segments in weaver playlist` — TwitchAtvWebViewHelper.java:223
-- E `httpGet failed: ` — TwitchAtvWebViewHelper.java:346
+- D `wrapClient — Twitch ATV HLS scrubber active` — TwitchAtvWebViewHelper.java:123
+- E `playback-fix injection failed` — TwitchAtvWebViewHelper.java:142
+- I `playback speed controls enabled` — TwitchAtvWebViewHelper.java:232
+- I `WebView debugging enabled via morphe_webview_debug` — TwitchAtvWebViewHelper.java:249
+- W `could not read morphe_webview_debug` — TwitchAtvWebViewHelper.java:252
+- E `speed toggle injection failed` — TwitchAtvWebViewHelper.java:259
+- W `no activity for key interceptor; WebView listener only` — TwitchAtvWebViewHelper.java:278
+- I `window key interceptor installed on ` — TwitchAtvWebViewHelper.java:286
+- E `window key interceptor failed` — TwitchAtvWebViewHelper.java:288
+- E `speed key handling failed` — TwitchAtvWebViewHelper.java:511
+- I `blue key: swallowing key-up` — TwitchAtvWebViewHelper.java:529
+- I `blue key: closing speed menu` — TwitchAtvWebViewHelper.java:537
 
 </details>
 
@@ -618,7 +650,30 @@ Runtime evidence (tags `MORPHE-TW-ATV-WV`; first 12 of 5):
 | Patch | Fingerprint | Class / method | Returns | Strings | Action |
 |---|---|---|---|---|---|
 | Skip ads | `InterstitialsDataGetBreaksFingerprint` | `(custom matcher)`.— | `Ljava/util/List;` |  | addInstructions |
-| Skip ads | `InnovidStartAdFingerprint` | `innovid/InnovidHelper`.— | `V` | `innovidAd` | addInstructions `                 return-void             ` |
+| Skip ads | `InnovidStartAdFingerprint` | `innovid/InnovidHelper`.— | `V` | `innovidAd` | addInstructions `                 return-void             ` |
 | Override certificate pinning | — | — | — |  |  |
+
+</details>
+
+## xumo
+
+**Package** `com.xumo.xumo.tv` · **Targets** `4.9.147` · **Engine** unclassified
+
+| Layer | |
+|---|---|
+| Runtime | _unknown_ |
+| Delivery | _unknown_ |
+| Code seam | _unknown_ |
+| Patch action | _unknown_ |
+| Patch evidence | _unknown_ |
+| Device signature | _unknown_ |
+| Drift history | _unknown_ |
+
+<details><summary>Patches and fingerprints (generated)</summary>
+
+| Patch | Fingerprint | Class / method | Returns | Strings | Action |
+|---|---|---|---|---|---|
+| Skip ads | `ExoPlayerPlayAmsOrImaAdFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `Could not find ExoPlayerManager.playAmsOrImaAd(PlayAms). This patch ` |
+| Skip ads | `TifPlayAmsOrImaAdFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions |
 
 </details>
