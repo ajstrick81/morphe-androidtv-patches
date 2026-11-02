@@ -45,6 +45,11 @@ public final class HboStreamSelector {
      *         otherwise the original requestedType (unchanged).
      */
     public static Object preferFallbackType(Object playable, Object requestedType) {
+        // "HBO Max - Remove Ad Periods (keep 5.1)" needs the PRIMARY stream; when that patch
+        // is installed this remap must never run (it would force the stereo-only fallback).
+        if (HboManifestFilter.isActive()) {
+            return requestedType;
+        }
         try {
             if (playable == null || !(requestedType instanceof Enum)) {
                 return requestedType;

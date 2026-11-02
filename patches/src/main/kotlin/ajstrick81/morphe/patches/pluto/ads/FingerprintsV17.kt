@@ -1,6 +1,7 @@
 package ajstrick81.morphe.patches.pluto.ads
 
 import app.morphe.patcher.Fingerprint
+import com.android.tools.smali.dexlib2.AccessFlags
 
 // ===========================================================================
 // Pluto TV v17.x (Paramount+/AVIA rebuild) — ad-removal fingerprints.
@@ -80,4 +81,37 @@ internal object Clid3ProcessAdPodStartFingerprint : Fingerprint(
         method.name == "processAdPodStartAsync" &&
             method.definingClass.endsWith("/CLID3Processor;")
     },
+)
+
+// Hook 6 — CbsPauseWithAdsOverlay render dispatch: static V (overlay, state)  [optional]
+//
+// v17 TV draws pause ads in Paramount's own CbsPauseWithAdsOverlay, not through
+// IMA's pause-ad slot (Hook 5 is a no-op on TV). The static render method takes
+// (overlay, state) and, per state, loads the ad image and fades the overlay in.
+// R8 renames the method and the state type and strips the log strings the
+// Paramount+ fingerprint uses, so it is matched by shape: static, void, two
+// params, the first being the overlay itself. Overlay starts at alpha 0, so
+// returning at entry keeps it invisible.
+internal object CbsPauseOverlayRenderFingerprint : Fingerprint(
+    returnType = "V",
+    custom = { method, _ ->
+        method.definingClass.endsWith("/CbsPauseWithAdsOverlay;") &&
+            AccessFlags.STATIC.isSet(method.accessFlags) &&
+            method.parameterTypes.size == 2 &&
+            method.parameterTypes[0].toString() == method.definingClass
+    },
+)
+
+// Hook 7 — ad beacon tracker consumeAds(adsData): V  [optional]
+//
+// With the ad periods stripped (Hook 3) no ad plays, but the beacon tracker
+// (tag "_BeaconFiring") still receives the stitcher's ad-break data and fires
+// IMPRESSION_SLOT_START beacons to FreeWheel (fwmrm.net) and k.pluto.tv at each
+// break position (device-observed 17.2.0). consumeAds already returns early when
+// the feature is disabled; returning at entry takes that same path, so no ad
+// timeline is loaded and no impressions are reported. Class and method are
+// R8-renamed; anchored on the method's own disabled-path message.
+internal object BeaconConsumeAdsFingerprint : Fingerprint(
+    returnType = "V",
+    strings = listOf("Feature is disabled, can't consume the adsData"),
 )

@@ -373,6 +373,7 @@ All Twitch techniques were independently re-derived via dex disassembly and are 
 
 **Community contributions** — code written by people who forked this repo, ported here with their authorship preserved. Thank you for your time and hard work:
 - [Michael Bompani](https://github.com/michaelbompani) — RaiPlay 5.0.1 support and the live-channel (Rai 2) 404 fix
+- [Joker4Life12](https://github.com/Joker4Life12) — HBO Max "Remove Ad Periods (keep 5.1)": keeps the PRIMARY 5.1 stream and strips its stitched ad periods instead of the stereo-only fallback
 
 **Netflix household-prompt suppression** is informed by:
 - [Nikflix](https://github.com/YidirK/Nikflix) (YidirK, GPL-3.0) — identified Netflix's household / "you're traveling" enforcement via the `CLCSInterstitialPlaybackAndPostPlayback` interstitial
