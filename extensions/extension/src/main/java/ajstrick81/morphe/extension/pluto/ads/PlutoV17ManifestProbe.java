@@ -1,0 +1,478 @@
+package ajstrick81.morphe.extension.pluto.ads;
+
+import android.util.Log;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+/**
+ * Pluto TV v17.x (Paramount+/AVIA rebuild) — VOD ad REMOVAL by DASH period surgery
+ * at the XML level.
+ *
+ * <p>v17 replaced the old leanback stack with the Paramount AVIA player; media3 and
+ * okhttp are R8-minified, so the leanback object-level {@code DashManifestParser.parse}
+ * hook (which references androidx.media3 DashManifest types by name) can no longer be
+ * attached, and the okhttp interceptor seam is renamed. Instead, Hook 3 injects a call
+ * at the entry of AVIA's own un-renamed
+ * {@code AviaDashParser.parse(Uri, InputStream) -> bz3} and swaps the InputStream for a
+ * cleaned one via {@link #cleanManifestStream}. We strip the ad {@code <Period>}s from
+ * the raw MPD XML, re-base the remaining content periods into a contiguous timeline, and
+ * hand the renamed parser the cleaned manifest. Only platform/XML types are touched, so
+ * no renamed library type is referenced.
+ *
+ * <p>Ad discrimination is identical to the leanback model (see {@code PlutoDashManifestProbe}):
+ * a period is an AD iff one of its {@code <BaseURL>}s contains {@code _ad/creative}
+ * (URL-encoded {@code _ad%2Fcreative}) or {@code _ad_bumper}. Everything else — content,
+ * DRM'd or not — is kept, so we never drop content we don't recognize.
+ *
+ * <p><b>Timeline re-basing (frozen-seekbar fix).</b> Removing an ad {@code <Period>} leaves
+ * a hole in the presentation timeline: the content periods after it keep their original
+ * (ad-inclusive) {@code start} values, so the player's seekbar clamps at the first removed
+ * ad while the media keeps flowing (symptom: scrubber frozen at ~the first ad position,
+ * playback continuing). The fix: ad periods are removed WITHOUT advancing the content
+ * cursor, and every kept content period's {@code start} is rewritten to run immediately
+ * after the previous kept period, with the root {@code mediaPresentationDuration} reduced
+ * to the kept total. Segment addressing inside each period is period-relative, so re-basing
+ * {@code start} keeps segments addressable.
+ *
+ * <p>Fail-open on every edge (not a DASH MPD, no ad markers, dynamic/live, nothing kept,
+ * implausible over-strip, or any exception) → the original manifest passes through
+ * untouched, so playback can never be broken by this hook.
+ */
+@SuppressWarnings("unused")
+public final class PlutoV17ManifestProbe {
+
+    private static final String TAG = "MORPHE-DASH-MF";
+    private static final String DASH_IDENTIFIER = "<MPD";
+
+    /** ISO-8601 media duration: {@code PT[nH][nM][nS]}. */
+    private static final Pattern PT =
+            Pattern.compile("PT(?:(\\d+(?:\\.\\d+)?)H)?(?:(\\d+(?:\\.\\d+)?)M)?(?:(\\d+(?:\\.\\d+)?)S)?");
+
+    // Fail-safe guard (see leanback #144 backstop): real ad load is ~18-30% of runtime, so
+    // content stays >=~70%. If we'd keep less than this fraction of the original duration,
+    // an unrecognized content shape has probably been mis-dropped -> pass the original through.
+    private static final double MIN_KEPT_FRACTION = 0.4;
+
+    /**
+     * True when the current manifest is a STATIC (on-demand/VOD) MPD. Hook 4 reads this via
+     * {@link #shouldSuppressDynamicAdFetch()} to suppress the ID3/CLID3-driven CSAI ad fetch
+     * on VOD (where we strip ads) while leaving live/linear (dynamic) untouched. Set per
+     * manifest in {@link #cleanManifestStream}.
+     */
+    public static volatile boolean suppressDynamicAdFetch;
+
+    /** Hook 4 guard: suppress the CLID3 CSAI ad call when a static VOD manifest is in play. */
+    public static boolean shouldSuppressDynamicAdFetch() {
+        return suppressDynamicAdFetch;
+    }
+
+    // =======================================================================
+    // Timeline coordinate mapping (issue #300).
+    //
+    // Stripping ad periods leaves the app running TWO different clocks:
+    //
+    //   ORIGINAL  — ad-inclusive. What Pluto's own metadata (stitcher session /
+    //               episode duration) says, and the coordinate system every
+    //               "Continue watching" bookmark is written and read in.
+    //   STRIPPED  — content-only. What the player actually plays after Hook 3,
+    //               shorter by the total removed ad time.
+    //
+    // The leanback patch rewrote the parsed DashManifest OBJECT, so media3's
+    // timeline and Pluto's seekbar both read the same (stripped) duration and
+    // only the restored bookmark needed fixing — one direction, and only as an
+    // overshoot guard (PlutoDashManifestProbe.mapResumePosition, issue #147).
+    //
+    // On v17 Hook 3 swaps the InputStream BEFORE AVIA's parser, so only the
+    // player timeline shrinks; Pluto's UI and bookmark API keep using original
+    // coordinates. That mismatch is issue #300: the progress bar is drawn
+    // against the original duration so it overruns the real end, seeks land at
+    // the wrong place, and the position written back to "Continue watching" is
+    // in the wrong clock, so resume has nothing usable. Fixing it needs the
+    // mapping BOTH ways, which leanback never required.
+    //
+    // The table below is the per-title translation, captured by the strip that
+    // produced the stripped timeline. Only one title plays at a time, so the
+    // most-recent successful strip is always the right table; EVERY passthrough
+    // and fail-open path clears it, so a title we did not strip can never have a
+    // stale mapping applied to it (both mappers become identity).
+    // =======================================================================
+
+    private static volatile long[] removedAdStartsMs = new long[0]; // ORIGINAL-timeline starts, ascending
+    private static volatile long[] removedAdDursMs = new long[0];   // matching removed durations
+    private static volatile long strippedDurationMs = 0;            // content-only total
+    private static volatile long originalDurationMs = 0;            // ad-inclusive total
+
+    // Land a remapped resume slightly inside content so it can never land exactly
+    // at the end, which would itself end the item and autoplay-advance (the #147
+    // failure mode on leanback).
+    private static final long RESUME_END_MARGIN_MS = 5_000L;
+
+    /** Clear the mapping table. Called on every passthrough / fail-open / live path. */
+    private static void clearTimelineMap() {
+        removedAdStartsMs = new long[0];
+        removedAdDursMs = new long[0];
+        strippedDurationMs = 0;
+        originalDurationMs = 0;
+    }
+
+    /** True once a successful strip has populated a usable mapping for the playing title. */
+    public static boolean hasTimelineMap() {
+        return removedAdStartsMs.length > 0 && strippedDurationMs > 0;
+    }
+
+    /** The content-only duration of the playing title, or 0 if nothing was stripped. */
+    public static long getStrippedDurationMs() {
+        return strippedDurationMs;
+    }
+
+    /** The ad-inclusive duration the app's own metadata reports, or 0 if unknown. */
+    public static long getOriginalDurationMs() {
+        return originalDurationMs;
+    }
+
+    /**
+     * ORIGINAL -> STRIPPED. Converts an ad-inclusive position (a restored "Continue
+     * watching" bookmark, or a seek the UI computed against the original duration)
+     * into the player's content-only coordinates, by subtracting the ad time removed
+     * at or before it.
+     *
+     * <p>Clamped just inside the content end so a bookmark past the shortened runtime
+     * resumes INTO the show rather than seeking past the end (which lands in
+     * STATE_ENDED and autoplay-advances). Identity when no mapping is live, so an
+     * unstripped title is never disturbed.
+     */
+    public static long toStrippedMs(long originalMs) {
+        try {
+            if (originalMs <= 0 || !hasTimelineMap()) return originalMs;
+
+            long[] starts = removedAdStartsMs;
+            long[] durs = removedAdDursMs;
+            long removedBefore = 0;
+            for (int i = 0; i < starts.length && i < durs.length; i++) {
+                if (starts[i] + durs[i] <= originalMs) {
+                    // Whole ad span is behind the position -> all of it was removed.
+                    removedBefore += durs[i];
+                } else if (starts[i] < originalMs) {
+                    // The position falls INSIDE this removed ad. On the stripped clock
+                    // that instant no longer exists, so subtract only the part of the
+                    // span before it: the result is the span's start, i.e. exactly where
+                    // content resumes. Subtracting the FULL span here (what leanback's
+                    // mapResumePosition does) would map the position BEHIND the content
+                    // that precedes the ad — a backwards jump of up to one ad pod. That
+                    // never showed on leanback because the mapper only ran on bookmarks
+                    // past the end; applying it to every position exposes it.
+                    removedBefore += originalMs - starts[i];
+                    break;
+                } else {
+                    break; // ascending starts — nothing further is behind the position
+                }
+            }
+            long mapped = originalMs - removedBefore;
+
+            long maxPos = strippedDurationMs - RESUME_END_MARGIN_MS;
+            if (maxPos < 0) maxPos = 0;
+            if (mapped > maxPos) mapped = maxPos;
+            if (mapped < 0) mapped = 0;
+
+            Log.i(TAG, "v17 map O->S (#300): " + originalMs + " - " + removedBefore
+                    + " -> " + mapped + " (strippedDur=" + strippedDurationMs + ")");
+            return mapped;
+        } catch (Throwable t) {
+            Log.e(TAG, "v17 map O->S failed -> identity: " + t.getMessage());
+            return originalMs;
+        }
+    }
+
+    /**
+     * STRIPPED -> ORIGINAL. Converts a player position back into ad-inclusive
+     * coordinates, by adding back the ad time that was removed before it. This is the
+     * direction leanback never needed: it is what makes a saved bookmark meaningful to
+     * Pluto's own "Continue watching" (which stores original coordinates), and what
+     * lets progress be reported against the duration the UI is drawing.
+     *
+     * <p>A removed span's position in STRIPPED coordinates is its original start minus
+     * the ad time removed before it, so the spans are walked in order accumulating the
+     * removals that fall at or before the given position. Identity when no mapping is
+     * live.
+     */
+    public static long toOriginalMs(long strippedMs) {
+        try {
+            if (strippedMs <= 0 || !hasTimelineMap()) return strippedMs;
+
+            long[] starts = removedAdStartsMs;
+            long[] durs = removedAdDursMs;
+            long removedBefore = 0;
+            for (int i = 0; i < starts.length && i < durs.length; i++) {
+                // Where this removed span sits on the stripped clock.
+                long spanPosStripped = starts[i] - removedBefore;
+                if (spanPosStripped <= strippedMs) removedBefore += durs[i];
+                else break; // ascending starts
+            }
+            long mapped = strippedMs + removedBefore;
+
+            // Never report past the title's own advertised length.
+            if (originalDurationMs > 0 && mapped > originalDurationMs) mapped = originalDurationMs;
+
+            Log.i(TAG, "v17 map S->O (#300): " + strippedMs + " + " + removedBefore
+                    + " -> " + mapped + " (originalDur=" + originalDurationMs + ")");
+            return mapped;
+        } catch (Throwable t) {
+            Log.e(TAG, "v17 map S->O failed -> identity: " + t.getMessage());
+            return strippedMs;
+        }
+    }
+
+    private static String fmtPt(double seconds) {
+        return "PT" + String.format(Locale.US, "%.3f", seconds) + "S";
+    }
+
+    private static double parsePt(String s) {
+        if (s == null) return -1.0;
+        Matcher m = PT.matcher(s.trim());
+        if (!m.matches()) return -1.0;
+        double d = 0.0;
+        if (m.group(1) != null) d += Double.parseDouble(m.group(1)) * 3600.0;
+        if (m.group(2) != null) d += Double.parseDouble(m.group(2)) * 60.0;
+        if (m.group(3) != null) d += Double.parseDouble(m.group(3));
+        return d;
+    }
+
+    private static boolean isAdUrl(String u) {
+        if (u == null) return false;
+        // SSAI ad/bumper creatives: /..._ad/creative... (URL-encoded _ad%2Fcreative) or _ad_bumper.
+        if (u.contains("_ad%2Fcreative") || u.contains("_ad/creative") || u.contains("_ad_bumper")) {
+            return true;
+        }
+        // Click-tracked ad clips (the SECOND VOD ad class on v17): short /mp4/v1/...video_NNN.mp4
+        // periods tagged id3(p=clik,id=...). Device-confirmed to carry political/gambling ads that
+        // the creative/bumper tokens above miss. Content periods use /clip/ (note: "clip", not
+        // "clik") + /dash/ segment addressing, so this token never false-matches content.
+        return u.contains("id3(p=clik");
+    }
+
+    /** A period is an AD iff any of its BaseURLs carries the ad-creative/bumper signature. */
+    private static boolean isAdPeriod(Element period) {
+        NodeList baseUrls = period.getElementsByTagName("BaseURL");
+        for (int i = 0; i < baseUrls.getLength(); i++) {
+            if (isAdUrl(baseUrls.item(i).getTextContent())) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Remove ID3 emsg {@code <InbandEventStream>} (scheme {@code aomedia.org/emsg/ID3},
+     * value {@code 999}) from a kept content period, so no stale ad-beacon ID3 can retrigger
+     * the CLID3 CSAI ad path on content. Returns the number removed.
+     */
+    private static int removeId3Streams(Element period) {
+        NodeList list = period.getElementsByTagName("InbandEventStream");
+        List<Element> toRemove = new ArrayList<>();
+        for (int i = 0; i < list.getLength(); i++) {
+            Node n = list.item(i);
+            if (n instanceof Element) {
+                Element e = (Element) n;
+                if ("https://aomedia.org/emsg/ID3".equals(e.getAttribute("schemeIdUri"))
+                        && "999".equals(e.getAttribute("value"))) {
+                    toRemove.add(e);
+                }
+            }
+        }
+        for (Element e : toRemove) e.getParentNode().removeChild(e);
+        return toRemove.size();
+    }
+
+    /**
+     * Called from injected smali at the entry of {@code AviaDashParser.parse(Uri, InputStream)}
+     * (Hook 3). Reads the manifest stream, strips ad periods, and returns a cleaned stream for
+     * the renamed parser; fail-open returns the original bytes (or the original stream).
+     */
+    public static InputStream cleanManifestStream(InputStream in) {
+        if (in == null) return null;
+        try {
+            ByteArrayOutputStream bos = new ByteArrayOutputStream(Math.max(32, in.available()));
+            byte[] buf = new byte[8192];
+            int r;
+            while ((r = in.read(buf)) != -1) bos.write(buf, 0, r);
+            byte[] raw = bos.toByteArray();
+            try {
+                String mpd = new String(raw, StandardCharsets.UTF_8);
+                if (mpd.contains(DASH_IDENTIFIER)) {
+                    // static (VOD) -> enable Hook-4 CSAI suppression; dynamic (live) -> leave it on.
+                    suppressDynamicAdFetch = !mpd.contains("type=\"dynamic\"");
+                }
+                String cleaned = stripAdPeriodsXml(mpd);
+                if (cleaned != null) {
+                    return new ByteArrayInputStream(cleaned.getBytes(StandardCharsets.UTF_8));
+                }
+            } catch (Throwable t) {
+                Log.e(TAG, "v17 strip failed -> original manifest: " + t.getMessage());
+            }
+            // fail-open: hand back the original (buffered) bytes so the fetch is never consumed/lost.
+            return new ByteArrayInputStream(raw);
+        } catch (Throwable t) {
+            // The strip never ran, so any map still loaded belongs to a previous title —
+            // drop it rather than let it be applied to this one (#300).
+            clearTimelineMap();
+            Log.e(TAG, "v17 read failed -> original stream: " + t.getMessage());
+            return in;
+        }
+    }
+
+    /**
+     * Strip ad periods from a DASH MPD and re-base the remaining content periods into a
+     * contiguous timeline. Returns the cleaned XML, or {@code null} to pass the original
+     * through unchanged (not a DASH MPD, no ad markers, dynamic/live, nothing removed,
+     * nothing kept, over-strip guard, or any error).
+     */
+    static String stripAdPeriodsXml(String mpd) {
+        try {
+            // Reset the coordinate map up front (issue #300): only a SUCCESSFUL strip
+            // below repopulates it, so every `return null` passthrough and every
+            // exception path leaves it cleared and both mappers stay identity.
+            clearTimelineMap();
+
+            if (mpd == null || mpd.isEmpty() || !mpd.contains(DASH_IDENTIFIER)) return null;
+            if (!mpd.contains("_ad%2Fcreative") && !mpd.contains("_ad/creative")
+                    && !mpd.contains("_ad_bumper") && !mpd.contains("id3(p=clik")) {
+                return null;
+            }
+
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+            dbf.setNamespaceAware(false);
+            Document doc = dbf.newDocumentBuilder()
+                    .parse(new ByteArrayInputStream(mpd.getBytes(StandardCharsets.UTF_8)));
+            Element root = doc.getDocumentElement();
+            if (root == null) return null;
+
+            // LIVE guard: dynamic MPDs are live/linear (moving edge, wall-clock timeline);
+            // re-basing period starts there corrupts playback, and live ads are real broadcast
+            // time that was never removable. Pass through untouched.
+            if ("dynamic".equalsIgnoreCase(root.getAttribute("type"))) {
+                Log.i(TAG, "v17 dynamic (live) MPD -> untouched");
+                return null;
+            }
+
+            double totalDur = parsePt(root.getAttribute("mediaPresentationDuration"));
+
+            // Snapshot the periods (we mutate the tree, so don't iterate the live NodeList).
+            NodeList periodNodes = root.getElementsByTagName("Period");
+            List<Element> periods = new ArrayList<>();
+            for (int i = 0; i < periodNodes.getLength(); i++) {
+                Node n = periodNodes.item(i);
+                if (n instanceof Element) periods.add((Element) n);
+            }
+            int size = periods.size();
+            if (size == 0) return null;
+
+            // Original (ad-inclusive) start of each period, for duration-by-difference below.
+            double[] starts = new double[size];
+            for (int i = 0; i < size; i++) starts[i] = parsePt(periods.get(i).getAttribute("start"));
+
+            // Duration of each period: explicit @duration, else next.start - this.start, else
+            // mediaPresentationDuration - this.start (for the last). Computed from ORIGINAL
+            // starts before any removal, so content durations stay correct across removed ads.
+            double[] durs = new double[size];
+            for (int i = 0; i < size; i++) {
+                double d = parsePt(periods.get(i).getAttribute("duration"));
+                if (d < 0.0) {
+                    double next = (i + 1 < size) ? starts[i + 1] : totalDur;
+                    if (next >= 0.0 && starts[i] >= 0.0) d = next - starts[i];
+                }
+                durs[i] = d > 0.0 ? d : 0.0;
+            }
+
+            double cursor = 0.0; // re-based content timeline
+            int kept = 0, removed = 0, id3Removed = 0;
+            // Removed ad spans in ORIGINAL coordinates, for the #300 timeline map. Collected
+            // in period order, so starts stay ascending as both mappers assume.
+            List<long[]> removedSpans = new ArrayList<>(); // {originalStartMs, durationMs}
+            for (int i = 0; i < size; i++) {
+                Element p = periods.get(i);
+                if (isAdPeriod(p)) {
+                    // AD: remove and DO NOT advance the content cursor. This is the freeze fix —
+                    // ad time must never be counted into the kept-content timeline, otherwise the
+                    // following content periods start too late and leave a seekbar-clamping gap.
+                    // starts[i] is the ORIGINAL (ad-inclusive) start; record it before removal so
+                    // positions can be translated between the two clocks (#300).
+                    if (starts[i] >= 0.0 && durs[i] > 0.0) {
+                        removedSpans.add(new long[] {
+                                (long) (starts[i] * 1000.0),
+                                (long) (durs[i] * 1000.0),
+                        });
+                    }
+                    p.getParentNode().removeChild(p);
+                    removed++;
+                    continue;
+                }
+                // CONTENT: re-base start to run immediately after the previous kept period.
+                p.setAttribute("start", fmtPt(cursor));
+                cursor += durs[i];
+                kept++;
+                id3Removed += removeId3Streams(p);
+            }
+
+            if (removed == 0) return null; // no ad periods actually matched -> passthrough
+            if (kept == 0) {
+                Log.w(TAG, "v17 strip: no content periods kept (of " + size + ") -> passthrough");
+                return null;
+            }
+            if (totalDur > 0.0 && cursor < MIN_KEPT_FRACTION * totalDur) {
+                Log.w(TAG, "v17 GUARD tripped: kept " + kept + "/" + size + " -> "
+                        + cursor + "s of " + totalDur + "s (<40%) -> passthrough");
+                return null;
+            }
+
+            if (totalDur > 0.0) root.setAttribute("mediaPresentationDuration", fmtPt(cursor));
+
+            Transformer t = TransformerFactory.newInstance().newTransformer();
+            t.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "no");
+            t.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+            StringWriter sw = new StringWriter();
+            t.transform(new DOMSource(doc), new StreamResult(sw));
+            String out = sw.toString();
+
+            // Publish the coordinate map for this title (#300) only now — past every
+            // passthrough guard AND past the serialization, so the table can never
+            // describe a timeline the caller did not actually receive.
+            long[] mapStarts = new long[removedSpans.size()];
+            long[] mapDurs = new long[removedSpans.size()];
+            for (int i = 0; i < removedSpans.size(); i++) {
+                mapStarts[i] = removedSpans.get(i)[0];
+                mapDurs[i] = removedSpans.get(i)[1];
+            }
+            removedAdStartsMs = mapStarts;
+            removedAdDursMs = mapDurs;
+            strippedDurationMs = (long) (cursor * 1000.0);
+            originalDurationMs = totalDur > 0.0 ? (long) (totalDur * 1000.0) : 0L;
+
+            Log.i(TAG, "v17 STRIPPED " + removed + " ad periods, kept " + kept
+                    + ", removedId3=" + id3Removed + ", newDur=" + cursor + "s (was " + totalDur + "s)"
+                    + ", map=" + mapStarts.length + " spans");
+            return out;
+        } catch (Throwable t) {
+            Log.e(TAG, "v17 strip failed -> original manifest: " + t.getMessage());
+            return null;
+        }
+    }
+}

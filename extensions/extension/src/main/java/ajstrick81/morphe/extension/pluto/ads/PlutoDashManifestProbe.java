@@ -260,8 +260,20 @@ public final class PlutoDashManifestProbe {
             long[] durs = removedAdDursMs;
             long removedBefore = 0;
             for (int i = 0; i < starts.length && i < durs.length; i++) {
-                if (starts[i] < originalPos) removedBefore += durs[i];
-                else break; // ascending starts
+                if (starts[i] + durs[i] <= originalPos) {
+                    // The whole ad span is behind the bookmark -> all of it was removed.
+                    removedBefore += durs[i];
+                } else if (starts[i] < originalPos) {
+                    // The bookmark falls INSIDE a removed ad, so that instant no longer
+                    // exists on the stripped clock. Subtract only the part of the span
+                    // before it, which lands exactly where content resumes; subtracting
+                    // the FULL span would place the resume BEHIND the content preceding
+                    // the ad (a backwards jump of up to one ad pod).
+                    removedBefore += originalPos - starts[i];
+                    break;
+                } else {
+                    break; // ascending starts
+                }
             }
             long mapped = originalPos - removedBefore;
 
