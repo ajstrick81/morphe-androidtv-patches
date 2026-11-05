@@ -115,3 +115,41 @@ internal object BeaconConsumeAdsFingerprint : Fingerprint(
     returnType = "V",
     strings = listOf("Feature is disabled, can't consume the adsData"),
 )
+
+// Hook 8 — AviaPlayer.seek(long, boolean): V  [required]  (issue #300)
+//
+// Hook 3 shortens the player's timeline but not Pluto's own duration metadata, so
+// the seekbar is drawn against the ad-INCLUSIVE length while playback runs on the
+// content-only one. A seek the UI computes therefore arrives in the wrong clock:
+// it overshoots by all the ad time before it, which is the wrong-seek half of #300.
+// Routing the requested position through PlutoV17ManifestProbe.toStrippedMs puts it
+// back on the player's clock.
+//
+// WHY THIS METHOD AND NOT _seek(J): the two are split exactly along the coordinate
+// boundary in 17.2.0, confirmed by every caller in the decomp.
+//   seek(J,Z)  <- AviaDecor$1 and AbstractAviaDecor ONLY (the player controls), so
+//                 every caller is the UI, in original/metadata coordinates.
+//   _seek(J)   <- AviaDAIResourceProvider, AviaIMAResourceProvider,
+//                 AviaUriResourceProvider and AbstractAviaPlayer.seekToLive, i.e.
+//                 ad-pod transitions, retries and live-edge jumps. Those positions
+//                 are read back FROM the player and are already stripped, so
+//                 remapping them would subtract the ad time a second time and send
+//                 playback backwards. _seek must stay untouched.
+//
+// seek(J,Z) is declared abstract on AbstractAviaPlayer and implemented on AviaPlayer,
+// so the predicate anchors the leaf class to get a method with a body. Note that
+// "/AviaPlayer;" does not match "AbstractAviaPlayer;" (the preceding character is
+// 't', not '/'), so the abstract declaration is excluded.
+//
+// This covers scrubbing, NOT the restoration of a Continue Watching bookmark: that
+// arrives through AbstractAviaMediaAsset.setStartPosition(J), which the app calls
+// before the manifest is fetched — so the strip has not run yet and no map exists at
+// that moment. That seam needs a post-parse application point and is not wired here.
+internal object AviaPlayerSeekFingerprint : Fingerprint(
+    parameters = listOf("J", "Z"),
+    returnType = "V",
+    custom = { method, _ ->
+        method.name == "seek" &&
+            method.definingClass.endsWith("/AviaPlayer;")
+    },
+)

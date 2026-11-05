@@ -7,7 +7,7 @@ import ajstrick81.morphe.patches.shared.ads.ImaPauseAdDisplayFingerprint
 
 @Suppress("unused")
 val skipAdsV17Patch = bytecodePatch(
-    name = "Skip ads (v17)",
+    name = "Skip ads",
     description = "Removes Pluto TV's on-demand (VOD) ads on the v17.x rebuild (the " +
         "Paramount+/AVIA player stack). Four layers: (1+2) force AVIA's DAI and IMA " +
         "shouldPlayAd() gates to false so the pre-roll ad pods are skipped natively; " +
@@ -101,5 +101,34 @@ val skipAdsV17Patch = bytecodePatch(
         // Hook 7 — ad impression beacons: the beacon tracker's consumeAds returns at
         // entry (its own feature-disabled path), so stripped breaks are not reported.
         BeaconConsumeAdsFingerprint.methodOrNull?.addInstructions(0, "return-void")
+
+        // Hook 8 — AviaPlayer.seek(J, Z): remap the requested position from Pluto's
+        // ad-inclusive clock onto the player's stripped clock (issue #300).
+        //
+        // Only the UI calls this method (see AviaPlayerSeekFingerprint for the caller
+        // audit), so every position arriving here was computed against the metadata
+        // duration the seekbar is drawn with, while the player runs on the shortened
+        // timeline Hook 3 produced. Without the remap a seek lands late by all the ad
+        // time before it.
+        //
+        // toStrippedMs is identity whenever no strip is live (live/linear, a
+        // passthrough manifest, any fail-open), so an unstripped title seeks exactly
+        // as it does unpatched.
+        //
+        // Registers: params are (this, J, Z) -> p0, p1:p2 (wide), p3, so p1 is at
+        // registerCount - 3. Emit the range form for the same reason as Hook 3: a
+        // non-range invoke-static only encodes v0..v15 and is silently dropped above
+        // that, leaving an orphan move-result-wide and a VerifyError.
+        AviaPlayerSeekFingerprint.method.apply {
+            val posLow = implementation!!.registerCount - 3
+            val posHigh = posLow + 1
+            addInstructions(
+                0,
+                """
+                    invoke-static/range {v$posLow .. v$posHigh}, Lajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe;->toStrippedMs(J)J
+                    move-result-wide v$posLow
+                """,
+            )
+        }
     }
 }

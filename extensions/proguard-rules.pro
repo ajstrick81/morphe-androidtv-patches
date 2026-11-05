@@ -102,6 +102,14 @@
 -keep class ajstrick81.morphe.extension.pluto.ads.PlutoV17ManifestProbe {
     public static java.io.InputStream cleanManifestStream(java.io.InputStream);
     public static boolean shouldSuppressDynamicAdFetch();
+    # #300 timeline map. toStrippedMs is called from injected smali (Hook 8, at
+    # AviaPlayer.seek); the rest are the matching read side, kept so the save
+    # direction can be wired without another R8 surprise.
+    public static long toStrippedMs(long);
+    public static long toOriginalMs(long);
+    public static boolean hasTimelineMap();
+    public static long getStrippedDurationMs();
+    public static long getOriginalDurationMs();
 }
 
 # Pluto LIVE ad-break mask — liveSlatePatch (see LiveSlatePatch.kt). Its @JvmStatic
