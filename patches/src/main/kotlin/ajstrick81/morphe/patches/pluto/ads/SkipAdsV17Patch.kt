@@ -4,6 +4,8 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import ajstrick81.morphe.patches.pluto.shared.Constants
 import ajstrick81.morphe.patches.shared.ads.ImaPauseAdDisplayFingerprint
+import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 
 @Suppress("unused")
 val skipAdsV17Patch = bytecodePatch(
@@ -102,33 +104,57 @@ val skipAdsV17Patch = bytecodePatch(
         // entry (its own feature-disabled path), so stripped breaks are not reported.
         BeaconConsumeAdsFingerprint.methodOrNull?.addInstructions(0, "return-void")
 
-        // Hook 8 — AviaPlayer.seek(J, Z): remap the requested position from Pluto's
-        // ad-inclusive clock onto the player's stripped clock (issue #300).
+        // Hook 8 — report the true content duration to the UI (issue #300).
         //
-        // Only the UI calls this method (see AviaPlayerSeekFingerprint for the caller
-        // audit), so every position arriving here was computed against the metadata
-        // duration the seekbar is drawn with, while the player runs on the shortened
-        // timeline Hook 3 produced. Without the remap a seek lands late by all the ad
-        // time before it.
+        // WHY, and why this is NOT a position remap (the thing tried first and reverted):
+        // the seekbar's scale comes from AviaPlayerInfo.contentDuration, set once in
+        // AbstractAviaPlayer from AviaResourceProvider.getContentDuration(). The DAI
+        // provider computes that as
+        //     AviaPlayerInfo.getAbsoluteDuration()  -  sum(adPodList durations)
+        // i.e. it subtracts ad time from the player's duration. But after Hook 3 the
+        // player's duration ALREADY excludes the ads (they are gone from the manifest),
+        // while adPodList is still populated from the stitcher/DAI metadata, which this
+        // patch does not empty. So the ad time is deducted a SECOND time and the bar is
+        // scaled shorter than the content actually is — playback then runs past the end
+        // of the bar, which is issue #300's "progress bar goes beyond the estimated
+        // time" and makes every seek read as landing in the wrong place.
         //
-        // toStrippedMs is identity whenever no strip is live (live/linear, a
-        // passthrough manifest, any fail-open), so an unstripped title seeks exactly
-        // as it does unpatched.
+        // The needle itself is fine: it is the player's own position, and Pluto's resume
+        // saves and restores through the same player clock, which is why Continue
+        // Watching works and must not be touched. Only the SCALE is wrong, so only the
+        // duration is corrected here. An earlier attempt remapped seek positions
+        // instead, on the assumption the UI thought in ad-inclusive coordinates; device
+        // testing disproved that (repeated forward nudges moved playback backwards,
+        // because the UI's targets are already in player coordinates), so that hook was
+        // removed rather than extended.
         //
-        // Registers: params are (this, J, Z) -> p0, p1:p2 (wide), p3, so p1 is at
-        // registerCount - 3. Emit the range form for the same reason as Hook 3: a
-        // non-range invoke-static only encodes v0..v15 and is silently dropped above
-        // that, leaving an orphan move-result-wide and a VerifyError.
-        AviaPlayerSeekFingerprint.method.apply {
-            val posLow = implementation!!.registerCount - 3
-            val posHigh = posLow + 1
-            addInstructions(
-                0,
-                """
-                    invoke-static/range {v$posLow .. v$posHigh}, Lajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe;->toStrippedMs(J)J
-                    move-result-wide v$posLow
-                """,
-            )
+        // correctContentDuration logs what the provider reported alongside the strip's
+        // own total, so the on-device log states the discrepancy outright, and returns
+        // the stripped duration the strip measured. It is identity whenever no strip is
+        // live (live/linear, passthrough, any fail-open), so unstripped playback and
+        // live channels keep the app's own value. Applied per provider; only the one in
+        // use matters, so each is optional.
+        listOf(
+            AviaDaiContentDurationFingerprint,
+            AviaImaContentDurationFingerprint,
+            AviaUriContentDurationFingerprint,
+        ).forEach { fingerprint ->
+            fingerprint.methodOrNull?.apply {
+                val instructions = implementation!!.instructions.toList()
+                instructions.withIndex().filter { (_, instruction) ->
+                    instruction.opcode == Opcode.RETURN_WIDE
+                }.map { (index, _) -> index }.asReversed().forEach { returnIndex ->
+                    val durationRegister =
+                        (instructions[returnIndex] as OneRegisterInstruction).registerA
+                    addInstructions(
+                        returnIndex,
+                        """
+                            invoke-static/range {v$durationRegister .. v${durationRegister + 1}}, Lajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe;->correctContentDuration(J)J
+                            move-result-wide v$durationRegister
+                        """,
+                    )
+                }
+            }
         }
     }
 }

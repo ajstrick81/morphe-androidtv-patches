@@ -152,6 +152,42 @@ public final class PlutoV17ManifestProbe {
     }
 
     /**
+     * Corrects the content duration the UI scales its seekbar with (issue #300).
+     *
+     * <p>Called from injected smali at the returns of AVIA's
+     * {@code AviaResourceProvider.getContentDuration()} implementations. The DAI provider
+     * computes that value as {@code getAbsoluteDuration() - sum(adPodList durations)} —
+     * ad time taken off the player's duration. After the strip the player's duration
+     * already excludes the ads, while the provider's ad-pod list is still populated from
+     * the stitcher metadata, so the same ad time is deducted twice and the bar ends up
+     * shorter than the content really is. Playback then runs off the end of the bar.
+     *
+     * <p>Returns the duration the strip itself measured, which is the authoritative
+     * content-only length. Identity when no strip is live (live/linear, a passthrough
+     * manifest, any fail-open), so unstripped playback keeps the app's own value.
+     *
+     * <p>The log line deliberately reports BOTH numbers: what the provider claimed and
+     * what the strip measured. The difference is the double-deduction, so a single
+     * on-device log states the size of the bug rather than leaving it to be inferred.
+     */
+    public static long correctContentDuration(long providerDurationMs) {
+        try {
+            if (!hasTimelineMap() || strippedDurationMs <= 0) return providerDurationMs;
+
+            if (providerDurationMs != strippedDurationMs) {
+                Log.i(TAG, "v17 duration fix (#300): provider reported " + providerDurationMs
+                        + "ms, strip measured " + strippedDurationMs + "ms (original "
+                        + originalDurationMs + "ms) -> using " + strippedDurationMs
+                        + " (delta " + (strippedDurationMs - providerDurationMs) + "ms)");
+            }
+            return strippedDurationMs;
+        } catch (Throwable t) {
+            Log.e(TAG, "v17 duration fix failed -> provider value: " + t.getMessage());
+            return providerDurationMs;
+        }
+    }
+
+    /**
      * ORIGINAL -> STRIPPED. Converts an ad-inclusive position (a restored "Continue
      * watching" bookmark, or a seek the UI computed against the original duration)
      * into the player's content-only coordinates, by subtracting the ad time removed
