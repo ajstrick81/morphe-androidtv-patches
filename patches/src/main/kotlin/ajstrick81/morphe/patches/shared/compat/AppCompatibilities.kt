@@ -34,11 +34,29 @@ object AppCompatibilities {
     packageName = "com.wbd.hbomax",
     appIconColor = 0xFFFFFF,
     targets = listOf(
-        // 7.14.0.69: all shipped HBO fingerprints verified present at the method level
-        // on this build (SSAI synthetic accessor gone but optional; Patch 3 covers it).
-        // Remove Ad Periods (keep 5.1) device-proven here by @Joker4Life12; the other HBO
-        // patches are not yet 7.14.x device-tested, so this target ships experimental.
+        // 7.14.0.69 (experimental): device-tested on-device by @Joker4Life12 (Shield TV).
+        // The recommended combo — "Disable Ads" + "Remove Ad Periods (keep 5.1)" — is clean
+        // (no ads, correct skip-intro/next-episode, 5.1 preserved). "Prefer Ad-Free Stream"
+        // works (stereo). NOTE: "Block SSAI Ad Origins" HANGS playback on this build, so it
+        // uses HBO_TV_ORIGIN_BLOCK_SAFE below (7.14.0.69 excluded) instead of this list.
         AppTarget("7.14.0.69", isExperimental = true),
+        AppTarget("7.9.0.61"),
+        AppTarget("7.7.0.78"),
+        AppTarget("7.5.0.73"),
+        AppTarget("7.2.0.41"),
+    ),
+    )
+
+    // Same app as HBO_TV, minus 7.14.0.69. "Block SSAI Ad Origins" is the only HBO patch
+    // that breaks on 7.14.0.69 — @Joker4Life12 confirmed on-device that with it applied an
+    // ad becomes unskippable and playback then hangs on a black screen / endless spinner
+    // (consistent with the origin-block's known resume fragility). Keep it off 7.14.x until
+    // a fix lands; every other HBO patch stays on HBO_TV (which includes 7.14.0.69).
+    val HBO_TV_ORIGIN_BLOCK_SAFE = Compatibility(
+    name = "HBO Max Android TV",
+    packageName = "com.wbd.hbomax",
+    appIconColor = 0xFFFFFF,
+    targets = listOf(
         AppTarget("7.9.0.61"),
         AppTarget("7.7.0.78"),
         AppTarget("7.5.0.73"),
