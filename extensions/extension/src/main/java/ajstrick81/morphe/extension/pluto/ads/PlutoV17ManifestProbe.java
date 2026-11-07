@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
@@ -170,6 +171,54 @@ public final class PlutoV17ManifestProbe {
      * what the strip measured. The difference is the double-deduction, so a single
      * on-device log states the size of the bug rather than leaving it to be inferred.
      */
+    /**
+     * Empty the stitcher ad-break list (issue #300). Called from injected smali at the
+     * entry of the AdsData constructor, which is the single choke point every instance
+     * passes through — the v17 equivalent of the leanback patch emptying
+     * {@code StitcherSession.getAdBreaks()}.
+     *
+     * <p>After the strip there are no ads in the media, so a populated break list is
+     * stale: it still draws markers, still drives the ad-state machine, and still reports
+     * beacons for breaks that no longer exist. Returns an empty list once a strip is live,
+     * and the caller's own list otherwise, so live/linear and passthrough titles keep the
+     * app's own data.
+     */
+    public static List<?> neutralizeAdBreaks(List<?> original) {
+        try {
+            if (!hasTimelineMap()) return original;
+            int was = original == null ? -1 : original.size();
+            Log.i(TAG, "v17 adBreaks neutralised (#300): " + was + " break(s) -> 0");
+            return Collections.emptyList();
+        } catch (Throwable t) {
+            Log.e(TAG, "v17 adBreaks neutralise failed -> original: " + t.getMessage());
+            return original;
+        }
+    }
+
+    /**
+     * Zero the pre-summed ad-break total the UI subtracts from the content duration
+     * (issue #300). Called from injected smali at the entry of the ThumbnailTemplate
+     * constructor, for its {@code adBreaksDurationInSec} parameter.
+     *
+     * <p>App code computes the seekbar's length as
+     * {@code contentDuration - adBreaksDurationInSec}. After the strip the content
+     * duration already excludes the ads, so subtracting the total again shortens the bar
+     * by the whole ad load: measured on 17.2.0 as a 29:23 bar on a 42:04 episode, with
+     * playback running past the bar's end. Returning 0 makes that subtraction a no-op and
+     * the bar truthful. Identity when no strip is live.
+     */
+    public static long zeroAdBreakDuration(long originalValue) {
+        try {
+            if (!hasTimelineMap() || originalValue == 0L) return originalValue;
+            Log.i(TAG, "v17 adBreaksDuration zeroed (#300): was " + originalValue
+                    + " -> 0 (strippedDur=" + strippedDurationMs + "ms)");
+            return 0L;
+        } catch (Throwable t) {
+            Log.e(TAG, "v17 adBreaksDuration zero failed -> original: " + t.getMessage());
+            return originalValue;
+        }
+    }
+
     public static long correctContentDuration(long providerDurationMs) {
         try {
             if (!hasTimelineMap() || strippedDurationMs <= 0) {

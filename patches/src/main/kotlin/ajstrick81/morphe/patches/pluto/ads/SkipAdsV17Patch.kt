@@ -4,9 +4,9 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import ajstrick81.morphe.patches.pluto.shared.Constants
 import ajstrick81.morphe.patches.shared.ads.ImaPauseAdDisplayFingerprint
-import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
-import com.android.tools.smali.dexlib2.Opcode
-import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
+import com.android.tools.smali.dexlib2.iface.ClassDef
+import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.reference.StringReference
 
 @Suppress("unused")
 val skipAdsV17Patch = bytecodePatch(
@@ -142,44 +142,110 @@ val skipAdsV17Patch = bytecodePatch(
         // log line was indistinguishable from "no discrepancy found". A hard lookup makes a
         // fingerprint break loud instead. IMA and Uri stay optional — a given title routes
         // through one provider, so the other two legitimately may not be present.
-        AviaDaiContentDurationFingerprint.method.patchContentDurationReturns()
-
-        listOf(
-            AviaImaContentDurationFingerprint,
-            AviaUriContentDurationFingerprint,
-        ).forEach { fingerprint ->
-            fingerprint.methodOrNull?.patchContentDurationReturns()
+        // Hook 8 — neutralise the stale stitcher ad-break metadata.
+        //
+        // This is the v17 port of the leanback patch's Hook 4
+        // (StitcherSession.getAdBreaks() -> emptyList()). On 5.66 that single hook was
+        // enough, because every consumer — the timebar's AdBreakPositionSource, the slot
+        // controllers, the ID3 beacon tracker — read the breaks through that one getter.
+        // v17 has no tv/pluto package and no such getter: the data arrives as a Kotlin
+        // data class, R8-minified, whose list is read directly with iget-object. The
+        // equivalent choke point is therefore its CONSTRUCTOR, which every instance
+        // passes through.
+        //
+        // Two separate pieces of ad metadata have to be neutralised, because v17 splits
+        // what leanback kept in one place:
+        //
+        //   AdsData.adBreaks            the ad-break list itself (markers, ad state,
+        //                               beacons, the early end-of-content transition)
+        //   ThumbnailTemplate
+        //     .adBreaksDurationInSec    the pre-summed ad total that app code subtracts
+        //                               from the content duration
+        //
+        // The second is the #300 seekbar bug, traced on-device: app code does
+        //     bar = contentDuration - adBreaksDurationInSec
+        // but after Hook 3 contentDuration ALREADY excludes the ads, so the ad time comes
+        // off twice. Measured on 17.2.0: content 2524.031s, ads 761.141s, bar 1762.89s =
+        // 29:23 against a 42:04 episode. Playback then runs past the end of the bar, and
+        // AviaDAIResourceProvider$Listener's "position + 500ms < contentDuration" check
+        // reports end-of-content ~12 minutes early, which is the likely cause of the
+        // stuck ad overlay with a locked timeline.
+        //
+        // NOT hooked: AviaResourceProvider.getContentDuration(). That was tried and
+        // reverted — on-device it returns -1 (an early-exit path), so it never fed the
+        // bar at all. The log proved the hook ran and substituted a correct value with no
+        // effect on the UI, which is what pointed at app-level code instead.
+        //
+        // Both classes are matched by a string constant from their own toString(), since
+        // R8 renames the classes (observed as gm and xuh in 17.2.0) but cannot rename
+        // string literals. Both substitutions are identity whenever no strip is live, so
+        // live/linear and passthrough titles keep the app's own values.
+        val adsDataClass = mutableClassDefByOrNull { classDef ->
+            classDef.hasStringConstant(ADS_DATA_MARKER)
         }
+        checkNotNull(adsDataClass) {
+            "skipAdsV17Patch Hook 8: no class with the $ADS_DATA_MARKER constant"
+        }
+        adsDataClass.methods
+            .filter {
+                // parameterTypes holds CharSequence, so compare via toString().
+                it.name == "<init>" &&
+                    it.parameterTypes.firstOrNull()?.toString() == "Ljava/util/List;"
+            }
+            .also {
+                check(it.isNotEmpty()) {
+                    "skipAdsV17Patch Hook 8: AdsData has no (List, ...) constructor"
+                }
+            }
+            .forEach { constructor ->
+                // p1 is the adBreaks list: the first parameter after `this`.
+                constructor.addInstructions(
+                    0,
+                    """
+                        invoke-static {p1}, Lajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe;->neutralizeAdBreaks(Ljava/util/List;)Ljava/util/List;
+                        move-result-object p1
+                    """,
+                )
+            }
+
+        val thumbnailTemplateClass = mutableClassDefByOrNull { classDef ->
+            classDef.hasStringConstant(AD_BREAK_DURATION_MARKER)
+        }
+        checkNotNull(thumbnailTemplateClass) {
+            "skipAdsV17Patch Hook 8: no class with the $AD_BREAK_DURATION_MARKER constant"
+        }
+        thumbnailTemplateClass.methods
+            .filter { it.name == "<init>" && it.parameterTypes.size > 1 }
+            .also {
+                check(it.isNotEmpty()) {
+                    "skipAdsV17Patch Hook 8: ThumbnailTemplate has no multi-arg constructor"
+                }
+            }
+            .forEach { constructor ->
+                // adBreaksDurationInSec is the LAST parameter and is wide, so it occupies
+                // the top two registers. Range form for the Hook 3 encoding reason.
+                val registerCount = constructor.implementation!!.registerCount
+                val low = registerCount - 2
+                constructor.addInstructions(
+                    0,
+                    """
+                        invoke-static/range {v$low .. v${low + 1}}, Lajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe;->zeroAdBreakDuration(J)J
+                        move-result-wide v$low
+                    """,
+                )
+            }
     }
 }
 
-/**
- * Route every `return-wide` of a `getContentDuration()` implementation through
- * `PlutoV17ManifestProbe.correctContentDuration(J)J`.
- *
- * Returns are rewritten back-to-front so that inserting instructions never shifts the
- * index of a return not yet processed. The range form of the invoke is used for the same
- * reason as Hook 3: a non-range `invoke-static` only encodes v0..v15 and is silently
- * dropped above that, leaving an orphan `move-result-wide` and a VerifyError at runtime.
- */
-private fun MutableMethod.patchContentDurationReturns() {
-    val instructions = implementation!!.instructions.toList()
-    val returnIndices = instructions.withIndex()
-        .filter { (_, instruction) -> instruction.opcode == Opcode.RETURN_WIDE }
-        .map { (index, _) -> index }
+// toString() literals from the two ad-metadata data classes. R8 renames the classes but
+// not these constants, so they are the stable anchors.
+private const val ADS_DATA_MARKER = "AdsData(adBreaks="
+private const val AD_BREAK_DURATION_MARKER = ", adBreaksDurationInSec="
 
-    check(returnIndices.isNotEmpty()) {
-        "skipAdsV17Patch Hook 8: no return-wide in $definingClass->$name"
-    }
-
-    returnIndices.asReversed().forEach { returnIndex ->
-        val durationRegister = (instructions[returnIndex] as OneRegisterInstruction).registerA
-        addInstructions(
-            returnIndex,
-            """
-                invoke-static/range {v$durationRegister .. v${durationRegister + 1}}, Lajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe;->correctContentDuration(J)J
-                move-result-wide v$durationRegister
-            """,
-        )
-    }
+/** True if any method of this class loads [text] as a string constant. */
+private fun ClassDef.hasStringConstant(text: String): Boolean = methods.any { method ->
+    method.implementation?.instructions?.any { instruction ->
+        ((instruction as? ReferenceInstruction)?.reference as? StringReference)?.string == text
+    } == true
 }
+
