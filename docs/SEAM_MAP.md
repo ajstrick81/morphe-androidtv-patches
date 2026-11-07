@@ -21,12 +21,12 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 
 | App | Engine | Targets | Patches | Fingerprints | Patch evidence logged | Device signature known |
 |---|---|---|---:|---:|---|---|
-| [disney](#disney) | Proprietary native / JS ad engine | 26.6.0+rc5-2026.04.21, 26.8.0+rc6-2026.05.20, 26.9.2+rc1-2026.06.12, 26.12.1+rc1-2026.07.15, 26.16.0+rc2-2026.09.08 | 2 | 6 | **no** | **no** |
+| [disney](#disney) | Proprietary native / JS ad engine | 26.20.0+rc3-2026.11.02, 26.16.0+rc2-2026.09.08, 26.12.1+rc1-2026.07.15 | 2 | 6 | **no** | yes |
 | [espn](#espn) | Server-side stitching (SSAI) via manifest | 6.11.1 | 4 | 7 | yes (50 lines) | **no** |
 | [f1tv](#f1tv) | ? | 3.0.49.4-SP166.4.1-release-R54.2-tv | 1 | 5 | **no** | **no** |
 | [foxone](#foxone) | Google IMA / DAI client SDK | 1.9.2 | 1 | 8 | **no** | **no** |
 | [future](#future) | ? | 19.7, 20.1 | 2 | 5 | **no** | **no** |
-| [hbomax](#hbomax) | Server-side stitching (SSAI) via manifest | 7.9.0.61, 7.7.0.78, 7.5.0.73, 7.2.0.41 | 5 | 12 | yes (23 lines) | **no** |
+| [hbomax](#hbomax) | Server-side stitching (SSAI) via manifest | 7.14.0.69, 7.9.0.61, 7.7.0.78, 7.5.0.73, 7.2.0.41 | 5 | 12 | yes (23 lines) | **no** |
 | [mlbtv](#mlbtv) | Google IMA / DAI client SDK | 26.8.1.1 | 1 | 9 | yes (7 lines) | **no** |
 | [netflix](#netflix) | Proprietary native / JS ad engine | 13.0.1 build 25028, 13.2.1 build 27207, 13.2.2 build 27250 | 6 | 2 | **no** | **no** |
 | [paramount](#paramount) | Google IMA / DAI client SDK | 16.19.0, 16.17.0, 16.12.0, 16.8.0 | 1 | 3 | **no** | **no** |
@@ -42,19 +42,19 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 
 ## disney
 
-**Package** `com.disney.disneyplus` · **Targets** `26.6.0+rc5-2026.04.21`, `26.8.0+rc6-2026.05.20`, `26.9.2+rc1-2026.06.12`, `26.12.1+rc1-2026.07.15`, `26.16.0+rc2-2026.09.08` · **Engine** Proprietary native / JS ad engine
+**Package** `com.disney.disneyplus` · **Targets** `26.20.0+rc3-2026.11.02`, `26.16.0+rc2-2026.09.08`, `26.12.1+rc1-2026.07.15` · **Engine** Proprietary native / JS ad engine
 
 | Layer | |
 |---|---|
 | Runtime | Disney media player (legacy DSS SDK and new com.disney.dmp). |
-| Delivery | SGAI (server-guided ad insertion): the player receives insertion points / ranges that say where ads go. |
-| Code seam | Insertion accessors `getPoints()` / `getRanges()` (legacy + DMP variants). |
-| Patch action | Return empty insertion points/ranges → no breaks scheduled. 26.16: obfuscated MEL pause layer → pause ad made optional. |
+| Delivery | VOD: SGAI/SSAI insertion points + ranges via `com.disney.dmp.internal.pbo.Insertion` (and the legacy DSS-SDK `Insertion`). LIVE is a SEPARATE channel: breaks arrive as HLS `#EXT-X-DATERANGE` interstitial tags (`CLASS=com.disney.media.break.v1` or `com.apple.hls.interstitial`) carrying START-DATE / END-DATE / PLANNED-DURATION / X-ASSET-LIST / X-COM-DISNEY-PAYLOAD, delivered to the player as `playlistRetrieved(DateTime, List<DateRange>)`. Live never travels through `Insertion`. |
+| Code seam | VOD: `Insertion` accessors `getPoints()` / `getRanges()` (legacy + DMP variants). LIVE: `playlistRetrieved(DateTime, List<DateRange>)` — R8-minified to `Lssc;->g(Lorg/joda/time/DateTime;Ljava/util/List;)V` on 26.20 (interface `Lnmh;`, logging decorator `Ljcl;->g`); parsed entirely in Java, so bytecode-reachable. Not patched: see docs/DISNEY_LIVE_AD_DELIVERY.md. |
+| Patch action | VOD: return empty insertion points/ranges -> no breaks scheduled. 26.16: obfuscated MEL pause layer -> pause ad made optional. LIVE: nothing shipped. Two gates (`cub.p:Li08`, `cub.j:Z`) choose client-side `scheduleLiveInterstitials` (removable by filtering the DateRange list) vs passthrough (nothing scheduled -> mask only, as ESPN does). The measured ESPN-in-Disney+ stream takes the passthrough branch. |
 | Patch evidence | _unknown_ |
-| Device signature | _unknown_ |
-| Drift history | Verified through 26.12.1; 26.16 pause-ad needed an optional patch (#167). |
+| Device signature | LIVE passthrough: one continuous decoder session over ~25 min — 0 `C2VdecComponent`/`CCodec` lines, 0 decoder `onStopDone`, 1 `WVCdm` op, `PLAYING(3)` throughout, strictly monotonic position. VOD baseline over a comparable span: 1,744 codec lines, 12 stops, 421 `WVCdm` ops. The app emits none of its own `p97.w` logging in release, so logcat shows zero ad vocabulary either way. |
+| Drift history | Verified through 26.20.0+rc3-2026.11.02; 26.16 pause-ad needed an optional patch (#167). Live seam names `Lssc;`/`g` are R8 and drift every version — re-anchor on the in-method strings `com.disney.media.break.v1`, `X-COM-DISNEY-PAYLOAD`, `X-ASSET-LIST`. |
 
-**Gaps:** Re-anchor the 26.16 pause-ad seam. · No runtime log line. · Device signature not captured.
+**Gaps:** Re-anchor the 26.16+ pause-ad seam. · No runtime log line. · LIVE: no user-flagged commercial-break timestamp yet, so passthrough is consistent-with, not proven. · LIVE: pcap a break to see whether an X-ASSET-LIST URI is fetched (decides client-side vs passthrough). · LIVE: resolve what sets the gates cub.p / cub.j.
 
 <details><summary>Patches and fingerprints (generated)</summary>
 
@@ -200,7 +200,7 @@ Runtime evidence (tags `MORPHE-ESPN-SLATE`; first 12 of 50):
 
 ## hbomax
 
-**Package** `com.wbd.hbomax` · **Targets** `7.9.0.61`, `7.7.0.78`, `7.5.0.73`, `7.2.0.41` · **Engine** Server-side stitching (SSAI) via manifest
+**Package** `com.wbd.hbomax` · **Targets** `7.14.0.69`, `7.9.0.61`, `7.7.0.78`, `7.5.0.73`, `7.2.0.41` · **Engine** Server-side stitching (SSAI) via manifest
 
 | Layer | |
 |---|---|
