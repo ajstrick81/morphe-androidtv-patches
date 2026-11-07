@@ -1,3 +1,10 @@
+## [1.50.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.50.0...v1.50.1) (2026-11-07)
+
+
+### Bug Fixes
+
+* **pluto:** no-op the live-slate patch on v17 instead of aborting the run ([#307](https://github.com/ajstrick81/morphe-androidtv-patches/issues/307)) ([48ebd82](https://github.com/ajstrick81/morphe-androidtv-patches/commit/48ebd82dd7cfbeb005d8389e1a79a8f1228b1bdc)), closes [#298](https://github.com/ajstrick81/morphe-androidtv-patches/issues/298)
+
 # [1.50.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.49.0...v1.50.0) (2026-11-07)
 
 
