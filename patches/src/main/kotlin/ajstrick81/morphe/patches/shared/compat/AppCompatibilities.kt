@@ -26,7 +26,8 @@ object AppCompatibilities {
         // fine, then playback dies ~20 s in with "There was a problem" (#302).
         // No patch can fix that, so builds Disney has cut off are removed from
         // this list rather than left here looking supported.
-        targets = listOf(AppTarget("26.16.0+rc2-2026.09.08"),
+        targets = listOf(AppTarget("26.20.0+rc3-2026.11.02"),
+                         AppTarget("26.16.0+rc2-2026.09.08"),
                          AppTarget("26.12.1+rc1-2026.07.15"),
         ),
     )
