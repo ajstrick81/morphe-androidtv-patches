@@ -1,3 +1,17 @@
+# [1.50.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.49.0...v1.50.0) (2026-11-07)
+
+
+### Bug Fixes
+
+* **disney:** drop Disney+ targets cut off by server-side version enforcement ([195a904](https://github.com/ajstrick81/morphe-androidtv-patches/commit/195a904eb0711c1283ce428878ed252106a42131)), closes [#302](https://github.com/ajstrick81/morphe-androidtv-patches/issues/302)
+* **disney:** scope Suppress Household Prompt to the build it is pinned to ([#289](https://github.com/ajstrick81/morphe-androidtv-patches/issues/289)) ([17dad4c](https://github.com/ajstrick81/morphe-androidtv-patches/commit/17dad4c77b095946441ed1596bd003020d3bcfe0))
+
+
+### Features
+
+* **disney:** add experimental Disney+ 26.20.0+rc3-2026.11.02 target ([753fa9d](https://github.com/ajstrick81/morphe-androidtv-patches/commit/753fa9dfce86d0d8c04cc2d335dea102b93d690a)), closes [#167](https://github.com/ajstrick81/morphe-androidtv-patches/issues/167)
+* **disney:** support Disney+ 26.20.0+rc3-2026.11.02 ([770bb00](https://github.com/ajstrick81/morphe-androidtv-patches/commit/770bb00847048291d7eaca5b3a35e8b28310bd7f)), closes [#167](https://github.com/ajstrick81/morphe-androidtv-patches/issues/167)
+
 # [1.49.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.48.2...v1.49.0) (2026-11-07)
 
 
