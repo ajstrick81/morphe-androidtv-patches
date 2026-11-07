@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-11-07T20:30:37",
-  "description": "## [1.50.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.50.0...v1.50.1) (2026-11-07)\n\n\n### Bug Fixes\n\n* **pluto:** no-op the live-slate patch on v17 instead of aborting the run ([#307](https://github.com/ajstrick81/morphe-androidtv-patches/issues/307)) ([48ebd82](https://github.com/ajstrick81/morphe-androidtv-patches/commit/48ebd82dd7cfbeb005d8389e1a79a8f1228b1bdc)), closes [#298](https://github.com/ajstrick81/morphe-androidtv-patches/issues/298)",
-  "download_url": "https://github.com/ajstrick81/morphe-androidtv-patches/releases/download/v1.50.1/patches-1.50.1.mpp",
+  "created_at": "2026-11-07T20:38:41",
+  "description": "## [1.50.2](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.50.1...v1.50.2) (2026-11-07)\n\n\n### Bug Fixes\n\n* **pluto:** correct the v17 seekbar timeline by emptying stale ad-break metadata ([#308](https://github.com/ajstrick81/morphe-androidtv-patches/issues/308)) ([8a8047b](https://github.com/ajstrick81/morphe-androidtv-patches/commit/8a8047b977374369957ba072e6e721af1c86fb3b)), closes [#300](https://github.com/ajstrick81/morphe-androidtv-patches/issues/300) [#298](https://github.com/ajstrick81/morphe-androidtv-patches/issues/298) [#300](https://github.com/ajstrick81/morphe-androidtv-patches/issues/300)",
+  "download_url": "https://github.com/ajstrick81/morphe-androidtv-patches/releases/download/v1.50.2/patches-1.50.2.mpp",
   "signature_download_url": "",
-  "version": "1.50.1"
+  "version": "1.50.2"
 }

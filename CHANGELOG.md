@@ -1,3 +1,10 @@
+## [1.50.2](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.50.1...v1.50.2) (2026-11-07)
+
+
+### Bug Fixes
+
+* **pluto:** correct the v17 seekbar timeline by emptying stale ad-break metadata ([#308](https://github.com/ajstrick81/morphe-androidtv-patches/issues/308)) ([8a8047b](https://github.com/ajstrick81/morphe-androidtv-patches/commit/8a8047b977374369957ba072e6e721af1c86fb3b)), closes [#300](https://github.com/ajstrick81/morphe-androidtv-patches/issues/300) [#298](https://github.com/ajstrick81/morphe-androidtv-patches/issues/298) [#300](https://github.com/ajstrick81/morphe-androidtv-patches/issues/300)
+
 ## [1.50.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.50.0...v1.50.1) (2026-11-07)
 
 
