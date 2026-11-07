@@ -52,17 +52,40 @@ jobs:
           # Download a fresh NDK each run instead — reliable over cache-fast.
           local-cache: false
 
-      - name: Build libpvhook.so (armeabi-v7a)
+      # Both ABIs: v15.5 is armeabi-v7a only, but the v16 bundles are allAbis and
+      # a 64-bit install loads arm64 libignite — a v7a-only hook is never loaded
+      # there and the strip is silently absent.
+      - name: Build libpvhook.so (armeabi-v7a + arm64-v8a)
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         run: |
           cd experimental/primevideo-libignite-native/jni
-          cmake -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
-                -DANDROID_ABI=armeabi-v7a -DANDROID_PLATFORM=android-23 -B build-v7a
-          cmake --build build-v7a
-          install -m 0644 build-v7a/libpvhook.so \
-            ../../../patches/src/main/resources/native/armeabi-v7a/libpvhook.so
-          file ../../../patches/src/main/resources/native/armeabi-v7a/libpvhook.so
+          set -euo pipefail
+          for pair in "armeabi-v7a:build-v7a" "arm64-v8a:build-arm64"; do
+            abi="${pair%%:*}"; dir="${pair##*:}"
+            cmake -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
+                  -DANDROID_ABI="$abi" -DANDROID_PLATFORM=android-23 -B "$dir"
+            cmake --build "$dir"
+            dest="../../../patches/src/main/resources/native/$abi/libpvhook.so"
+            mkdir -p "$(dirname "$dest")"
+            install -m 0644 "$dir/libpvhook.so" "$dest"
+            file "$dest"
+          done
+
+      # Guard: the .so files must exist for every ABI the patch writes, and each
+      # must be for the right machine. Catches a silently-skipped ABI build
+      # before it can ship a bundle that patches cleanly and strips nothing.
+      - name: Verify both hook ABIs were produced
+        run: |
+          set -euo pipefail
+          v7a=patches/src/main/resources/native/armeabi-v7a/libpvhook.so
+          a64=patches/src/main/resources/native/arm64-v8a/libpvhook.so
+          for f in "$v7a" "$a64"; do
+            test -s "$f" || { echo "::error::$f missing or empty"; exit 1; }
+          done
+          file "$v7a" | grep -q "ARM, EABI" || { echo "::error::$v7a is not ARM32"; exit 1; }
+          file "$a64" | grep -q "ARM aarch64" || { echo "::error::$a64 is not ARM64"; exit 1; }
+          echo "both hook ABIs present and correctly typed"
 
       - name: Build
         env:
