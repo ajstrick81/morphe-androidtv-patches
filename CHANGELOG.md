@@ -1,3 +1,10 @@
+# [1.49.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.48.2...v1.49.0) (2026-11-07)
+
+
+### Features
+
+* **hbomax:** add experimental 7.14.0.69 target ([#288](https://github.com/ajstrick81/morphe-androidtv-patches/issues/288)) ([9ca4665](https://github.com/ajstrick81/morphe-androidtv-patches/commit/9ca4665a4639924ddc8c705bbf222db0167527c5))
+
 ## [1.48.2](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.48.1...v1.48.2) (2026-11-02)
 
 
