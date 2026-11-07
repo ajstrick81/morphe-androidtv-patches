@@ -185,9 +185,23 @@ public final class PlutoV17ManifestProbe {
      */
     public static List<?> neutralizeAdBreaks(List<?> original) {
         try {
-            if (!hasTimelineMap()) return original;
+            // UNCONDITIONAL — deliberately not gated on hasTimelineMap().
+            //
+            // These metadata objects are constructed when the stitcher/session response
+            // is mapped, which happens BEFORE AviaDashParser.parse runs, so at that
+            // moment no strip map exists yet. A map-gated version was measured on
+            // 17.2.0 doing nothing useful: the instances the UI had already consumed
+            // kept their original values, and only later instances were neutralised
+            // (device log: "adBreaksDuration zeroed: was 744 -> 0" many times, while the
+            // bar stayed at strippedDuration - 744).
+            //
+            // The leanback patch had no such condition either: Hook 4 returned
+            // emptyList() from StitcherSession.getAdBreaks() on every call, which is
+            // why 5.66 never showed this bug. This matches that behaviour.
             int was = original == null ? -1 : original.size();
-            Log.i(TAG, "v17 adBreaks neutralised (#300): " + was + " break(s) -> 0");
+            if (was > 0) {
+                Log.i(TAG, "v17 adBreaks neutralised (#300): " + was + " break(s) -> 0");
+            }
             return Collections.emptyList();
         } catch (Throwable t) {
             Log.e(TAG, "v17 adBreaks neutralise failed -> original: " + t.getMessage());
@@ -209,7 +223,17 @@ public final class PlutoV17ManifestProbe {
      */
     public static long zeroAdBreakDuration(long originalValue) {
         try {
-            if (!hasTimelineMap() || originalValue == 0L) return originalValue;
+            // UNCONDITIONAL, for the ordering reason documented on neutralizeAdBreaks:
+            // the object carrying this total is built before the manifest is parsed, so
+            // a map-gated version arrives too late to affect the value the seekbar uses.
+            //
+            // Trade-off, stated explicitly: if a manifest ever fails open and is passed
+            // through UNSTRIPPED, the ads are still in the media but this total reads 0,
+            // so the bar will be LONGER than the content by the ad time instead of
+            // shorter. That is the better failure of the two — playback ending before
+            // the bar's end is untidy, whereas playback running past it drove the early
+            // end-of-content transition and the stuck ad overlay with a locked timeline.
+            if (originalValue == 0L) return 0L;
             Log.i(TAG, "v17 adBreaksDuration zeroed (#300): was " + originalValue
                     + " -> 0 (strippedDur=" + strippedDurationMs + "ms)");
             return 0L;
