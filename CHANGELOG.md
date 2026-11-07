@@ -1,3 +1,12 @@
+## [1.50.3](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.50.2...v1.50.3) (2026-11-07)
+
+
+### Bug Fixes
+
+* **primevideo:** close truncated regolith playlist in front of the tail object ([#260](https://github.com/ajstrick81/morphe-androidtv-patches/issues/260)) ([a531e13](https://github.com/ajstrick81/morphe-androidtv-patches/commit/a531e13ab63179d30572a99094c306d818a2da02)), closes [#263](https://github.com/ajstrick81/morphe-androidtv-patches/issues/263)
+* **primevideo:** empty a truncated regolith playlist across contiguous chunks ([#260](https://github.com/ajstrick81/morphe-androidtv-patches/issues/260)) ([6fcdd7b](https://github.com/ajstrick81/morphe-androidtv-patches/commit/6fcdd7b1afee7da09714371e132f7532465f4bf9))
+* **primevideo:** ship split-tail native hook in bundled resource .so ([#260](https://github.com/ajstrick81/morphe-androidtv-patches/issues/260)) ([83c8c85](https://github.com/ajstrick81/morphe-androidtv-patches/commit/83c8c850f5376b98b24bf09cae5bc9a79f02d6b4)), closes [#120-era](https://github.com/ajstrick81/morphe-androidtv-patches/issues/120-era)
+
 ## [1.50.2](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.50.1...v1.50.2) (2026-11-07)
 
 
