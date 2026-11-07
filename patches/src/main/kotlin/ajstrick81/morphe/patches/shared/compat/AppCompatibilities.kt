@@ -26,7 +26,13 @@ object AppCompatibilities {
         // fine, then playback dies ~20 s in with "There was a problem" (#302).
         // No patch can fix that, so builds Disney has cut off are removed from
         // this list rather than left here looking supported.
-        targets = listOf(AppTarget("26.20.0+rc3-2026.11.02"),
+        // 26.20.0+rc3 (experimental): patched and tested on-device on the Onn 4K Plus.
+        // Both Insertion seams hook cleanly and the empty-ArrayList prologue is confirmed
+        // in the patched dex; several movies and shows played with no pre-roll, no mid-roll
+        // markers, no stutter and no playback delay, and zero ad-decision / beacon /
+        // InsertionPoint traffic in logcat. Pause ads are NOT blocked here — the MEL pause
+        // seam has been unresolvable since 26.16 (#167).
+        targets = listOf(AppTarget("26.20.0+rc3-2026.11.02", isExperimental = true),
                          AppTarget("26.16.0+rc2-2026.09.08"),
                          AppTarget("26.12.1+rc1-2026.07.15"),
         ),
