@@ -183,6 +183,41 @@ public final class PlutoV17ManifestProbe {
      * and the caller's own list otherwise, so live/linear and passthrough titles keep the
      * app's own data.
      */
+    /**
+     * Empty {@code StitcherSession.adBreaks} (issue #300). Called from injected smali at
+     * the entry of the StitcherSession constructor, for its adBreaks parameter.
+     *
+     * <p>This is the real leanback Hook 4 target. The leanback patch emptied
+     * {@code tv.pluto.library.playercommon.data.StitcherSession.getAdBreaks()}, and that
+     * class still exists in v17 — R8 renames it (observed as {@code v1h} in 17.2.0) but
+     * its {@code toString()} still spells {@code "StitcherSession(id="}, and the field is
+     * still the ad-break list the timebar's position source reads.
+     *
+     * <p>Earlier builds emptied {@code AdsData.adBreaks} and zeroed
+     * {@code ThumbnailTemplate.adBreaksDurationInSec}. Both verifiably took effect on
+     * device and neither moved the seekbar, because neither is what the bar is computed
+     * from. This one is.
+     *
+     * <p>The field is declared {@code ArrayList}, not {@code List}, so a fresh
+     * {@code ArrayList} is returned rather than {@link Collections#emptyList()} — an
+     * immutable {@code List} would be the wrong type for the field and for any consumer
+     * that mutates it.
+     */
+    public static ArrayList<?> neutralizeStitcherAdBreaks(ArrayList<?> original) {
+        try {
+            int was = original == null ? -1 : original.size();
+            if (was > 0) {
+                Log.i(TAG, "v17 StitcherSession.adBreaks neutralised (#300): "
+                        + was + " break(s) -> 0");
+            }
+            return new ArrayList<>();
+        } catch (Throwable t) {
+            Log.e(TAG, "v17 StitcherSession.adBreaks neutralise failed -> original: "
+                    + t.getMessage());
+            return original;
+        }
+    }
+
     public static List<?> neutralizeAdBreaks(List<?> original) {
         try {
             // UNCONDITIONAL — deliberately not gated on hasTimelineMap().

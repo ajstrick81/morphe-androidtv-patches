@@ -108,6 +108,7 @@
     # used toStrippedMs was reverted after device testing), but they are covered by
     # testing/checks/PlutoTimelineMapCheck.java and are the tested basis for any future
     # coordinate translation, so keep them resolvable rather than silently stripped.
+    public static java.util.ArrayList neutralizeStitcherAdBreaks(java.util.ArrayList);
     public static java.util.List neutralizeAdBreaks(java.util.List);
     public static long zeroAdBreakDuration(long);
     public static long correctContentDuration(long);

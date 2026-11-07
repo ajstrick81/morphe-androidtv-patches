@@ -208,6 +208,53 @@ val skipAdsV17Patch = bytecodePatch(
                 )
             }
 
+        // StitcherSession.adBreaks — the actual leanback Hook 4 target.
+        //
+        // The leanback patch emptied tv.pluto.library.playercommon.data.StitcherSession
+        // .getAdBreaks(). That class survives in v17: R8 renames it (v1h in 17.2.0) but
+        // its toString() still spells "StitcherSession(id=", and its adBreaks field is
+        // still the list the timebar's position source reads. Emptying AdsData.adBreaks
+        // and zeroing ThumbnailTemplate.adBreaksDurationInSec both took effect on device
+        // and neither moved the seekbar, which is what identified this as the real one.
+        //
+        // adBreaks is the FIRST ArrayList parameter of the constructor (followed by
+        // adBreakLocations), so it is located by type and position rather than by a
+        // hardcoded register, and the register is computed from the parameter widths so
+        // the injection survives a signature change.
+        val stitcherSessionClass = mutableClassDefByOrNull { classDef ->
+            classDef.hasStringConstant(STITCHER_SESSION_MARKER)
+        }
+        checkNotNull(stitcherSessionClass) {
+            "skipAdsV17Patch Hook 8: no class with the $STITCHER_SESSION_MARKER constant"
+        }
+        stitcherSessionClass.methods
+            .filter { method ->
+                method.name == "<init>" &&
+                    method.parameterTypes.any { it.toString() == "Ljava/util/ArrayList;" }
+            }
+            .also {
+                check(it.isNotEmpty()) {
+                    "skipAdsV17Patch Hook 8: StitcherSession has no (… ArrayList …) constructor"
+                }
+            }
+            .forEach { constructor ->
+                val parameters = constructor.parameterTypes.map { it.toString() }
+                val adBreaksIndex = parameters.indexOfFirst { it == "Ljava/util/ArrayList;" }
+                fun widthOf(type: String) = if (type == "J" || type == "D") 2 else 1
+                // p0 (`this`) sits at registerCount minus the total parameter width.
+                val parameterWidth = 1 + parameters.sumOf { widthOf(it) }
+                val thisRegister = constructor.implementation!!.registerCount - parameterWidth
+                val adBreaksRegister = thisRegister + 1 +
+                    parameters.take(adBreaksIndex).sumOf { widthOf(it) }
+                constructor.addInstructions(
+                    0,
+                    """
+                        invoke-static/range {v$adBreaksRegister .. v$adBreaksRegister}, Lajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe;->neutralizeStitcherAdBreaks(Ljava/util/ArrayList;)Ljava/util/ArrayList;
+                        move-result-object v$adBreaksRegister
+                    """,
+                )
+            }
+
         val thumbnailTemplateClass = mutableClassDefByOrNull { classDef ->
             classDef.hasStringConstant(AD_BREAK_DURATION_MARKER)
         }
@@ -239,6 +286,7 @@ val skipAdsV17Patch = bytecodePatch(
 
 // toString() literals from the two ad-metadata data classes. R8 renames the classes but
 // not these constants, so they are the stable anchors.
+private const val STITCHER_SESSION_MARKER = "StitcherSession(id="
 private const val ADS_DATA_MARKER = "AdsData(adBreaks="
 private const val AD_BREAK_DURATION_MARKER = ", adBreaksDurationInSec="
 
