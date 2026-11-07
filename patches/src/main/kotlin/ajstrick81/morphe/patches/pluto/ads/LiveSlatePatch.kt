@@ -24,10 +24,30 @@ val liveSlatePatch = bytecodePatch(
     extendWith("extensions/extension.mpe")
 
     execute {
+        // GENERATION GUARD (issue #298) — this patch is leanback-only.
+        //
+        // Every seam below belongs to the 5.66 leanback stack; the v17.x rebuild on the
+        // Paramount+/AVIA player has none of them (ID3AdsBeaconTracker is gone entirely).
+        // compatibleWith() already declares 5.66.0-leanback, but the Manager still lets a
+        // user tick this patch on a v17 APK, and a hard `.method` lookup then throws
+        // PatchException and aborts the WHOLE patch run — so an unrelated, correctly
+        // selected patch set fails because of one inapplicable checkbox.
+        //
+        // Resolve the detector optionally instead and no-op the patch when it is absent:
+        // a v17 user who leaves this selected gets a successful build with the slate
+        // simply inert, which is the same outcome as deselecting it. On leanback, where
+        // the detector resolves, every hook below is required and still hard-fails loudly
+        // if the dex shape changes.
+        val id3Consume = Id3ConsumeFingerprint.methodOrNull
+        if (id3Consume == null) {
+            // Not the leanback stack (v17.x or newer) -> nothing to hook, exit quietly.
+            return@execute
+        }
+
         // 1) Detector — ID3AdsBeaconTracker.consumeID3(ID3Tag). Every call = an ad is on
         //    screen right now; the helper shows the mask + mutes and re-arms a short hide
         //    timer, lifting when the ticks stop (content resumed). p1 = the ID3Tag.
-        Id3ConsumeFingerprint.method.addInstructions(
+        id3Consume.addInstructions(
             0,
             "invoke-static { p1 }, Lajstrick81/morphe/extension/pluto/ads/PlutoLiveSlateHelper;" +
                 "->onAdTick(Ljava/lang/Object;)V",
