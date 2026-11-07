@@ -115,3 +115,99 @@ internal object BeaconConsumeAdsFingerprint : Fingerprint(
     returnType = "V",
     strings = listOf("Feature is disabled, can't consume the adsData"),
 )
+
+// Hook 8 — AviaResourceProvider.getContentDuration(): J  [all optional]  (issue #300)
+//
+// The seekbar's scale is AviaPlayerInfo.contentDuration, which AbstractAviaPlayer sets
+// once from the active provider's getContentDuration(). In 17.2.0 the DAI provider
+// computes it as getAbsoluteDuration() minus the summed durations of adPodList — ad time
+// subtracted from the player's duration. After Hook 3 the player's duration already
+// excludes the ads, but adPodList is still populated, so the deduction happens twice and
+// the bar is scaled shorter than the content. Hooking each provider's returns lets the
+// extension substitute the duration the strip actually measured.
+//
+// Anchored on the readable AVIA leaf class + method name; the return type is J and there
+// are no parameters, so no obfuscated type is referenced. Each is resolved optionally:
+// only the provider actually in use for a given title matters, and a build or title that
+// routes through a different one simply skips the others.
+internal object AviaDaiContentDurationFingerprint : Fingerprint(
+    parameters = emptyList(),
+    returnType = "J",
+    custom = { method, _ ->
+        method.name == "getContentDuration" &&
+            method.definingClass.endsWith("/AviaDAIResourceProvider;")
+    },
+)
+
+internal object AviaImaContentDurationFingerprint : Fingerprint(
+    parameters = emptyList(),
+    returnType = "J",
+    custom = { method, _ ->
+        method.name == "getContentDuration" &&
+            method.definingClass.endsWith("/AviaIMAResourceProvider;")
+    },
+)
+
+internal object AviaUriContentDurationFingerprint : Fingerprint(
+    parameters = emptyList(),
+    returnType = "J",
+    custom = { method, _ ->
+        method.name == "getContentDuration" &&
+            method.definingClass.endsWith("/AviaUriResourceProvider;")
+    },
+)
+
+// REMOVED — Hook 8 (first attempt): AviaPlayer.seek(long, boolean): V
+//
+// Kept as a note because the reasoning is easy to repeat. The idea was that the UI
+// computed seek targets against Pluto's ad-inclusive metadata duration, so they needed
+// remapping onto the stripped clock. The caller audit supported half of that — only
+// AviaDecor and AbstractAviaDecor call seek(J,Z), so it is purely a UI entry point —
+// but the coordinate assumption was never verified and turned out to be wrong.
+//
+// On-device (17.2.0, Burn Notice): three successive forward nudges of ~12s each moved
+// playback BACKWARDS ~138s every time, because each requested target was derived from
+// the player's own (already stripped) position and the hook subtracted the ad time
+// again. The displayed position snapped back by exactly the removed ad time. Only the
+// SCALE was ever wrong, not the needle, so the duration is corrected instead and no
+// position is remapped. Do not reintroduce a seek remap without first proving, on a
+// device, which clock the UI's targets are actually in.
+//
+// The original rationale is preserved below, since the parts of it that were correct
+// (the caller audit, the register encoding) are worth keeping:
+//
+// Hook 3 shortens the player's timeline but not Pluto's own duration metadata, so
+// the seekbar is drawn against the ad-INCLUSIVE length while playback runs on the
+// content-only one. A seek the UI computes therefore arrives in the wrong clock:
+// it overshoots by all the ad time before it, which is the wrong-seek half of #300.
+// Routing the requested position through PlutoV17ManifestProbe.toStrippedMs puts it
+// back on the player's clock.
+//
+// WHY THIS METHOD AND NOT _seek(J): the two are split exactly along the coordinate
+// boundary in 17.2.0, confirmed by every caller in the decomp.
+//   seek(J,Z)  <- AviaDecor$1 and AbstractAviaDecor ONLY (the player controls), so
+//                 every caller is the UI, in original/metadata coordinates.
+//   _seek(J)   <- AviaDAIResourceProvider, AviaIMAResourceProvider,
+//                 AviaUriResourceProvider and AbstractAviaPlayer.seekToLive, i.e.
+//                 ad-pod transitions, retries and live-edge jumps. Those positions
+//                 are read back FROM the player and are already stripped, so
+//                 remapping them would subtract the ad time a second time and send
+//                 playback backwards. _seek must stay untouched.
+//
+// seek(J,Z) is declared abstract on AbstractAviaPlayer and implemented on AviaPlayer,
+// so the predicate anchors the leaf class to get a method with a body. Note that
+// "/AviaPlayer;" does not match "AbstractAviaPlayer;" (the preceding character is
+// 't', not '/'), so the abstract declaration is excluded.
+//
+// This covers scrubbing, NOT the restoration of a Continue Watching bookmark: that
+// arrives through AbstractAviaMediaAsset.setStartPosition(J), which the app calls
+// before the manifest is fetched — so the strip has not run yet and no map exists at
+// that moment. That seam needs a post-parse application point and is not wired here.
+//     internal object AviaPlayerSeekFingerprint : Fingerprint(
+//         parameters = listOf("J", "Z"),
+//         returnType = "V",
+//         custom = { method, _ ->
+//             method.name == "seek" &&
+//                 method.definingClass.endsWith("/AviaPlayer;")
+//         },
+//     )
