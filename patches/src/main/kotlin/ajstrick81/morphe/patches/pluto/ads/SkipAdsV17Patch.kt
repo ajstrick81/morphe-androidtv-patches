@@ -4,12 +4,13 @@ import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.patch.bytecodePatch
 import ajstrick81.morphe.patches.pluto.shared.Constants
 import ajstrick81.morphe.patches.shared.ads.ImaPauseAdDisplayFingerprint
+import app.morphe.patcher.util.proxy.mutableTypes.MutableMethod
 import com.android.tools.smali.dexlib2.Opcode
 import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 
 @Suppress("unused")
 val skipAdsV17Patch = bytecodePatch(
-    name = "Skip ads",
+    name = "Skip ads (v17)",
     description = "Removes Pluto TV's on-demand (VOD) ads on the v17.x rebuild (the " +
         "Paramount+/AVIA player stack). Four layers: (1+2) force AVIA's DAI and IMA " +
         "shouldPlayAd() gates to false so the pre-roll ad pods are skipped natively; " +
@@ -132,29 +133,53 @@ val skipAdsV17Patch = bytecodePatch(
         // own total, so the on-device log states the discrepancy outright, and returns
         // the stripped duration the strip measured. It is identity whenever no strip is
         // live (live/linear, passthrough, any fail-open), so unstripped playback and
-        // live channels keep the app's own value. Applied per provider; only the one in
-        // use matters, so each is optional.
+        // live channels keep the app's own value.
+        //
+        // The DAI provider is REQUIRED, not optional. Pluto VOD routes through it (Hook 1
+        // depends on the same class), and an optional lookup here was a real mistake the
+        // first time: all three were methodOrNull, so when nothing matched the patch still
+        // reported "Applied" and silently did nothing. The bar stayed wrong and the absent
+        // log line was indistinguishable from "no discrepancy found". A hard lookup makes a
+        // fingerprint break loud instead. IMA and Uri stay optional — a given title routes
+        // through one provider, so the other two legitimately may not be present.
+        AviaDaiContentDurationFingerprint.method.patchContentDurationReturns()
+
         listOf(
-            AviaDaiContentDurationFingerprint,
             AviaImaContentDurationFingerprint,
             AviaUriContentDurationFingerprint,
         ).forEach { fingerprint ->
-            fingerprint.methodOrNull?.apply {
-                val instructions = implementation!!.instructions.toList()
-                instructions.withIndex().filter { (_, instruction) ->
-                    instruction.opcode == Opcode.RETURN_WIDE
-                }.map { (index, _) -> index }.asReversed().forEach { returnIndex ->
-                    val durationRegister =
-                        (instructions[returnIndex] as OneRegisterInstruction).registerA
-                    addInstructions(
-                        returnIndex,
-                        """
-                            invoke-static/range {v$durationRegister .. v${durationRegister + 1}}, Lajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe;->correctContentDuration(J)J
-                            move-result-wide v$durationRegister
-                        """,
-                    )
-                }
-            }
+            fingerprint.methodOrNull?.patchContentDurationReturns()
         }
+    }
+}
+
+/**
+ * Route every `return-wide` of a `getContentDuration()` implementation through
+ * `PlutoV17ManifestProbe.correctContentDuration(J)J`.
+ *
+ * Returns are rewritten back-to-front so that inserting instructions never shifts the
+ * index of a return not yet processed. The range form of the invoke is used for the same
+ * reason as Hook 3: a non-range `invoke-static` only encodes v0..v15 and is silently
+ * dropped above that, leaving an orphan `move-result-wide` and a VerifyError at runtime.
+ */
+private fun MutableMethod.patchContentDurationReturns() {
+    val instructions = implementation!!.instructions.toList()
+    val returnIndices = instructions.withIndex()
+        .filter { (_, instruction) -> instruction.opcode == Opcode.RETURN_WIDE }
+        .map { (index, _) -> index }
+
+    check(returnIndices.isNotEmpty()) {
+        "skipAdsV17Patch Hook 8: no return-wide in $definingClass->$name"
+    }
+
+    returnIndices.asReversed().forEach { returnIndex ->
+        val durationRegister = (instructions[returnIndex] as OneRegisterInstruction).registerA
+        addInstructions(
+            returnIndex,
+            """
+                invoke-static/range {v$durationRegister .. v${durationRegister + 1}}, Lajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe;->correctContentDuration(J)J
+                move-result-wide v$durationRegister
+            """,
+        )
     }
 }

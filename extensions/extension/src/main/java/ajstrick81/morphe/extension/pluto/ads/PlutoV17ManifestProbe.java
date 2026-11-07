@@ -172,14 +172,20 @@ public final class PlutoV17ManifestProbe {
      */
     public static long correctContentDuration(long providerDurationMs) {
         try {
-            if (!hasTimelineMap() || strippedDurationMs <= 0) return providerDurationMs;
-
-            if (providerDurationMs != strippedDurationMs) {
-                Log.i(TAG, "v17 duration fix (#300): provider reported " + providerDurationMs
-                        + "ms, strip measured " + strippedDurationMs + "ms (original "
-                        + originalDurationMs + "ms) -> using " + strippedDurationMs
-                        + " (delta " + (strippedDurationMs - providerDurationMs) + "ms)");
+            if (!hasTimelineMap() || strippedDurationMs <= 0) {
+                // Logged too: "no map" is a real state worth seeing (live/linear, a
+                // passthrough manifest, or this getter running before the manifest was
+                // parsed). Previously this path was silent, which made "the hook never
+                // injected" look identical to "the hook ran and found nothing wrong".
+                Log.i(TAG, "v17 duration passthrough (#300): provider reported "
+                        + providerDurationMs + "ms, no strip map live -> unchanged");
+                return providerDurationMs;
             }
+
+            Log.i(TAG, "v17 duration fix (#300): provider reported " + providerDurationMs
+                    + "ms, strip measured " + strippedDurationMs + "ms (original "
+                    + originalDurationMs + "ms) -> using " + strippedDurationMs
+                    + " (delta " + (strippedDurationMs - providerDurationMs) + "ms)");
             return strippedDurationMs;
         } catch (Throwable t) {
             Log.e(TAG, "v17 duration fix failed -> provider value: " + t.getMessage());
@@ -429,13 +435,26 @@ public final class PlutoV17ManifestProbe {
             // mediaPresentationDuration - this.start (for the last). Computed from ORIGINAL
             // starts before any removal, so content durations stay correct across removed ads.
             double[] durs = new double[size];
+            int indeterminate = 0;
             for (int i = 0; i < size; i++) {
                 double d = parsePt(periods.get(i).getAttribute("duration"));
                 if (d < 0.0) {
                     double next = (i + 1 < size) ? starts[i + 1] : totalDur;
                     if (next >= 0.0 && starts[i] >= 0.0) d = next - starts[i];
                 }
+                // A period whose duration cannot be determined contributes ZERO to the
+                // re-based timeline while still playing, so the declared duration would
+                // under-report the real content length and the following period would be
+                // given an overlapping start. Count and report them: that would show up
+                // as content running past the end of the seekbar, so it must not be
+                // confused with the ad-time double deduction this patch corrects.
+                if (d <= 0.0) indeterminate++;
                 durs[i] = d > 0.0 ? d : 0.0;
+            }
+            if (indeterminate > 0) {
+                Log.w(TAG, "v17 strip: " + indeterminate + " of " + size
+                        + " periods had no determinable duration (counted as 0) -"
+                        + " declared duration may under-report the real content length");
             }
 
             double cursor = 0.0; // re-based content timeline
