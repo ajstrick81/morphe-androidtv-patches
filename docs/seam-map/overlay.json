@@ -20,13 +20,13 @@
   "apps": {
     "primevideo": {
       "engine": "proprietary",
-      "runtime": "libignite = WAMR AoT WASM runtime; player/timeline in QuickJS. v16 (6.24.x) moved the whole ad pipeline native (Java ad surface gone); the Megablast Rust ad client is a DOWNLOADED .so.br blob, updatable server-side.",
+      "runtime": "libignite = WAMR AoT WASM runtime; player/timeline in QuickJS. v16 (6.24.x) removed the Java ad surface but left libignite's memcpy/memmove import slots unchanged, so the native GOT strip is still reachable there; it had never loaded on v16 because the loader fingerprint pinned accessFlags=[PUBLIC] against a `public final` onCreate (fixed 2026-11-07, device verification still pending). The Megablast Rust ad client is a DOWNLOADED .so.br blob, updatable server-side.",
       "delivery": "Client-stitched: the app fetches an ad schedule (regolith / SGAI `getVideoAds` response, intraTitlePlaylist) and stitches ad pods into playback itself.",
       "seam": "The regolith ad-playlist response inside libignite — intercepted by a native GOT/PLT hook (memcpy) and emptied; intraTitlePlaylist PATH1 skipped.",
       "action": "Empty the ad playlist before the player sees it → the break is never scheduled.",
       "patch_evidence": "`[rego] emptied playlist (~N ad(s), interior X bytes blanked)` + `PVKILL path=tv ads=N` at the moment each pod is fetched (2026-09-24 live: 1 pre-roll, 4 + 3 mid-roll ads emptied).",
       "device_signature": "When an ad DOES play (6.24.7 capture): decoder reconfigure (`Discard frames from previous generation`, `VideoResolutionChange`) + crop switch (title-specific, e.g. letterbox 960 → ad 1080) + ~27 `I/f Successfully uploaded metrics` in ~2 s from the app process. With the patch working: none of these at the marker, 0 metrics uploads.",
-      "drift": "v16 loader never fired because onCreate became `public final` vs an exact accessFlags match (fix: drop accessFlags). 6.24.7 = minor bump, seam re-pointed (declared target still in progress). High-ad-region mid-roll truncation (#120) fixed in v1.37.4.",
+      "drift": "v16 loader never fired because onCreate became `public final` vs an exact accessFlags match; the recorded fix (drop accessFlags) sat unapplied for weeks while docs blamed the v16 native move instead, so APPLY recorded drift fixes, don't just record them. Applied 2026-11-07; 6.24.7 and 6.24.13 declared as experimental targets, device verification pending. High-ad-region mid-roll truncation (#120) fixed in v1.37.4.",
       "gaps": [
         "Timeline-action native symbols unresolved (Native_StartTimelineAction not in NativeSymbol table)."
       ]
