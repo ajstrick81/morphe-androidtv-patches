@@ -34,7 +34,7 @@ That line is the reason this project exists. If you own the TV and pay for the s
 
 | App | What's removed | Tested version | Updated |
 |-----|----------------|----------------|---------|
-| 🟢 Disney+ | Ads (pre/mid-roll) + pause ads | `26.16.0+rc2-2026.09.08` | 9/14/26 |
+| 🟢 Disney+ | Ads (pre/mid-roll) · pause ads on `≤26.15.2` | `26.16.0+rc2-2026.09.08` · `26.20.0+rc3-2026.11.02` ⚠️ experimental | 11/7/26 |
 | 🟢 Prime Video | Movie + TV-show ads (native strip) · ⚠️ stay on `6.23.23` | `6.23.23+v15.5.0.70-armv7a` | 9/20/26 |
 | 🟢 Netflix | Pre/mid-roll + pause ads · installs as a clone | `13.0.1 build 25028` | 9/14/26 |
 | 🟢 HBO Max | All ads, incl. baked-in SSAI (ad-free stream) | `7.9.0.61` | 8/26/26 |
@@ -86,11 +86,22 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 ### 🎬 Disney+
 
-1. Open the **[Disney+ (Android TV) 26.16.0+rc2-2026.09.08 release on APKMirror](https://www.apkmirror.com/apk/disney/disney-android-tv/disney-android-tv-26-16-0rc2-2026-09-08-release/)** (version **`26.16.0+rc2-2026.09.08`**)
-   > ⚠️ APKMirror also lists **`26.16.0+rc1`** — that is a different build. Use **rc2**.
+1. Open the **[Disney+ (Android TV) 26.20.0+rc3-2026.11.02 release on APKMirror](https://www.apkmirror.com/apk/disney/disney-android-tv/disney-android-tv-26-20-0rc3-2026-11-02-release/)** (version **`26.20.0+rc3-2026.11.02`**, marked **experimental**)
+   > ⚠️ APKMirror lists several release candidates per version. Match the **rc** exactly — `rc3` here — they are different builds.
+   >
+   > `26.20.0+rc3` is **experimental**: patched and tested on-device (no pre-roll, no
+   > mid-roll markers, no stutter), but it is a fresh build with less mileage than
+   > `26.16.0+rc2-2026.09.08`, which stays supported if you prefer the older one.
 2. Download the `.apkm` file
 3. Select it in Morphe Manager
 4. Apply the patch
+
+> ⚠️ **Always patch the newest listed version.** Disney enforces a minimum client
+> version server-side. An older build installs and launches normally, then
+> playback stops after about 20 seconds with *"There was a problem — go to our
+> Help Center"*. That is Disney refusing the client, not a broken patch, and no
+> patch can work around it. If you see it, re-patch the newest version above.
+> Do not patch whatever build happens to be installed on the TV already.
 
 ---
 

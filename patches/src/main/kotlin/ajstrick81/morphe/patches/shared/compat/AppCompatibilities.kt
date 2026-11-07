@@ -21,12 +21,38 @@ object AppCompatibilities {
         name = "Disney+ Android TV",
         packageName = "com.disney.disneyplus",
         appIconColor = 0x113CCF,
-        targets = listOf(AppTarget("26.6.0+rc5-2026.04.21"),
-                         AppTarget("26.8.0+rc6-2026.05.20"),
-                         AppTarget("26.9.2+rc1-2026.06.12"),
-                         AppTarget("26.12.1+rc1-2026.07.15"),
+        // Newest first, like every other app here. Disney enforces a minimum
+        // client version server-side: an older build installs and launches
+        // fine, then playback dies ~20 s in with "There was a problem" (#302).
+        // No patch can fix that, so builds Disney has cut off are removed from
+        // this list rather than left here looking supported.
+        // 26.20.0+rc3 (experimental): patched and tested on-device on the Onn 4K Plus.
+        // Both Insertion seams hook cleanly and the empty-ArrayList prologue is confirmed
+        // in the patched dex; several movies and shows played with no pre-roll, no mid-roll
+        // markers, no stutter and no playback delay, and zero ad-decision / beacon /
+        // InsertionPoint traffic in logcat. Pause ads are NOT blocked here — the MEL pause
+        // seam has been unresolvable since 26.16 (#167).
+        targets = listOf(AppTarget("26.20.0+rc3-2026.11.02", isExperimental = true),
                          AppTarget("26.16.0+rc2-2026.09.08"),
+                         AppTarget("26.12.1+rc1-2026.07.15"),
         ),
+    )
+
+    // Same app as DISNEY_PLUS_TV, but ONLY 26.12.1+rc1. "Suppress Household Prompt" is
+    // obfuscation-pinned: its fingerprint matches Lv8/x;->y, an R8-minified name exact to
+    // 26.12.1+rc1-2026.07.15 (versionCode 1784077450). R8 renames per release, so on any
+    // other build the pinned name does not exist and the fingerprint cannot match — which
+    // is the "Failed to match the fingerprint: OutOfHouseholdCheckFingerprint" report in
+    // #289 (that user was on 26.9.2+rc1). Because that patch reads the eager `.method`
+    // accessor, a miss aborts the whole patch rather than degrading. Listing it against the
+    // full target list advertised versions it cannot actually patch, so scope it to the one
+    // build it is pinned to; every other Disney patch stays on DISNEY_PLUS_TV. Widen this
+    // only after re-pinning the fingerprint against a fresh decompile of the newer build.
+    val DISNEY_PLUS_TV_HOUSEHOLD_PINNED = Compatibility(
+        name = "Disney+ Android TV",
+        packageName = "com.disney.disneyplus",
+        appIconColor = 0x113CCF,
+        targets = listOf(AppTarget("26.12.1+rc1-2026.07.15", isExperimental = true)),
     )
 
     val HBO_TV = Compatibility(

@@ -3,10 +3,13 @@
  * https://gitlab.com/ReVanced/revanced-patches/-/blob/main/patches/src/main/kotlin/app/revanced/patches/disneyplus/ads/Fingerprints.kt
  * ALL CREDIT GOES TO RookieEnough FOR THE ORIGINAL CODE
  *
- * Verified on Disney+ Android TV v26.12.1+rc1-2026.07.15 (versionCode 1784077450)
- * — all fingerprints resolve unchanged; on-device pre- and mid-roll ads gone for
- * both movies and TV (AGH off). Previously validated on v26.8.0+rc6 (1779314460)
- * and the DMP-pipeline fix landed on v26.9.2+rc1 (1781224190).
+ * Verified on Disney+ Android TV v26.20.0+rc3-2026.11.02 (versionCode 1793662190)
+ * — both Insertion seams resolve unchanged and the empty-ArrayList prologue is
+ * confirmed in the patched dex; on-device playback clean (Widevine + HW decoder
+ * active, zero ad-decision/beacon/InsertionPoint traffic, no pre- or mid-roll on
+ * movies or TV, AGH off). The pause-ad seam stays unresolved, as on 26.16 (#167).
+ * Previously verified on v26.12.1+rc1-2026.07.15 (versionCode 1784077450) and
+ * v26.8.0+rc6 (1779314460); the DMP-pipeline fix landed on v26.9.2+rc1 (1781224190).
  * - InsertionGetPointsFingerprint:     VALIDATED ✅  (legacy DSS-SDK Insertion)
  * - InsertionGetRangesFingerprint:     VALIDATED ✅  (legacy DSS-SDK Insertion)
  * - DmpInsertionGetPointsFingerprint:  VALIDATED ✅  (new com.disney.dmp Insertion)

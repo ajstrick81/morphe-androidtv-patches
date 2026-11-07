@@ -45,10 +45,13 @@ val suppressHouseholdPromptPatch = bytecodePatch(
         "straight to home. Does NOT change what Disney's servers detect (that's driven by your " +
         "public IP — use a VPN for that); it only suppresses the on-screen prompt/routing. " +
         "Opt-in / experimental; only takes visible effect when the device would otherwise be " +
-        "prompted.",
+        "prompted. Works on 26.12.1+rc1-2026.07.15 ONLY — it targets an obfuscated method " +
+        "whose name changes every release, so it cannot be applied to other builds.",
     default = false,
 ) {
-    compatibleWith(AppCompatibilities.DISNEY_PLUS_TV)
+    // Scoped to 26.12.1+rc1 only — the fingerprint is pinned to that build's R8 names.
+    // See DISNEY_PLUS_TV_HOUSEHOLD_PINNED and #289.
+    compatibleWith(AppCompatibilities.DISNEY_PLUS_TV_HOUSEHOLD_PINNED)
 
     execute {
         // Prepend `return Boolean.FALSE;` so the out-of-household predicate always
