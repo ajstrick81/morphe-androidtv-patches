@@ -49,16 +49,18 @@
     "disney": {
       "engine": "proprietary",
       "runtime": "Disney media player (legacy DSS SDK and new com.disney.dmp).",
-      "delivery": "SGAI (server-guided ad insertion): the player receives insertion points / ranges that say where ads go.",
-      "seam": "Insertion accessors `getPoints()` / `getRanges()` (legacy + DMP variants).",
-      "action": "Return empty insertion points/ranges → no breaks scheduled. 26.16: obfuscated MEL pause layer → pause ad made optional.",
+      "delivery": "VOD: SGAI/SSAI insertion points + ranges via `com.disney.dmp.internal.pbo.Insertion` (and the legacy DSS-SDK `Insertion`). LIVE is a SEPARATE channel: breaks arrive as HLS `#EXT-X-DATERANGE` interstitial tags (`CLASS=com.disney.media.break.v1` or `com.apple.hls.interstitial`) carrying START-DATE / END-DATE / PLANNED-DURATION / X-ASSET-LIST / X-COM-DISNEY-PAYLOAD, delivered to the player as `playlistRetrieved(DateTime, List<DateRange>)`. Live never travels through `Insertion`.",
+      "seam": "VOD: `Insertion` accessors `getPoints()` / `getRanges()` (legacy + DMP variants). LIVE: `playlistRetrieved(DateTime, List<DateRange>)` — R8-minified to `Lssc;->g(Lorg/joda/time/DateTime;Ljava/util/List;)V` on 26.20 (interface `Lnmh;`, logging decorator `Ljcl;->g`); parsed entirely in Java, so bytecode-reachable. Not patched: see docs/DISNEY_LIVE_AD_DELIVERY.md.",
+      "action": "VOD: return empty insertion points/ranges -> no breaks scheduled. 26.16: obfuscated MEL pause layer -> pause ad made optional. LIVE: nothing shipped. Two gates (`cub.p:Li08`, `cub.j:Z`) choose client-side `scheduleLiveInterstitials` (removable by filtering the DateRange list) vs passthrough (nothing scheduled -> mask only, as ESPN does). The measured ESPN-in-Disney+ stream takes the passthrough branch.",
       "patch_evidence": null,
-      "device_signature": null,
-      "drift": "Verified through 26.12.1; 26.16 pause-ad needed an optional patch (#167).",
+      "device_signature": "LIVE passthrough: one continuous decoder session over ~25 min — 0 `C2VdecComponent`/`CCodec` lines, 0 decoder `onStopDone`, 1 `WVCdm` op, `PLAYING(3)` throughout, strictly monotonic position. VOD baseline over a comparable span: 1,744 codec lines, 12 stops, 421 `WVCdm` ops. The app emits none of its own `p97.w` logging in release, so logcat shows zero ad vocabulary either way.",
+      "drift": "Verified through 26.20.0+rc3-2026.11.02; 26.16 pause-ad needed an optional patch (#167). Live seam names `Lssc;`/`g` are R8 and drift every version — re-anchor on the in-method strings `com.disney.media.break.v1`, `X-COM-DISNEY-PAYLOAD`, `X-ASSET-LIST`.",
       "gaps": [
-        "Re-anchor the 26.16 pause-ad seam.",
+        "Re-anchor the 26.16+ pause-ad seam.",
         "No runtime log line.",
-        "Device signature not captured."
+        "LIVE: no user-flagged commercial-break timestamp yet, so passthrough is consistent-with, not proven.",
+        "LIVE: pcap a break to see whether an X-ASSET-LIST URI is fetched (decides client-side vs passthrough).",
+        "LIVE: resolve what sets the gates cub.p / cub.j."
       ]
     },
     "hbomax": {
