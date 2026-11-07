@@ -92,6 +92,13 @@ All patches follow the same general workflow using **Morphe Manager**:
 3. Select it in Morphe Manager
 4. Apply the patch
 
+> ⚠️ **Always patch the newest listed version.** Disney enforces a minimum client
+> version server-side. An older build installs and launches normally, then
+> playback stops after about 20 seconds with *"There was a problem — go to our
+> Help Center"*. That is Disney refusing the client, not a broken patch, and no
+> patch can work around it. If you see it, re-patch the newest version above.
+> Do not patch whatever build happens to be installed on the TV already.
+
 ---
 
 ### 🎭 HBO Max

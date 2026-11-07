@@ -21,11 +21,13 @@ object AppCompatibilities {
         name = "Disney+ Android TV",
         packageName = "com.disney.disneyplus",
         appIconColor = 0x113CCF,
-        targets = listOf(AppTarget("26.6.0+rc5-2026.04.21"),
-                         AppTarget("26.8.0+rc6-2026.05.20"),
-                         AppTarget("26.9.2+rc1-2026.06.12"),
+        // Newest first, like every other app here. Disney enforces a minimum
+        // client version server-side: an older build installs and launches
+        // fine, then playback dies ~20 s in with "There was a problem" (#302).
+        // No patch can fix that, so builds Disney has cut off are removed from
+        // this list rather than left here looking supported.
+        targets = listOf(AppTarget("26.16.0+rc2-2026.09.08"),
                          AppTarget("26.12.1+rc1-2026.07.15"),
-                         AppTarget("26.16.0+rc2-2026.09.08"),
         ),
     )
 
