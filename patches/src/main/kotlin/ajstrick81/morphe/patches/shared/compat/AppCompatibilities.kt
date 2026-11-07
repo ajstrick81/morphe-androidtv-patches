@@ -38,6 +38,23 @@ object AppCompatibilities {
         ),
     )
 
+    // Same app as DISNEY_PLUS_TV, but ONLY 26.12.1+rc1. "Suppress Household Prompt" is
+    // obfuscation-pinned: its fingerprint matches Lv8/x;->y, an R8-minified name exact to
+    // 26.12.1+rc1-2026.07.15 (versionCode 1784077450). R8 renames per release, so on any
+    // other build the pinned name does not exist and the fingerprint cannot match — which
+    // is the "Failed to match the fingerprint: OutOfHouseholdCheckFingerprint" report in
+    // #289 (that user was on 26.9.2+rc1). Because that patch reads the eager `.method`
+    // accessor, a miss aborts the whole patch rather than degrading. Listing it against the
+    // full target list advertised versions it cannot actually patch, so scope it to the one
+    // build it is pinned to; every other Disney patch stays on DISNEY_PLUS_TV. Widen this
+    // only after re-pinning the fingerprint against a fresh decompile of the newer build.
+    val DISNEY_PLUS_TV_HOUSEHOLD_PINNED = Compatibility(
+        name = "Disney+ Android TV",
+        packageName = "com.disney.disneyplus",
+        appIconColor = 0x113CCF,
+        targets = listOf(AppTarget("26.12.1+rc1-2026.07.15", isExperimental = true)),
+    )
+
     val HBO_TV = Compatibility(
     name = "HBO Max Android TV",
     packageName = "com.wbd.hbomax",
