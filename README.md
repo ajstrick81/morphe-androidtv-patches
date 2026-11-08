@@ -120,7 +120,7 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 ### ▶️ Prime Video
 
-> **About this patch:** Native in-app ad strip for movies and TV shows — no DNS required. ✅ **`6.23.23` / engine `v15.5.x` is the recommended build.** 🧪 `6.24.7+v16.0.0.332-allAbis` and `6.24.13+v16.0.1.93-allAbis` are supported as **experimental** targets — v16's lack of suppression turned out to be a pinned access-flag in our own fingerprint (the native hook was never loaded), now fixed, so the strip can run there. **Not yet confirmed on a device**, and the arm64 caveat below applies. Keep **auto-updates disabled**. v1.37.4 hardens the strip for high-ad regions (India/EU). A rare, very large mid-roll break can still briefly freeze (spinner / "Something went wrong") — press **Back**, then **Resume**, to continue ad-free.
+> **About this patch:** Native in-app ad strip for movies and TV shows — no DNS required. ✅ **`6.23.23` / engine `v15.5.x` is the recommended build.** 🧪 `6.24.7+v16.0.0.332-allAbis` and `6.24.13+v16.0.1.93-allAbis` are supported as **experimental** targets — v16's lack of suppression turned out to be a pinned access-flag in our own fingerprint (the native hook was never loaded), now fixed, so the strip can run there. **Not yet confirmed on a device.** The hook now builds for both `armeabi-v7a` and `arm64-v8a`, so 64-bit v16 installs are covered too. Keep **auto-updates disabled**. v1.37.4 hardens the strip for high-ad regions (India/EU). A rare, very large mid-roll break can still briefly freeze (spinner / "Something went wrong") — press **Back**, then **Resume**, to continue ad-free.
 
 1. Open the **[Prime Video (Android TV) 6.23.23+v15.5.0.70-armv7a release on APKMirror](https://www.apkmirror.com/apk/amazon-mobile-llc/prime-video-android-tv-android-tv/prime-video-android-tv-6-23-23v15-5-0-70-armv7a-release/)** (version **`6.23.23+v15.5.0.70-armv7a`** — `armeabi-v7a` only, so **Optimize for device architecture must be OFF**)
 2. Download the `.apkm` file
@@ -139,11 +139,11 @@ All patches follow the same general workflow using **Morphe Manager**:
 > loader fingerprint required `onCreate` to be exactly `public` and v16 made it
 > `public final`, so the match failed silently. That's fixed, so the strip can now
 > run on v16 — but **no device pass has confirmed it yet**.
-> **ABI caveat:** the v16 bundles are `allAbis` and the hook ships armeabi-v7a
-> only, so on a device that keeps the arm64 slice the hook never loads and **ads
-> return silently** — no error, no crash, nothing in the logs. `6.23.23` is still
-> the build to pick if you want the validated path. Enable **Disable auto-updates**
-> when patching (on by default) so your patched build isn't replaced.
+> The hook is now built for **both** `armeabi-v7a` and `arm64-v8a`, so a 64-bit
+> v16 install gets its own hook rather than silently running unstripped.
+> `6.23.23` is still the build to pick if you want the validated path. Enable
+> **Disable auto-updates** when patching (on by default) so your patched build
+> isn't replaced.
 >
 > TV-show ad removal is newly shipped (v1.16.0) and in wider testing. One known
 > edge case: very aggressive fast-forward + resume can occasionally nudge the

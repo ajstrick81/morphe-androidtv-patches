@@ -151,11 +151,12 @@ architectural wall.
 v16. It does **not** mean anyone has watched it work there. Neither build has a
 confirmed device pass yet, so treat v16 as a test, not an upgrade.
 
-- 📵 **One ABI only, and it fails silently.** The v16 bundles carry both arm64-v8a
-  and armeabi-v7a; the hook ships as armeabi-v7a only. Where the app runs 32-bit
-  it loads. On a device that keeps the arm64 slice, **ads come back with no error
-  message, no crash and nothing in the logs**. If you run v16 and still see ads,
-  suspect this first.
+- 🧱 **Both ABIs are covered now.** The v16 bundles carry arm64-v8a and
+  armeabi-v7a, and the hook is built for both, so a 64-bit install gets its own
+  hook instead of silently running unstripped. This is new and unverified on
+  hardware — if you run v16 and still see ads, this is still the first thing to
+  check, and a `logcat` line containing `PVNativeHook` tells us whether the hook
+  loaded at all.
 - ✅ **`6.23.23` is still the validated path.** Nothing about v16 changes that.
 - 🙏 **Reports are what move this forward.** If you try either v16 build, please
   open an issue with the build, your device, and whether ads were suppressed. A
