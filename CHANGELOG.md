@@ -1,3 +1,12 @@
+# [1.51.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.50.3...v1.51.0) (2026-11-08)
+
+
+### Features
+
+* **primevideo:** build the ad-strip hook for arm64-v8a as well as armeabi-v7a ([fd7603b](https://github.com/ajstrick81/morphe-androidtv-patches/commit/fd7603be1e6653546fa1c56451c063778d91206b)), closes [#error](https://github.com/ajstrick81/morphe-androidtv-patches/issues/error) [260/#282](https://github.com/ajstrick81/morphe-androidtv-patches/issues/282)
+* **primevideo:** ship the v16 chapteringAdBreak inline patch (rescued from a stash) ([d4d6196](https://github.com/ajstrick81/morphe-androidtv-patches/commit/d4d6196fbccade07dc9a7e171c1d9512fe8de7a9)), closes [#310](https://github.com/ajstrick81/morphe-androidtv-patches/issues/310)
+* **primevideo:** support 6.24.7 / 6.24.13 (v16) as experimental targets ([2212d68](https://github.com/ajstrick81/morphe-androidtv-patches/commit/2212d68868ed8c1bbc93f2e5e73387909b7287f4))
+
 ## [1.50.3](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.50.2...v1.50.3) (2026-11-07)
 
 
