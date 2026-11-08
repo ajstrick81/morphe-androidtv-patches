@@ -13,7 +13,7 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 
 | Engine | Apps | How ads arrive | Seams that port within the family |
 |---|---|---|---|
-| **Google IMA / DAI client SDK** | paramount, mlbtv, tubi, foxone, rte, vix | The app's player asks Google's IMA SDK (client-side) or DAI (server-stitched pods) for ad breaks. The ad schedule surfaces in Java/Kotlin as cue points, ad-break lists or an AdsManager. | Empty the cue-point / ad-break accessor; neuter AdsManager.start; null the SSAI AdsLoader getter; redirect live pods to a slate. Seams found in one IMA app usually port to the next (Fox One = Tubi-class). |
+| **Google IMA / DAI client SDK** | paramount, mlbtv, tubi, foxone, rte, vix, future | The app's player asks Google's IMA SDK (client-side) or DAI (server-stitched pods) for ad breaks. The ad schedule surfaces in Java/Kotlin as cue points, ad-break lists or an AdsManager. | Empty the cue-point / ad-break accessor; neuter AdsManager.start; null the SSAI AdsLoader getter; redirect live pods to a slate. Seams found in one IMA app usually port to the next (Fox One = Tubi-class). |
 | **Server-side stitching (SSAI) via manifest** | hbomax, pluto, espn, peacock | The CDN stitches ads into the stream itself. The only client-visible trace is the manifest (ad periods, DateRanges, ID3/beacon tags) and the host names that serve it. | Force a clean manifest (origin block, CDN fallback, ad-free URL swap); strip ad periods; or, for live passthrough SSAI, detect the break and MASK it (slate + mute). |
 | **Proprietary native / JS ad engine** | primevideo, netflix, disney, twitchatv | The ad decision lives in the app's own runtime — a native library, a JS VM inside a .so, or a WebView — not in a standard SDK. | Find where the ad schedule crosses into the player (a response buffer, a JS function, an insertion-point accessor) and empty it there; native seams need re-pointing per version. |
 
@@ -25,14 +25,14 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 | [espn](#espn) | Server-side stitching (SSAI) via manifest | 6.11.1 | 4 | 7 | yes (50 lines) | **no** |
 | [f1tv](#f1tv) | ? | 3.0.49.4-SP166.4.1-release-R54.2-tv | 1 | 5 | **no** | **no** |
 | [foxone](#foxone) | Google IMA / DAI client SDK | 1.9.2 | 1 | 8 | **no** | **no** |
-| [future](#future) | ? | 19.7, 20.1 | 2 | 5 | **no** | **no** |
+| [future](#future) | Google IMA / DAI client SDK | 19.7, 20.8, 20.1 | 3 | 8 | **no** | yes |
 | [hbomax](#hbomax) | Server-side stitching (SSAI) via manifest | 7.14.0.69, 7.9.0.61, 7.7.0.78, 7.5.0.73, 7.2.0.41 | 5 | 12 | yes (23 lines) | **no** |
 | [mlbtv](#mlbtv) | Google IMA / DAI client SDK | 26.8.1.1 | 1 | 9 | yes (7 lines) | **no** |
 | [netflix](#netflix) | Proprietary native / JS ad engine | 13.0.1 build 25028, 13.2.1 build 27207, 13.2.2 build 27250 | 6 | 2 | **no** | **no** |
 | [paramount](#paramount) | Google IMA / DAI client SDK | 16.19.0, 16.17.0, 16.12.0, 16.8.0 | 1 | 3 | **no** | **no** |
 | [peacock](#peacock) | Server-side stitching (SSAI) via manifest | 7.5.102, 7.6.100, 7.8.100, 7.10.102 | 3 | 10 | yes (6 lines) | **no** |
 | [pluto](#pluto) | Server-side stitching (SSAI) via manifest | 5.66.0-leanback, 17.2.0 | 6 | 20 | yes (47 lines) | yes |
-| [primevideo](#primevideo) | Proprietary native / JS ad engine | 6.23.23+v15.5.0.70-armv7a, 6.24.7+v16.0.0.332-allAbis, 6.24.13+v16.0.1.93-allAbis | 7 | 5 | yes (42 lines) | yes |
+| [primevideo](#primevideo) | Proprietary native / JS ad engine | 6.23.23+v15.5.0.70-armv7a, 6.24.7+v16.0.0.332-allAbis, 6.24.13+v16.0.1.93-allAbis | 7 | 5 | yes (64 lines) | yes |
 | [raiplay](#raiplay) | ? | 5.0.1, 5.0.0 | 3 | 3 | **no** | **no** |
 | [rte](#rte) | Google IMA / DAI client SDK | 3.160.3 | 1 | 3 | **no** | **no** |
 | [tubi](#tubi) | Google IMA / DAI client SDK | 10.40.5000 | 2 | 13 | yes (2 lines) | **no** |
@@ -174,17 +174,19 @@ Runtime evidence (tags `MORPHE-ESPN-SLATE`; first 12 of 50):
 
 ## future
 
-**Package** `com.future.moviesByFawesomeAndroidTV` · **Targets** `19.7`, `20.1` · **Engine** unclassified
+**Package** `com.future.moviesByFawesomeAndroidTV` · **Targets** `19.7`, `20.8`, `20.1` · **Engine** Google IMA / DAI client SDK
 
 | Layer | |
 |---|---|
-| Runtime | _unknown_ |
-| Delivery | _unknown_ |
-| Code seam | _unknown_ |
-| Patch action | _unknown_ |
+| Runtime | ExoPlayer/media3 plus the bundled Google IMA SDK. 19.7 was the Fawesome-native app (com/future/*); 20.8 is Future Today’s shared FilmRise MVVM skeleton (com/mvvm/*, com/recipe/filmrise/*), with 20.1 an obfuscated transitional build in between. |
+| Delivery | Fully client-side, two parallel systems: the app’s own “InhouseAds” pod list (GlobalObject ad ArrayList) and IMA pre/mid-rolls requested by the app’s ad manager. No SSAI, so removal is complete with nothing server-stitched left behind. |
+| Code seam | Both systems are cut at their own no-ad branch, never at a display call. 19.7: MediaPlayerActivity.playAd(Z) forced down its stock :cond_8 branch, plus the VAST banner and pause-bug overlays. 20.8: VideoPlayerActivity.k0(String):Z (the in-house ad-decision method) forced false, and the IMA ad manager’s q(...) given a null ad pod. Update prompt: 19.7 Utilities.updateAlert call site; 20.1 the splash view-model version check; 20.8 the Play In-App Update “enableForceUpdate” gate. |
+| Patch action | Answer the app’s own “no ads for this title” verdict so content loads and resumes natively. |
 | Patch evidence | _unknown_ |
-| Device signature | _unknown_ |
-| Drift history | _unknown_ |
+| Device signature | InhouseAds log tag: “Ad Status true …” / “Ad Status false …” from the ad-decision method on every playback transition, and “Ad playing from …” when a pod actually starts. |
+| Drift history | Two whole-app rewrites, not ordinary R8 drift. 19.7 → 20.1 obfuscated com/future/* and moved the splash to a ViewModel, which broke the 19.7 ad seams outright (Skip ads stayed 19.7-only). 20.1 → 20.8 rebased onto FilmRise MVVM, restoring readable class names and making the ad seams re-anchorable again (Skip ads (v20)); 20.8 also replaced the custom update dialog with Google Play In-App Updates. |
+
+**Gaps:** Skip ads (v20) and the 20.8 update-prompt seam are static-verified only — not yet device-tested. · No runtime log line of our own (no extension; all hooks are pure bytecode). · 20.8 drops the 19.7 VAST banner and pause-bug overlay surfaces entirely; whether any replacement banner surface exists is unconfirmed.
 
 <details><summary>Patches and fingerprints (generated)</summary>
 
@@ -193,8 +195,11 @@ Runtime evidence (tags `MORPHE-ESPN-SLATE`; first 12 of 50):
 | Skip ads | `PlayAdFingerprint` | `(custom matcher)`.— | `V` |  | addInstructionsWithLabels |
 | Skip ads | `ShowBannerVastAdShowBannerAdFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `return-void` |
 | Skip ads | `PlaybarShowPauseBugAdFingerprint` | `(custom matcher)`.— | `V` |  | apply `pauseBanneradbannerVastDto` |
+| Skip ads (v20) | `InhouseAdDecisionFingerprint` | `(custom matcher)`.— | `Z` | `Ad Status false Ads list is Empty` `Ad Status true Normal Ad` | addInstructions `                 const/4 v0, 0x0                 return v0             ` |
+| Skip ads (v20) | `ImaAdRequestFingerprint` | `(custom matcher)`.— | `V` | `No of Ads to be played` `No of Fuse Ads to be played` | addInstructions `const/16 p3, 0x0` |
 | Disable update prompt | `CheckCurrentAppVersionFingerprint` | `(custom matcher)`.— | `V` |  | apply |
 | Disable update prompt | `SplashUpdateStateMethodFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `const/4 p1, 0x0` |
+| Disable update prompt | `SplashForceUpdateConfigFingerprint` | `(custom matcher)`.— | `V` | `enableForceUpdate` `versionName` | apply |
 
 </details>
 
@@ -479,7 +484,7 @@ Runtime evidence (tags `MORPHE-DASH-MF`, `MORPHE-PLUTO-SLATE`; first 12 of 47):
 | Bundle native ad-strip hook | — | — | — |  |  |
 | Load native ad-strip hook | `ApplicationOnCreateFingerprint` | `primevideo/PrimeVideoApplication`.`onCreate` | `V` |  | addInstructions |
 
-Runtime evidence (tags `SkipAdsPatch`, `PVNativeHook`; first 12 of 42):
+Runtime evidence (tags `SkipAdsPatch`, `PVNativeHook`; first 12 of 64):
 
 - I `skipAllMedia3AdGroups: entries=` — SkipAdsPatch.java:99
 - E `skipAllMedia3AdGroups failed` — SkipAdsPatch.java:103
@@ -490,9 +495,9 @@ Runtime evidence (tags `SkipAdsPatch`, `PVNativeHook`; first 12 of 42):
 - I `NativeHookLoader: loaded lib` — NativeHookLoader.java:43
 - E `NativeHookLoader: could not load lib` — NativeHookLoader.java:49
 - E `NativeHookLoader: unexpected failure loading lib` — NativeHookLoader.java:51
-- N `got: … has no PT_DYNAMIC` — got_hook.cpp:60
-- N `got: … missing dynamic entries (symtab=… strtab=… jmprel=… sz=…)` — got_hook.cpp:82
-- N `got: … PLT reloc type is not DT_REL (…)` — got_hook.cpp:88
+- N `got: … has no PT_DYNAMIC` — got_hook.cpp:92
+- N `got: … missing dynamic entries (symtab=… strtab=… jmprel=… sz=…)` — got_hook.cpp:114
+- N `got: … PLT reloc type …, expected … for …` — got_hook.cpp:121
 
 </details>
 

@@ -1001,6 +1001,39 @@
           ]
         },
         {
+          "id": "InhouseAdDecisionFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/future/ads/FingerprintsV20.kt",
+          "line": 56,
+          "returnType": "Z",
+          "parameters": [
+            "Ljava/lang/String;"
+          ],
+          "strings": [
+            "Ad Status false Ads list is Empty",
+            "Ad Status true Normal Ad"
+          ],
+          "hasCustomMatcher": true,
+          "note": "Hook 1 — Lcom/mvvm/videoplayer/VideoPlayerActivity;->k0(Ljava/lang/String;)Z The in-house ad-decision method. Its parameter is the transition that asked (\"Start\", \"Next\", \"Prev\", \"Repeat\", \"Selected\", \"SelectedFromList\"), and it answers whether an ad should play now: true -> calls l1(String) (builds the in-house ad playlist from GlobalObject.c0) and logs \"Ad Status true First Time Ad\" / \"Ad Status true Normal Ad\" false -> logs \"Ad Status false Ads list is Empty\" / \"Ad Status false\" All six call sites consume it as a plain branch — five as `if-eqz -> :cond_N` (false jumps to the content path) and the pre-roll one (\"Start\") as `if-nez -> :cond_8` (false falls through to the content path). Its own exception handler also returns false. So returning false at entry is exactly the app's stock \"this title has no ads\" verdict: no ad playlist is built, no ad is requested, and content loads/resumes natively. Anchored on the two no-ad log strings, which are unique to this method.",
+          "usedBy": [
+            "Skip ads (v20)"
+          ]
+        },
+        {
+          "id": "ImaAdRequestFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/future/ads/FingerprintsV20.kt",
+          "line": 90,
+          "returnType": "V",
+          "strings": [
+            "No of Ads to be played",
+            "No of Fuse Ads to be played"
+          ],
+          "hasCustomMatcher": true,
+          "note": "Hook 2 — L<ad manager>;->q(L<models>;Lcom/mvvm/model/ObjectVideo;L<pod>;Ljava/lang/String;)V (ni/g->q(Lni/h;Lcom/mvvm/model/ObjectVideo;Lni/a;Ljava/lang/String;)V in 20.8) The IMA ad-request entry point, called from the tail of VideoPlayerActivity.G1(String) once the content load has been set up. IMPORTANT: do NOT hook G1 itself. Despite ending in the ad call, G1 is the *content* loader — its six callers are all ordinary playback transitions (\"AtStart\", \"NextVideo\", \"PrevVideo\", \"NextRow\", \"AfterDRM\", \"AfterStart\"), and q1(String) (\"play the requested video\", the target of the app's own ad-failure fallback) itself calls G1(\"AfterStart\"). Bare-returning G1 would stop playback entirely — the same trap that made hooking showMidRollAd fail on 19.7. q()'s third parameter is the ad pod (ni/a). Its first branch is `if-eqz p3, :cond_4`, and :cond_4 is a plain `return-void` — the app's own \"no ad pod for this title\" path. The assignments before that branch (the transition tag, GlobalObject.c2 = false, the player/view wiring) still run, so nulling the pod parameter at entry is a one-instruction, flow-preserving way to reach the stock no-ad outcome: no AdsRequest is built and no IMA call is made. The class and method letters are not stable, so anchor on the pod-count log strings this method builds, plus its shape: an instance (…, ObjectVideo, …, String)V method. The ObjectVideo parameter type survives because com/mvvm/model is a readable package.",
+          "usedBy": [
+            "Skip ads (v20)"
+          ]
+        },
+        {
           "id": "CheckCurrentAppVersionFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/future/misc/Fingerprints.kt",
           "line": 29,
@@ -1022,6 +1055,21 @@
           ],
           "hasCustomMatcher": true,
           "note": "───────────────────────────────────────────────────────────────────────────── 20.1 re-anchor. In 20.1 the whole com/future package is R8-obfuscated and the SplashActivity was rewritten (Hilt/ViewModel + coroutine StateFlow), so the version check moved into a splash view-model: com.future.moviesByFawesomeAndroidTV.ui.splash.<K>.e(int versionCode, String message) if (versionCode > 0 && versionCode > 0xC1 /*193 = installed code*/) emit updateState = new ui.splash.<C>(true, true, true, message) // dialog else emit proceedState = new ui.splash.<C>(0xE) // -> (a=1, b=0, c=0) no dialog The ui/splash/ package name survives obfuscation but the class/method letters do NOT, so we anchor structurally: an instance method (I, String)V inside ui/splash/ whose body constructs a sibling ui/splash/ state object via <init>(ZZZLjava/lang/String;)V (the update-state build). That construction is unique to e() among (I,String)V methods. ─────────────────────────────────────────────────────────────────────────────",
+          "usedBy": [
+            "Disable update prompt"
+          ]
+        },
+        {
+          "id": "SplashForceUpdateConfigFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/future/misc/Fingerprints.kt",
+          "line": 102,
+          "returnType": "V",
+          "strings": [
+            "enableForceUpdate",
+            "versionName"
+          ],
+          "hasCustomMatcher": true,
+          "note": "───────────────────────────────────────────────────────────────────────────── 20.8 re-anchor. 20.8 is a third mechanism, not a re-spelling of either earlier one: the app was rebased onto Future Today's shared FilmRise MVVM skeleton (com/mvvm/*, com/recipe/filmrise/*), and the hand-rolled \"New version Available\" AlertDialog was replaced by **Google Play In-App Updates**. The flow is now: com.mvvm.splash.SplashActivity.<Z>(SplashActivity, String) // remote config for each {versionName, versionCode, enableForceUpdate} in the JSON array: map.put(versionName, enableForceUpdate) if (map.containsKey(\"20.8\")) // installed name this.<b0> = map.get(\"20.8\") // the gate ... then AppUpdateManager.getAppUpdateInfo() <OnSuccessListener>.onSuccess(AppUpdateInfo info) if (info.availability == 2 /* UPDATE_AVAILABLE */ && info.pendingIntent != null && splash.<b0>) // <-- same gate startUpdateFlowForResult(...) // the nag else -> :cond_5 // proceed So the whole prompt hangs off that one boolean, which the server sets per version name via \"enableForceUpdate\". Forcing the field's write to false makes the listener take its own proceed branch, which is exactly what the app does when the backend has force-update off — nothing is added and startup is otherwise untouched. It also leaves the Play Core calls themselves intact, so no availability state is faked. Anchor: the static (SplashActivity, String)V method in the readable com/mvvm/splash/SplashActivity class that parses that config. \"enableForceUpdate\" and \"versionName\" are its own JSON keys and cannot be renamed by R8; the method letter can, so it is never matched on.",
           "usedBy": [
             "Disable update prompt"
           ]
@@ -1053,12 +1101,32 @@
           ]
         },
         {
+          "id": "skipAdsV20Patch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/future/ads/SkipAdsV20Patch.kt",
+          "line": 8,
+          "name": "Skip ads (v20)",
+          "description": "Removes client-side ads in Fawesome Movies & TV (Android TV) on the 20.x FilmRise MVVM rebuild. Two layers, both forcing the app's own no-ad verdict rather than suppressing an ad display call: (1) the in-house ad-decision method is made to answer \\\"no ads for this title\\\", so no ad playlist is built and every playback transition takes its stock content path; (2) the IMA ad pod is nulled at the ad-request entry point, which is the app's own \\\"no pod\\\" path, so no ad request is ever made. Ads are requested client-side, so this is a full removal with no server-stitched (SSAI) fallback to break. Content loading, resume and the seekbar are untouched.",
+          "uses": [
+            {
+              "fingerprint": "InhouseAdDecisionFingerprint",
+              "call": "addInstructions",
+              "smali": "\n                const/4 v0, 0x0\n                return v0\n            "
+            },
+            {
+              "fingerprint": "ImaAdRequestFingerprint",
+              "call": "addInstructions",
+              "smali": "const/16 p3, 0x0"
+            }
+          ]
+        },
+        {
           "id": "disableUpdatePromptPatch",
           "kind": "bytecodePatch",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/future/misc/DisableUpdatePromptPatch.kt",
-          "line": 10,
+          "line": 12,
           "name": "Disable update prompt",
-          "description": "Stops Fawesome Movies & TV (Android TV) from showing the \\\"New version Available\\\" dialog on every launch. The app reads the server's latest version code (Firebase remote-config key \\\"versioncode_androidtv_googletv\\\") and, when it is higher than the installed build, shows an update dialog before continuing into the app. This patch forces the app's own no-update path instead, so startup is unchanged and the nag is gone — nothing is added, the client just stops being told to update. On 19.7 the seam is SplashActivity.checkCurrentAppVersion() -> Utilities.updateAlert(); on 20.1 (R8-obfuscated, ViewModel rewrite) it is the splash view-model's version-check method, forced down its own proceed branch. Whichever matches the installed version is applied.",
+          "description": "Stops Fawesome Movies & TV (Android TV) from showing the \\\"New version Available\\\" dialog on every launch. The app reads the server's latest version code (Firebase remote-config key \\\"versioncode_androidtv_googletv\\\") and, when it is higher than the installed build, shows an update dialog before continuing into the app. This patch forces the app's own no-update path instead, so startup is unchanged and the nag is gone — nothing is added, the client just stops being told to update. On 19.7 the seam is SplashActivity.checkCurrentAppVersion() -> Utilities.updateAlert(); on 20.1 (R8-obfuscated, ViewModel rewrite) it is the splash view-model's version-check method, forced down its own proceed branch; on 20.8 (the FilmRise MVVM rebase, which switched to Google Play In-App Updates) it is the remote-config \\\"enableForceUpdate\\\" gate the Play Core listener reads, forced off. Whichever matches the installed version is applied.",
           "uses": [
             {
               "fingerprint": "CheckCurrentAppVersionFingerprint",
@@ -1068,6 +1136,10 @@
               "fingerprint": "SplashUpdateStateMethodFingerprint",
               "call": "addInstructions",
               "smali": "const/4 p1, 0x0"
+            },
+            {
+              "fingerprint": "SplashForceUpdateConfigFingerprint",
+              "call": "apply"
             }
           ]
         }
@@ -1081,11 +1153,12 @@
       ],
       "targets": [
         "19.7",
+        "20.8",
         "20.1"
       ],
       "summary": {
-        "patches": 2,
-        "fingerprints": 5,
+        "patches": 3,
+        "fingerprints": 8,
         "unusedFingerprints": [],
         "runtimeMessages": 0
       }
@@ -3120,7 +3193,7 @@
           "id": "bundleNativeHookPatch",
           "kind": "resourcePatch",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/primevideo/nativehook/BundleNativeHookPatch.kt",
-          "line": 32,
+          "line": 39,
           "name": "Bundle native ad-strip hook",
           "description": "Packages libpvhook.so into the APK's native lib dir for the in-process ad strip (libignite memcpy/memmove GOT/PLT import hook).",
           "uses": []
@@ -3204,199 +3277,331 @@
             "level": "N",
             "text": "got: … has no PT_DYNAMIC",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 60
+            "line": 92
           },
           {
             "level": "N",
             "text": "got: … missing dynamic entries (symtab=… strtab=… jmprel=… sz=…)",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 82
+            "line": 114
           },
           {
             "level": "N",
-            "text": "got: … PLT reloc type is not DT_REL (…)",
+            "text": "got: … PLT reloc type …, expected … for …",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 88
+            "line": 121
           },
           {
             "level": "N",
             "text": "got: … has no JUMP_SLOT for '…'",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 103
+            "line": 137
           },
           {
             "level": "N",
             "text": "got: could not locate GOT slot for …!…",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 113
+            "line": 147
           },
           {
             "level": "N",
             "text": "got: mprotect RW failed for …!… slot=…",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 123
+            "line": 157
           },
           {
             "level": "N",
             "text": "got: hooked …!… slot=… prev=… -> proxy=…",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 134
+            "line": 168
           },
           {
             "level": "N",
             "text": "CALLER …: libignite+0x… n=… remotes=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 153
+            "line": 154
           },
           {
             "level": "N",
             "text": "CALLER …: … (no dladdr) n=… remotes=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 156
+            "line": 157
           },
           {
             "level": "N",
             "text": "PVDIAG rego cont dst=… prev_end=… contiguous=… n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 222
+            "line": 223
           },
           {
             "level": "N",
             "text": "PVKILL path=tv-reassembled playlist emptied across chunks (span=… close=…)",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 249
+            "line": 250
           },
           {
             "level": "N",
             "text": "PVDIAG rego TRUNCATED (mid-roll suspect) n=… open=… head=[…]",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 288
+            "line": 289
           },
           {
             "level": "N",
             "text": "PVKILL path=tv-trunc blanked=… complete ad item(s) in truncated chunk (n=…)",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 312
+            "line": 313
           },
           {
             "level": "N",
             "text": "[rego] TRUNCATED playlist: blanked … complete media.urls ",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 321
+            "line": 322
           },
           {
             "level": "N",
             "text": "PVKILL path=tv-trunc urls=… n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 323
+            "line": 324
           },
           {
             "level": "N",
             "text": "[rego] TRUNCATED playlist closed before tail item (tail at …) n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 340
+            "line": 341
           },
           {
             "level": "N",
             "text": "PVKILL path=tv-split n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 342
+            "line": 343
           },
           {
             "level": "N",
             "text": "PVDIAG rego trunc dst=… n=… end=… (armed for reassembly)",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 356
+            "line": 357
           },
           {
             "level": "N",
             "text": "PVDIAG rego already-empty n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 363
+            "line": 364
           },
           {
             "level": "N",
             "text": "[rego] emptied playlist (~… ad(s), interior … bytes blanked) n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 379
+            "line": 380
           },
           {
             "level": "N",
             "text": "PVKILL path=tv ads=… n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 382
+            "line": 383
           },
           {
             "level": "N",
             "text": "PVMANIFEST […] n=…: …",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 406
+            "line": 407
           },
           {
             "level": "N",
             "text": "TRUNCATED array: blanked …/… COMPLETE Remote item(s) before cut, ",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 451
+            "line": 452
           },
           {
             "level": "N",
             "text": "marker found but array TRUNCATED (not touched) n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 456
+            "line": 457
           },
           {
             "level": "N",
             "text": "PVSKIP path=movie gvaRemotesLeftForPath2=… n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 463
+            "line": 464
           },
           {
             "level": "N",
             "text": "blanked …/… Remote item(s) in complete array (n=…)",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 468
+            "line": 469
           },
           {
             "level": "N",
             "text": "PVKILL path=movie blanked=…/… n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 471
+            "line": 472
           },
           {
             "level": "N",
             "text": "marker found, array complete, 0 Remote items (n=… total=…)",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 474
+            "line": 475
           },
           {
             "level": "N",
             "text": "worker: libignite present, …/4 copy imports hooked after … attempt(s)",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 548
+            "line": 561
           },
           {
             "level": "N",
-            "text": "worker: libignite never appeared within cap — strip will not run",
+            "text": "worker: chapteringAdBreak inline patch applied after … attempt(s)",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 554
+            "line": 566
+          },
+          {
+            "level": "N",
+            "text": "worker: libignite never appeared within cap — no strip installed",
+            "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
+            "line": 572
+          },
+          {
+            "level": "N",
+            "text": "worker: ready (v15 SGAI strip=…, v16 adbreak patch=…)",
+            "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
+            "line": 575
           },
           {
             "level": "N",
             "text": "[hb] skipchunk=… malloc=… | cpy=… mov=… cpy_chk=… mov_chk=… | ",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 560
+            "line": 580
           },
           {
             "level": "N",
             "text": "PVOBS movieBlanked=… tvEmptied=… tvTruncSalvaged=… tvReassembled=… tvSplit=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 584
+            "line": 604
           },
           {
             "level": "N",
             "text": "JNI_OnLoad: pvhook loaded (GOT import hook on libignite memcpy/memmove) — writes=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 605
+            "line": 625
+          },
+          {
+            "level": "N",
+            "text": "inline: mprotect RWX failed @…",
+            "file": "experimental/primevideo-libignite-native/jni/ignite_inline_patch.cpp",
+            "line": 69
+          },
+          {
+            "level": "N",
+            "text": "inline: adbreak patch is armeabi-v7a only — skipped on this ABI",
+            "file": "experimental/primevideo-libignite-native/jni/ignite_inline_patch.cpp",
+            "line": 89
+          },
+          {
+            "level": "N",
+            "text": "inline: libignite not mapped yet — adbreak patch deferred",
+            "file": "experimental/primevideo-libignite-native/jni/ignite_inline_patch.cpp",
+            "line": 95
+          },
+          {
+            "level": "N",
+            "text": "inline: adbreak patch already applied @…",
+            "file": "experimental/primevideo-libignite-native/jni/ignite_inline_patch.cpp",
+            "line": 103
+          },
+          {
+            "level": "N",
+            "text": "inline: prologue mismatch @… (got … … … … … …) — ",
+            "file": "experimental/primevideo-libignite-native/jni/ignite_inline_patch.cpp",
+            "line": 110
+          },
+          {
+            "level": "N",
+            "text": "inline: chapteringAdBreak parser neutralized @… (bias=… +0x…) — mid-roll flag forced false",
+            "file": "experimental/primevideo-libignite-native/jni/ignite_inline_patch.cpp",
+            "line": 118
+          },
+          {
+            "level": "N",
+            "text": "timeline: mprotect RWX failed @… (errno=…)",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 123
+          },
+          {
+            "level": "N",
+            "text": "timeline: no writable segment found in libignite",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 139
+          },
+          {
+            "level": "N",
+            "text": "timeline: resolved … -> impl @… (data entry @…)",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 167
+          },
+          {
+            "level": "N",
+            "text": "timeline: could NOT resolve … (not found in NativeSymbol table)",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 176
+          },
+          {
+            "level": "N",
+            "text": "timeline DIAG: string '…' found at … (bias+0x…)",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 189
+          },
+          {
+            "level": "N",
+            "text": "timeline DIAG: data ref @… -> [0]=…(str) [1]=… [2]=… [3]=…",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 196
+          },
+          {
+            "level": "N",
+            "text": "timeline DIAG: NO data-section pointer to '…' @…",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 203
+          },
+          {
+            "level": "N",
+            "text": "timeline: libignite not mapped yet — deferred",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 224
+          },
+          {
+            "level": "N",
+            "text": "timeline: libignite bias=… text=[…,…) rodata=[…,…) data=[…,…)",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 228
+          },
+          {
+            "level": "N",
+            "text": "timeline: … @… prologue: … … … …",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 249
+          },
+          {
+            "level": "N",
+            "text": "timeline: … already patched",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 255
+          },
+          {
+            "level": "N",
+            "text": "timeline: FAILED to patch …",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 262
+          },
+          {
+            "level": "N",
+            "text": "timeline: … NEUTRALIZED @… — timeline action creation suppressed",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 268
+          },
+          {
+            "level": "N",
+            "text": "timeline: patch complete — …/… StartTimelineAction variants neutralized",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 272
           }
         ]
       },
@@ -3412,7 +3617,7 @@
         "patches": 7,
         "fingerprints": 5,
         "unusedFingerprints": [],
-        "runtimeMessages": 42
+        "runtimeMessages": 64
       }
     },
     "raiplay": {

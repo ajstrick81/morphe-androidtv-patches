@@ -210,6 +210,21 @@
       "gaps": [
         "Device signature not captured."
       ]
+    },
+    "future": {
+      "engine": "ima-dai",
+      "runtime": "ExoPlayer/media3 plus the bundled Google IMA SDK. 19.7 was the Fawesome-native app (com/future/*); 20.8 is Future Today’s shared FilmRise MVVM skeleton (com/mvvm/*, com/recipe/filmrise/*), with 20.1 an obfuscated transitional build in between.",
+      "delivery": "Fully client-side, two parallel systems: the app’s own “InhouseAds” pod list (GlobalObject ad ArrayList) and IMA pre/mid-rolls requested by the app’s ad manager. No SSAI, so removal is complete with nothing server-stitched left behind.",
+      "seam": "Both systems are cut at their own no-ad branch, never at a display call. 19.7: MediaPlayerActivity.playAd(Z) forced down its stock :cond_8 branch, plus the VAST banner and pause-bug overlays. 20.8: VideoPlayerActivity.k0(String):Z (the in-house ad-decision method) forced false, and the IMA ad manager’s q(...) given a null ad pod. Update prompt: 19.7 Utilities.updateAlert call site; 20.1 the splash view-model version check; 20.8 the Play In-App Update “enableForceUpdate” gate.",
+      "action": "Answer the app’s own “no ads for this title” verdict so content loads and resumes natively.",
+      "patch_evidence": null,
+      "device_signature": "InhouseAds log tag: “Ad Status true …” / “Ad Status false …” from the ad-decision method on every playback transition, and “Ad playing from …” when a pod actually starts.",
+      "drift": "Two whole-app rewrites, not ordinary R8 drift. 19.7 → 20.1 obfuscated com/future/* and moved the splash to a ViewModel, which broke the 19.7 ad seams outright (Skip ads stayed 19.7-only). 20.1 → 20.8 rebased onto FilmRise MVVM, restoring readable class names and making the ad seams re-anchorable again (Skip ads (v20)); 20.8 also replaced the custom update dialog with Google Play In-App Updates.",
+      "gaps": [
+        "Skip ads (v20) and the 20.8 update-prompt seam are static-verified only — not yet device-tested.",
+        "No runtime log line of our own (no extension; all hooks are pure bytecode).",
+        "20.8 drops the 19.7 VAST banner and pause-bug overlay surfaces entirely; whether any replacement banner surface exists is unconfirmed."
+      ]
     }
   }
 }
