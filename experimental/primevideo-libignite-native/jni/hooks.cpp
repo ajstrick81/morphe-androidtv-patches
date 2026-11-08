@@ -35,6 +35,7 @@
 #include "got_hook.h"
 #include "remote_strip.h"
 #include "rego_filter.h"
+#include "ignite_inline_patch.h"
 
 #define TAG "PVNativeHook"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  TAG, __VA_ARGS__)
@@ -538,22 +539,41 @@ int try_install_once() {
 // dl_iterate_phdr twice a second is negligible and stops as soon as we hook.
 void* worker_thread(void*) {
     constexpr int kMaxAttempts = 2400;  // ~20 min at 500ms; generous safety cap
+
+    // Two independent layers, because v15 and v16 deliver mid-rolls differently:
+    //   installed       — v15 SGAI: GOT import hooks, strip the getVideoAds
+    //                     (regolith) RESPONSE as it is copied.
+    //   adbreak_patched — v16 native: inline-patch the chapteringAdBreak parser
+    //                     so the engine never schedules a break at all, which is
+    //                     why a working v16 session logs NO PVKILL/rego lines —
+    //                     there is no ad response to strip.
+    // Install both and keep going if only one lands; each covers ads the other
+    // cannot reach. On v15.5 the parser offset won't match and the patch skips.
     bool installed = false;
-    for (int i = 0; i < kMaxAttempts && !installed; i++) {
-        int ok = try_install_once();
-        if (ok > 0) {
-            installed = true;
-            // Best-effort control probe once libignite is present.
-            pvgot::hook_import(kIgnite, "malloc", (void*)proxy_malloc, (void**)&g_real_malloc);
-            LOGI("worker: libignite present, %d/4 copy imports hooked after %d attempt(s)", ok, i + 1);
-            break;
+    bool adbreak_patched = false;
+    for (int i = 0; i < kMaxAttempts && !(installed && adbreak_patched); i++) {
+        if (!installed) {
+            int ok = try_install_once();
+            if (ok > 0) {
+                installed = true;
+                // Best-effort control probe once libignite is present.
+                pvgot::hook_import(kIgnite, "malloc", (void*)proxy_malloc, (void**)&g_real_malloc);
+                LOGI("worker: libignite present, %d/4 copy imports hooked after %d attempt(s)", ok, i + 1);
+            }
         }
+        if (!adbreak_patched && pvinline::apply_adbreak_patch()) {
+            adbreak_patched = true;
+            LOGI("worker: chapteringAdBreak inline patch applied after %d attempt(s)", i + 1);
+        }
+        if (installed && adbreak_patched) break;
         usleep(500 * 1000);
     }
-    if (!installed) {
-        LOGE("worker: libignite never appeared within cap — strip will not run");
+    if (!installed && !adbreak_patched) {
+        LOGE("worker: libignite never appeared within cap — no strip installed");
         return nullptr;
     }
+    LOGI("worker: ready (v15 SGAI strip=%s, v16 adbreak patch=%s)",
+         installed ? "on" : "off", adbreak_patched ? "on" : "off");
 
     for (;;) {
         sleep(5);
