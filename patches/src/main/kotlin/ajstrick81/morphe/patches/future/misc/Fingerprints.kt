@@ -65,3 +65,44 @@ object SplashUpdateStateMethodFingerprint : Fingerprint(
             } == true
     },
 )
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 20.8 re-anchor. 20.8 is a third mechanism, not a re-spelling of either earlier
+// one: the app was rebased onto Future Today's shared FilmRise MVVM skeleton
+// (com/mvvm/*, com/recipe/filmrise/*), and the hand-rolled "New version
+// Available" AlertDialog was replaced by **Google Play In-App Updates**.
+//
+// The flow is now:
+//
+//   com.mvvm.splash.SplashActivity.<Z>(SplashActivity, String)   // remote config
+//     for each {versionName, versionCode, enableForceUpdate} in the JSON array:
+//         map.put(versionName, enableForceUpdate)
+//     if (map.containsKey("20.8"))                               // installed name
+//         this.<b0> = map.get("20.8")                            // the gate
+//     ... then AppUpdateManager.getAppUpdateInfo()
+//
+//   <OnSuccessListener>.onSuccess(AppUpdateInfo info)
+//     if (info.availability == 2 /* UPDATE_AVAILABLE */
+//         && info.pendingIntent != null
+//         && splash.<b0>)                                        // <-- same gate
+//             startUpdateFlowForResult(...)                      // the nag
+//     else -> :cond_5                                            // proceed
+//
+// So the whole prompt hangs off that one boolean, which the server sets per
+// version name via "enableForceUpdate". Forcing the field's write to false makes
+// the listener take its own proceed branch, which is exactly what the app does
+// when the backend has force-update off — nothing is added and startup is
+// otherwise untouched. It also leaves the Play Core calls themselves intact, so
+// no availability state is faked.
+//
+// Anchor: the static (SplashActivity, String)V method in the readable
+// com/mvvm/splash/SplashActivity class that parses that config. "enableForceUpdate"
+// and "versionName" are its own JSON keys and cannot be renamed by R8; the method
+// letter can, so it is never matched on.
+object SplashForceUpdateConfigFingerprint : Fingerprint(
+    returnType = "V",
+    strings = listOf("enableForceUpdate", "versionName"),
+    custom = { _, classDef ->
+        classDef.type.endsWith("/SplashActivity;")
+    },
+)
