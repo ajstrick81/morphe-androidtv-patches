@@ -120,7 +120,7 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 ### ▶️ Prime Video
 
-> **About this patch:** Native in-app ad strip for movies and TV shows — no DNS required. ⚠️ **Use `6.23.23` / engine `v15.5.x`; do NOT update to `6.24.x` (engine `v16`)** — v16 moved the ad pipeline into the native engine, so ads return there ([#120](https://github.com/ajstrick81/morphe-androidtv-patches/issues/120)). Keep **auto-updates disabled**. v1.37.4 hardens the strip for high-ad regions (India/EU). A rare, very large mid-roll break can still briefly freeze (spinner / "Something went wrong") — press **Back**, then **Resume**, to continue ad-free.
+> **About this patch:** Native in-app ad strip for movies and TV shows — no DNS required. ✅ **`6.23.23` / engine `v15.5.x` is the recommended build.** 🧪 `6.24.7+v16.0.0.332-allAbis` and `6.24.13+v16.0.1.93-allAbis` are supported as **experimental** targets — v16's lack of suppression turned out to be a pinned access-flag in our own fingerprint (the native hook was never loaded), now fixed, so the strip can run there. **Not yet confirmed on a device**, and the arm64 caveat below applies. Keep **auto-updates disabled**. v1.37.4 hardens the strip for high-ad regions (India/EU). A rare, very large mid-roll break can still briefly freeze (spinner / "Something went wrong") — press **Back**, then **Resume**, to continue ad-free.
 
 1. Open the **[Prime Video (Android TV) 6.23.23+v15.5.0.70-armv7a release on APKMirror](https://www.apkmirror.com/apk/amazon-mobile-llc/prime-video-android-tv-android-tv/prime-video-android-tv-6-23-23v15-5-0-70-armv7a-release/)** (version **`6.23.23+v15.5.0.70-armv7a`** — `armeabi-v7a` only, so **Optimize for device architecture must be OFF**)
 2. Download the `.apkm` file
@@ -132,11 +132,18 @@ All patches follow the same general workflow using **Morphe Manager**:
 > DNS blocklist, proxy, or root. Movie prerolls/mid-rolls and TV-show
 > prerolls/mid-rolls are all removed on the device before they play.
 >
-> ⚠️ **Stay on `6.23.23` (engine `v15.5.x`) — do NOT update to `6.24.x` (engine
-> `v16`).** In v16 Amazon moved the ad pipeline into the app's native engine, out
-> of reach of the current strip, so **ads return on 6.24.x** ([#120](https://github.com/ajstrick81/morphe-androidtv-patches/issues/120)).
-> Enable **Disable auto-updates** when patching (on by default) so Amazon can't
-> push you to v16. If you're already on 6.24.x, uninstall and reinstall `6.23.23`.
+> 🧪 **v16 (`6.24.x`) — experimental, unconfirmed.** `6.24.7+v16.0.0.332-allAbis`
+> and `6.24.13+v16.0.1.93-allAbis` are supported targets flagged *experimental*.
+> v16 removed the Java ad hooks, but the native strip hooks libignite's own
+> memory-copy calls, which v16 did not change. It simply never loaded there: the
+> loader fingerprint required `onCreate` to be exactly `public` and v16 made it
+> `public final`, so the match failed silently. That's fixed, so the strip can now
+> run on v16 — but **no device pass has confirmed it yet**.
+> **ABI caveat:** the v16 bundles are `allAbis` and the hook ships armeabi-v7a
+> only, so on a device that keeps the arm64 slice the hook never loads and **ads
+> return silently** — no error, no crash, nothing in the logs. `6.23.23` is still
+> the build to pick if you want the validated path. Enable **Disable auto-updates**
+> when patching (on by default) so your patched build isn't replaced.
 >
 > TV-show ad removal is newly shipped (v1.16.0) and in wider testing. One known
 > edge case: very aggressive fast-forward + resume can occasionally nudge the

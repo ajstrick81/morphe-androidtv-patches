@@ -31,8 +31,8 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 | [netflix](#netflix) | Proprietary native / JS ad engine | 13.0.1 build 25028, 13.2.1 build 27207, 13.2.2 build 27250 | 6 | 2 | **no** | **no** |
 | [paramount](#paramount) | Google IMA / DAI client SDK | 16.19.0, 16.17.0, 16.12.0, 16.8.0 | 1 | 3 | **no** | **no** |
 | [peacock](#peacock) | Server-side stitching (SSAI) via manifest | 7.5.102, 7.6.100, 7.8.100, 7.10.102 | 3 | 10 | yes (6 lines) | **no** |
-| [pluto](#pluto) | Server-side stitching (SSAI) via manifest | 5.66.0-leanback, 17.2.0 | 6 | 16 | yes (33 lines) | yes |
-| [primevideo](#primevideo) | Proprietary native / JS ad engine | 6.23.23+v15.5.0.70-armv7a | 7 | 5 | yes (42 lines) | yes |
+| [pluto](#pluto) | Server-side stitching (SSAI) via manifest | 5.66.0-leanback, 17.2.0 | 6 | 20 | yes (47 lines) | yes |
+| [primevideo](#primevideo) | Proprietary native / JS ad engine | 6.23.23+v15.5.0.70-armv7a, 6.24.7+v16.0.0.332-allAbis, 6.24.13+v16.0.1.93-allAbis | 7 | 5 | yes (42 lines) | yes |
 | [raiplay](#raiplay) | ? | 5.0.1, 5.0.0 | 3 | 3 | **no** | **no** |
 | [rte](#rte) | Google IMA / DAI client SDK | 3.160.3 | 1 | 3 | **no** | **no** |
 | [tubi](#tubi) | Google IMA / DAI client SDK | 10.40.5000 | 2 | 13 | yes (2 lines) | **no** |
@@ -410,7 +410,7 @@ Runtime evidence (tags `MORPHE-PCK-WV`; first 12 of 6):
 
 | Patch | Fingerprint | Class / method | Returns | Strings | Action |
 |---|---|---|---|---|---|
-| Mask live ad breaks (black screen + mute) | `Id3ConsumeFingerprint` | `adsbeacontracker/ID3AdsBeaconTracker`.`consumeID3` | `V` |  | addInstructions `invoke-static { p1 }, Lajstrick81/morphe/extension/pluto/ads/PlutoLiveSlateHelper;` |
+| Mask live ad breaks (black screen + mute) | `Id3ConsumeFingerprint` | `adsbeacontracker/ID3AdsBeaconTracker`.`consumeID3` | `V` |  |  |
 | Mask live ad breaks (black screen + mute) | `LeanbackHostOnCreateFingerprint` | `main/LeanbackMainHostActivity`.`onCreate` | `V` |  | addInstructions `invoke-static { p0 }, Lajstrick81/morphe/extension/pluto/ads/PlutoLiveSlateHelper;` |
 | Mask live ad breaks (black screen + mute) | `LeanbackHostOnDestroyFingerprint` | `main/LeanbackMainHostActivity`.`onDestroy` | `V` |  | addInstructions `invoke-static { p0 }, Lajstrick81/morphe/extension/pluto/ads/PlutoLiveSlateHelper;` |
 | Mask live ad breaks (black screen + mute) | `AviaControllerInitFingerprint` | `avia/AviaPlaybackController`.`<init>` | `V` |  | addInstructions `invoke-static { p1 }, Lajstrick81/morphe/extension/pluto/ads/PlutoLiveSlateHelper;` |
@@ -431,15 +431,15 @@ Runtime evidence (tags `MORPHE-PCK-WV`; first 12 of 6):
 | Override certificate pinning _(opt-in)_ | — | — | — |  |  |
 | Disable auto-updates | — | — | — |  |  |
 
-Runtime evidence (tags `MORPHE-DASH-MF`, `MORPHE-PLUTO-SLATE`; first 12 of 33):
+Runtime evidence (tags `MORPHE-DASH-MF`, `MORPHE-PLUTO-SLATE`; first 12 of 47):
 
 - I `dynamic (live) manifest -> untouched, periods=` — PlutoDashManifestProbe.java:144
 - W `no content periods kept (of ` — PlutoDashManifestProbe.java:170
 - W `GUARD tripped: kept ` — PlutoDashManifestProbe.java:180
 - I `STRIPPED ` — PlutoDashManifestProbe.java:210
 - E `strip failed -> original manifest (playback unaffected): ` — PlutoDashManifestProbe.java:214
-- I `resume remap (#147): original=` — PlutoDashManifestProbe.java:275
-- E `resume remap failed -> original position (resume unaffected): ` — PlutoDashManifestProbe.java:279
+- I `resume remap (#147): original=` — PlutoDashManifestProbe.java:287
+- E `resume remap failed -> original position (resume unaffected): ` — PlutoDashManifestProbe.java:291
 - D `setAviaPlayer(…)` — PlutoLiveSlateHelper.kt:97
 - D `registerActivity(…)` — PlutoLiveSlateHelper.kt:108
 - D `live ad break -> mask ON (mode=…)` — PlutoLiveSlateHelper.kt:171
@@ -450,17 +450,17 @@ Runtime evidence (tags `MORPHE-DASH-MF`, `MORPHE-PLUTO-SLATE`; first 12 of 33):
 
 ## primevideo
 
-**Package** `com.amazon.amazonvideo.livingroom` · **Targets** `6.23.23+v15.5.0.70-armv7a` · **Engine** Proprietary native / JS ad engine
+**Package** `com.amazon.amazonvideo.livingroom` · **Targets** `6.23.23+v15.5.0.70-armv7a`, `6.24.7+v16.0.0.332-allAbis`, `6.24.13+v16.0.1.93-allAbis` · **Engine** Proprietary native / JS ad engine
 
 | Layer | |
 |---|---|
-| Runtime | libignite = WAMR AoT WASM runtime; player/timeline in QuickJS. v16 (6.24.x) moved the whole ad pipeline native (Java ad surface gone); the Megablast Rust ad client is a DOWNLOADED .so.br blob, updatable server-side. |
+| Runtime | libignite = WAMR AoT WASM runtime; player/timeline in QuickJS. v16 (6.24.x) removed the Java ad surface but left libignite's memcpy/memmove import slots unchanged, so the native GOT strip is still reachable there; it had never loaded on v16 because the loader fingerprint pinned accessFlags=[PUBLIC] against a `public final` onCreate (fixed 2026-11-07, device verification still pending). The Megablast Rust ad client is a DOWNLOADED .so.br blob, updatable server-side. |
 | Delivery | Client-stitched: the app fetches an ad schedule (regolith / SGAI `getVideoAds` response, intraTitlePlaylist) and stitches ad pods into playback itself. |
 | Code seam | The regolith ad-playlist response inside libignite — intercepted by a native GOT/PLT hook (memcpy) and emptied; intraTitlePlaylist PATH1 skipped. |
 | Patch action | Empty the ad playlist before the player sees it → the break is never scheduled. |
 | Patch evidence | `[rego] emptied playlist (~N ad(s), interior X bytes blanked)` + `PVKILL path=tv ads=N` at the moment each pod is fetched (2026-09-24 live: 1 pre-roll, 4 + 3 mid-roll ads emptied). |
 | Device signature | When an ad DOES play (6.24.7 capture): decoder reconfigure (`Discard frames from previous generation`, `VideoResolutionChange`) + crop switch (title-specific, e.g. letterbox 960 → ad 1080) + ~27 `I/f Successfully uploaded metrics` in ~2 s from the app process. With the patch working: none of these at the marker, 0 metrics uploads. |
-| Drift history | v16 loader never fired because onCreate became `public final` vs an exact accessFlags match (fix: drop accessFlags). 6.24.7 = minor bump, seam re-pointed (declared target still in progress). High-ad-region mid-roll truncation (#120) fixed in v1.37.4. |
+| Drift history | v16 loader never fired because onCreate became `public final` vs an exact accessFlags match; the recorded fix (drop accessFlags) sat unapplied for weeks while docs blamed the v16 native move instead, so APPLY recorded drift fixes, don't just record them. Applied 2026-11-07; 6.24.7 and 6.24.13 declared as experimental targets, device verification pending. High-ad-region mid-roll truncation (#120) fixed in v1.37.4. |
 
 **Gaps:** Timeline-action native symbols unresolved (Native_StartTimelineAction not in NativeSymbol table).
 
