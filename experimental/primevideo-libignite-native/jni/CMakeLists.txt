@@ -48,7 +48,15 @@ add_library(pvhook SHARED
     hooks.cpp
     got_hook.cpp
     remote_strip.cpp
+    # v16 native mid-roll kill (chapteringAdBreak parser inline patch). Self-
+    # gating: compiled for both ABIs, but apply_adbreak_patch() refuses on
+    # anything but armeabi-v7a, where its offset was measured.
+    ignite_inline_patch.cpp
 )
+# NOT compiled, kept as research: timeline_action_patch.{cpp,h} (0/3 on-device —
+# the Native_StartTimelineAction* host functions aren't reachable through the
+# NativeSymbol table) and xray_{dump,strip}.h (LiveExplore shop/betting overlay).
+# See ../v16-recon/README.md.
 target_include_directories(pvhook PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # TV-show ad suppression (verified on-device 2026-07-30, Onn 4K):
