@@ -181,7 +181,7 @@ LEANBACK, no `FATAL` / `VerifyError` / `NoClassDefFound` / `UnsatisfiedLink`.
 | 1 | All 3 patches + the IMA gate (Patch 1b) | ✅ plays | ❌ infinite spinner |
 | 2 | All 3 patches, IMA gate removed (= the 16.21 config) | not retested | ❌ infinite spinner |
 | 3 | Patch 1 reduced to `nop`, Patches 2+3 live | not retested | ❌ infinite spinner |
-| 4 | All 3 reduced to `nop` (behaviourally vanilla) | **NOT TESTED** | **NOT TESTED** |
+| 4 | All 3 reduced to `nop` (behaviourally vanilla) | not retested | ❌ infinite spinner |
 
 Build 4 exists and is verified correct (`E:\Morphe\work\pplus-17.3.0-allnop.apk`,
 `morphe.slate.d` absent from its dex) but was not installed — testing stopped
@@ -322,14 +322,46 @@ Combined with everything above, the regression is pinned between these facts:
   - 16.21.0 patched the same way plays VOD
 
 Those cannot all be true *and* have the patch be the cause, unless the patch
-interacts with something new in 17.3.0 rather than being wrong in itself. Which
-leaves exactly two possibilities, and one install distinguishes them:
+interacts with something new in 17.3.0 rather than being wrong in itself.
 
-  A. 17.3.0 VOD is broken on this device however it is built — the patch is a
-     bystander. The all-`nop` build hangs.
-  B. 17.3.0 VOD breaks only on a patched/merged/re-signed build — the merge or
-     signing pipeline, or an interaction with the new decoder-fallback code.
-     The all-`nop` build plays.
+**RESOLVED 2026-11-08: the all-`nop` build hangs too (build 4 above).** The
+patch is a bystander. Every hook injects a single `nop`, `morphe.slate.d` is
+absent from its dex, and VOD still never starts. Nothing on the patch side can
+fix this, and no further patch-side bisecting is worth doing.
+
+What remains is one open fork, since the all-`nop` build still went through the
+merge and re-sign:
+
+  A1. 17.3.0 itself will not play VOD on this Onn.
+  A2. The merge/re-sign pipeline breaks 17.3.0 VOD, though it did not break
+      16.21.0's.
+
+Testing A1 directly needs the official 17.3.0 installed, which requires a
+different signature and therefore an uninstall — it costs the account login, so
+it is not worth doing for this.
+
+A cheaper control that costs nothing: **re-merge 16.21.0 with the CURRENT
+APKEditor (1.4.9), patch it and install it.** 16.21.0 is a known-good app
+version, so this isolates the tooling. If VOD works, the pipeline is sound and
+17.3.0 is the problem (A1) — and the working app is restored in the same step.
+If VOD hangs, APKEditor 1.4.9 (or something else in the current pipeline) is the
+culprit rather than 17.3.0, which would affect every app in this repo, not just
+Paramount+. Note the existing `paramount-16.21.0-universal.apk` dates from
+2026-10-23 and was merged by an unknown earlier APKEditor version, which is
+exactly why re-merging it now is informative.
+
+Withdrawn lead: an earlier note here suspected APKEditor's
+`extractNativeLibs=true`. That comparison was invalid — it read the 17.3.0 value
+from `base.apk` and the 16.21.0 value from a merged universal, and
+`extractNativeLibs="true"` is Paramount's own manifest setting in 17.3.0, not
+something the merge imposed.
+
+Restoring the working app: the patched 16.21.0 builds from 2026-10-23 are still
+in `E:\Morphe\work` (`out-paramount-cle.apk`, `out-paramount-cle-clone.apk`).
+Installing one needs `adb install -r -d` — 16.21.0's versionCode (520000892) is
+lower than the 17.3.0 now on the device (520000982), so without `-d` it fails
+with `INSTALL_FAILED_VERSION_DOWNGRADE`. `-d` avoids an uninstall, so the login
+survives.
 
 ## What to do next (one test at a time, each with a stated prediction)
 
