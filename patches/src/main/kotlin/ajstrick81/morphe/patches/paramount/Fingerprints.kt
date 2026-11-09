@@ -11,9 +11,9 @@
  * AviaDAIResourceProvider$3, and CbsPauseWithAdsOverlay's render method was
  * staticized to G(CbsPauseWithAdsOverlay, <state>)V — and neither broke a
  * fingerprint, because the anchors below describe the callee and its strings
- * rather than call sites or instance signatures. Patch 1b
- * (ImaShouldPlayAdFingerprint) was added after finding the IMA provider's own
- * shouldPlayAd un-gated. Details: analysis/paramount/notes/recon-17.3.0.md.
+ * rather than call sites or instance signatures. An IMA-side gate was tried
+ * on-device and reverted — see the note below Patch 1.
+ * Details: analysis/paramount/notes/recon-17.3.0.md.
  *
  * HARDENING NOTES (survive future version bumps):
  *   - Each class anchor matches the UNIQUE leaf class name (e.g.
@@ -54,35 +54,16 @@ internal object ShouldPlayAdFingerprint : Fingerprint(
 )
 
 // ---------------------------------------------------------------------------
-// Patch 1b: VOD ad gate, IMA path — AviaIMAResourceProvider.shouldPlayAd(AviaAdPod)
+// No IMA shouldPlayAd fingerprint here, for now.
 //
-// The IMA counterpart of Patch 1, for client-side ad insertion rather than DAI.
-// AviaIMAResourceProvider carries its own private shouldPlayAd(AviaAdPod)Z with a
-// byte-for-byte identical body (getAdControl() -> AviaAdControl.playAd(pod), true
-// when there is no ad control), reached through the synthetic bridge W() from
-// AviaIMAResourceProvider$VideoAdPlayerAdapter and $1. On false the adapter takes
-// IMA's own teardown path — it clears the current pod / ad / AdPodInfo /
-// AdMediaInfo and calls resumeContent() — so forcing false skips the pod the way
-// the app itself would, with no retry loop.
-//
-// Confirmed present in 17.3.0 (versionCode 520000982) at
-// com/paramount/android/avia/player/resource/ima/AviaIMAResourceProvider,
-// .locals 1 (so the const/4 v0 + return v0 injection is register-safe).
-//
-// Matched like Patch 1 — readable method name + Z return + unique leaf class name.
-// Applied through methodOrNull in ParamountPatch: a build that routes all VOD
-// through DAI and has no reachable IMA provider simply skips this hook rather than
-// failing the whole patch. Same shape as Pluto's AviaImaShouldPlayAdFingerprint
-// (FingerprintsV17.kt), which ships this gate on the same AVIA internals.
+// AviaIMAResourceProvider has its own private shouldPlayAd(AviaAdPod)Z, identical
+// to the DAI one, and 17.3.0 does route VOD through IMA. A gate on it was written
+// and shipped to the Onn on 2026-11-08; VOD hung on an infinite spinner, but a
+// DAI-only build hung identically, so the gate is NOT the proven cause. It is
+// simply unproven, and 17.3.0 VOD is under diagnosis. The seam itself resolves
+// cleanly and the injection is register-safe. See ParamountPatch.kt and
+// analysis/paramount/notes/recon-17.3.0.md.
 // ---------------------------------------------------------------------------
-
-internal object ImaShouldPlayAdFingerprint : Fingerprint(
-    returnType = "Z",
-    custom = { method, _ ->
-        method.name == "shouldPlayAd" &&
-            method.definingClass.endsWith("/AviaIMAResourceProvider;")
-    },
-)
 
 // ---------------------------------------------------------------------------
 // Patch 2: Pause ads — CbsPauseWithAdsOverlay state machine

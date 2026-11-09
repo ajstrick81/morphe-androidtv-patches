@@ -84,31 +84,29 @@ val paramountPatch = bytecodePatch(
         )
 
         // ------------------------------------------------------------------
-        // Patch 1b: VOD ad gate, IMA path — AviaIMAResourceProvider.shouldPlayAd
+        // An AviaIMAResourceProvider.shouldPlayAd gate was tried here and removed.
         //
-        // Patch 1 anchors on /AviaDAIResourceProvider;, so it gates the DAI path
-        // only. AviaIMAResourceProvider carries its own identical shouldPlayAd for
-        // client-side ad insertion; any VOD routed through IMA would still serve
-        // ads. Returning false makes the IMA adapter take its own teardown path
-        // (clear pod/ad/AdPodInfo/AdMediaInfo, resumeContent) — the same
-        // skip-the-pod shape as the DAI monitor, not an abort.
+        // AviaIMAResourceProvider carries its own private shouldPlayAd(AviaAdPod)Z,
+        // byte-for-byte identical to the DAI one, and 17.3.0 DOES route VOD through
+        // IMA (logcat shows the app loading imasdk / pcam.jar inside
+        // VideoPlayerActivity). Gating it looks like the obvious completion of
+        // Patch 1, and Pluto's v17 patch does exactly that on the same AVIA
+        // internals.
         //
-        // methodOrNull, not method: a build with no reachable IMA provider skips
-        // this hook instead of failing the whole patch. This mirrors Pluto's v17
-        // SkipAdsV17Patch, which gates both providers on the same AVIA internals.
+        // It was shipped to the Onn on 2026-11-08 (17.3.0, versionCode 520000982)
+        // and VOD hung on an infinite spinner. HOWEVER: removing the gate and
+        // reinstalling a DAI-only build hung VOD in exactly the same way, so the
+        // IMA gate is NOT established as the cause — VOD on 17.3.0 is broken by
+        // something else (or by more than one thing). The gate is left out only
+        // because it is unproven and un-needed until VOD works at all; do not
+        // read this as "the IMA seam is wrong".
         //
-        // NOTE (not yet on-device verified): v16.12.0 once met an IMA retry storm /
-        // ANR, but that was the empty-createVodStreamRequest approach, not a
-        // shouldPlayAd gate — Pluto runs this gate without trouble. Confirm on
-        // logcat that IMA tears down cleanly rather than re-requesting the pod.
+        // What IS known: VOD never starts, the hang is silent (no exception, no
+        // AdError, no retry storm, nothing in the app process), and LIVE TV plays
+        // fine on the same build. Diagnosis is open — bisect the three hooks
+        // against a resolve-only no-op build before drawing conclusions.
+        // See analysis/paramount/notes/recon-17.3.0.md for the running trace.
         // ------------------------------------------------------------------
-        ImaShouldPlayAdFingerprint.methodOrNull?.addInstructions(
-            0,
-            """
-                const/4 v0, 0x0
-                return v0
-            """.trimIndent(),
-        )
 
         // ------------------------------------------------------------------
         // Patch 2: Pause ads — CbsPauseWithAdsOverlay state machine
