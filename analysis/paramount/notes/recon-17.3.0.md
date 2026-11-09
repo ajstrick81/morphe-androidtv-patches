@@ -1,0 +1,177 @@
+# Paramount+ Android TV 17.3.0 — static recon vs. 16.19.0
+
+**APK:** `com.cbs.ott` 17.3.0, versionCode **520000982**, APKM bundle
+(arm64-v8a + armeabi-v7a, 320dpi), APKMirror post date 2026-11-04.
+**Reviewed:** 2026-11-08. **Method:** `apktool d` on `base.apk` (4 DEX →
+`smali`, `smali_classes2`, `smali_classes3`), fingerprint anchors verified
+against the actual bytecode (not jadx names).
+
+Last blessed target was **16.19.0 / 520000827**. This is the first 17.x
+look, so it is a major-version bump, not a point release.
+
+## Verdict
+
+All three existing patch fingerprints still resolve on 17.3.0. **No
+fingerprint changes are needed.** One new gap was found (an un-gated second
+`shouldPlayAd`, see "Gap" below). Nothing here is on-device verified yet —
+static match only.
+
+## Build-level diff
+
+| | 16.19.0 | 17.3.0 |
+|---|---|---|
+| versionCode | 520000827 | 520000982 |
+| minSdk | 24 | 24 (unchanged) |
+| targetSdk | — | **36** |
+| DEX files | — | 4 (`classes.dex` … `classes4.dex`) |
+| Packer | none | none |
+| Obfuscation | R8, name-renamed app code; AVIA + okhttp3 **not** renamed | same |
+
+`okhttp3` is still unrenamed (`AviaNetworkInterceptor` literally
+`.implements Lokhttp3/Interceptor;`), so Patch 3's direct `Lokhttp3/*`
+type references remain valid.
+
+## Patch 1 — VOD ad gate (`ShouldPlayAdFingerprint`)
+
+✅ **Matches.**
+
+```
+.method private shouldPlayAd(Lcom/paramount/android/avia/player/dao/ad/AviaAdPod;)Z
+  — com/paramount/android/avia/player/resource/dai/AviaDAIResourceProvider.smali:4288
+  .locals 1
+```
+
+- Still `private`, still returns `Z`, still on a class whose leaf name is
+  `AviaDAIResourceProvider;`. Every sibling in the package is an inner class
+  (`$1`…`$5`, `$Listener`, `$Listener$2/3`), so the `endsWith` anchor stays
+  unambiguous.
+- Body unchanged in shape: `resourceConfiguration.getAdControl()` → null ⇒
+  `return true`, else `AviaAdControl.playAd(pod)`.
+- Injecting `const/4 v0, 0x0 / return v0` is still register-safe (`.locals 1`).
+
+**Structural change (harmless):** on 16.17/16.19 the position monitor
+`AviaDAIResourceProvider$3` called `shouldPlayAd` directly. On 17.3.0 R8 has
+routed it through a synthetic bridge in the outer class —
+`public static bridge synthetic v0(AviaDAIResourceProvider, AviaAdPod)Z` at
+line 4383 → 4387 — plus two internal call sites (lines 6341, 6578). All three
+still funnel into the same private method, so forcing `false` still gates
+every pod. The fingerprint anchors the callee, not the caller, so this
+drift cost nothing — the hardening note in `Fingerprints.kt` paid off here.
+
+## Patch 2 — Pause ads (`PauseAdOverlayFingerprint`)
+
+✅ **Matches.**
+
+- Class present: `com/paramount/android/pplus/widgets/player/tv/view/CbsPauseWithAdsOverlay.smali`.
+- Anchor literal `" not updating overlay."` present (line 790), still unique
+  in-class; `"renderState: "` also still there (line 776).
+- Enclosing method is now
+  `public static final G(Lcom/.../CbsPauseWithAdsOverlay;Lr22;)V` (line 252)
+  — **R8 has staticized the render method**, moving the receiver to `p0` and
+  the state object to `p1`. It is still the render state machine (dispatches
+  on `l22`/`m22`/`q22`/`n22` state subclasses, calls back into
+  `CbsPauseWithAdsOverlay.E(J)V`).
+- The fingerprint matches on `returnType = "V"` + the string + the
+  `endsWith("CbsPauseWithAdsOverlay;")` class anchor, none of which care
+  about static-vs-instance, so it still resolves. `return-void` at index 0
+  still no-ops the whole state machine.
+
+Worth noting for the future: because the method is now static, a fingerprint
+that had anchored on an instance signature would have broken. The
+string-anchor choice is what saved this one.
+
+## Patch 3 — Live ad slate (`AviaNetworkInterceptorFingerprint`)
+
+✅ **Matches.**
+
+```
+.method public intercept(Lokhttp3/Interceptor$Chain;)Lokhttp3/Response;
+  — com/paramount/android/avia/player/player/core/network/AviaNetworkInterceptor.smali:1442
+  .locals 16
+```
+
+- Name `intercept`, return `Lokhttp3/Response;`, leaf class
+  `AviaNetworkInterceptor;` — all three anchors hold. Only one sibling
+  (`$1`), so no ambiguity.
+- `.locals 16` means `p1` is still a high param register, so the injected
+  `move-object/from16 v0, p1` prologue is still **required** and still
+  correct; a bare `invoke-interface {p1}` would still be illegal.
+- Original body still opens into a `:try_start_0` block, same as 16.17/16.19,
+  so the `addInstructions(0)` + `:morphe_continue nop` fall-through idiom
+  behaves as before.
+- Live pod-serving still looks alive: `AviaDAIResourceProvider` retains the
+  `isFastStartPodServing:Z` field and `liveAdPosition`/`lastLiveAdPositionTime`
+  bookkeeping, i.e. the Google DAI pod-serving path the slate rewrite depends
+  on is still the live mechanism.
+
+The slate-URL rewrite itself (`/linear/pods/v1/` → `/<pod>/slate/0/<hash>/`,
+`?d=` learning via `morphe.slate.d`) is a pure runtime URL transform with no
+bytecode anchor, so static analysis can't confirm it — the DAI endpoint's
+behavior has to be re-checked on-device during a real live break.
+
+## Gap: a second, un-gated `shouldPlayAd` on the IMA provider
+
+The AVIA provider lineup is unchanged (`dai`, `ima`, `clid3`, `uri`,
+`AviaSkipAdResourceProvider`), but note:
+
+```
+.method private shouldPlayAd(Lcom/paramount/android/avia/player/dao/ad/AviaAdPod;)Z
+  — com/paramount/android/avia/player/resource/ima/AviaIMAResourceProvider.smali:3310
+  (called at :644)
+```
+
+`AviaIMAResourceProvider` has its own `shouldPlayAd` with an identical
+signature. Patch 1 deliberately anchors on `/AviaDAIResourceProvider;`, so
+**the IMA path is not gated**. If any 17.x VOD playback is routed through
+client-side IMA rather than DAI, pre/mid-rolls would still play there.
+
+This is not hypothetical: the Pluto TV v17 work hit exactly this and ships
+*both* gates (`AviaDaiShouldPlayAdFingerprint` +
+`AviaImaShouldPlayAdFingerprint` — see `docs/SEAM_MAP.md:423-424`). The same
+two-gate shape is the obvious candidate for Paramount 17.x.
+
+**Caveat:** on 16.12.0 an IMA-side intervention provoked an IMA retry storm /
+ANR (recorded in `ParamountPatch.kt` history). That was the *empty-request*
+approach, not a `shouldPlayAd` gate, and Pluto v17 runs the IMA gate without
+trouble — but it means the IMA gate should be added and watched on logcat
+rather than assumed safe.
+
+### Gate added (2026-11-08)
+
+`ImaShouldPlayAdFingerprint` + "Patch 1b" now ship in `Fingerprints.kt` /
+`ParamountPatch.kt`, applied via `methodOrNull` so a build with no reachable
+IMA provider skips the hook instead of failing the whole patch — same shape as
+Pluto's `AviaImaShouldPlayAdFingerprint`.
+
+Why this seam is safe to force false: the real caller is the synthetic bridge
+`W(AviaIMAResourceProvider, AviaAdPod)Z` (line 640), invoked from
+`AviaIMAResourceProvider$VideoAdPlayerAdapter` (:1118) and `$1` (:1154). In the
+adapter, a `false` result falls through to IMA's own teardown — it clears the
+current pod (`F`), ad (`D`), `AdPodInfo` (`G`) and `AdMediaInfo` (`E`), then
+calls `resumeContent()` (`U`) — i.e. the provider's native skip-the-pod path,
+not an abort. The method is `.locals 1`, so the `const/4 v0, 0x0 / return v0`
+injection is register-safe.
+
+**Still unverified:** not compiled and not run on-device. The 16.12-era retry
+storm is the specific thing to watch for on logcat.
+
+## Recommended next steps
+
+1. **On-device verify 17.3.0 as-is** per `docs/AGENT_PATCH_WORKFLOW.md`:
+   build `.mpp` → merge the `.apkm` → patch → install on the Onn 4K
+   (`adb connect 192.168.12.210:5555`) → confirm via logcat, not just
+   "Applied". Check VOD pre-roll + mid-roll, pause ads, and a live break.
+2. **Watch the IMA gate (Patch 1b) on logcat.** It is now applied
+   unconditionally where the provider exists, so confirm IMA tears down and
+   resumes content rather than re-requesting the pod (the 16.12-era retry
+   storm).
+3. **Rebuild the generated seam map** — `docs/SEAM_MAP.md` says "Generated — do
+   not edit by hand", so the Patch 1b row needs
+   `node scripts/seam-map/extract.mjs && node scripts/seam-map/render.mjs`.
+   `docs/seam-map/overlay.json` (a source, not generated) is already updated.
+4. **Only then** add `AppTarget("17.3.0")` to the head of
+   `PARAMOUNT_TV.targets` in `AppCompatibilities.kt` and refresh the
+   "Validated against" headers in `ParamountPatch.kt` / `Fingerprints.kt`
+   plus the README support table (line 45, currently showing `16.17.0`,
+   8/4/26) and the README's APKMirror download link (line 215, still points
+   at the 16.17.0 release page).

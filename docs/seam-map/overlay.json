@@ -81,11 +81,11 @@
       "engine": "ima-dai",
       "runtime": "AVIA player (com.paramount.android.avia) + Google IMA / DAI.",
       "delivery": "VOD: client ad decision. Live: full-service IMA-DAI → one stitched stream (no CDN-fallback seam).",
-      "seam": "VOD `shouldPlayAd()`; live: pod requests.",
+      "seam": "VOD `shouldPlayAd()` on both the DAI and IMA providers; live: pod requests.",
       "action": "VOD: shouldPlayAd → false. Live: pure slate-redirect (accepted ceiling — in-interceptor PTS alignment crashed weak hardware).",
       "patch_evidence": null,
       "device_signature": null,
-      "drift": "16.17 ANR fixed in v1.19.0; fingerprints hardened for 16.19.",
+      "drift": "16.17 ANR fixed in v1.19.0; fingerprints hardened for 16.19. 17.3.0 (520000982) static recon: all three fingerprints survive the major bump — R8 reached shouldPlayAd via a synthetic bridge and staticized the pause-overlay render method, neither of which touched an anchor. IMA provider's own shouldPlayAd was found un-gated and is now covered by Patch 1b (methodOrNull). 17.3.0 not yet on-device verified.",
       "gaps": [
         "Device signature not captured."
       ]

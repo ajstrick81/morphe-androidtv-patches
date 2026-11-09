@@ -7,6 +7,15 @@
  *   v16.17.0 (versionCode 520000758) — com.cbs.ott  [current mechanism]
  *   v16.19.0 (versionCode 520000827) — com.cbs.ott  [fingerprints re-verified;
  *                                       all three targets unchanged vs 16.17.0]
+ *   v17.3.0  (versionCode 520000982) — com.cbs.ott  [STATIC ONLY, not yet
+ *                                       on-device verified — see
+ *                                       analysis/paramount/notes/recon-17.3.0.md.
+ *                                       All three targets still resolve across the
+ *                                       16.19 -> 17.3 major bump despite R8 drift
+ *                                       (shouldPlayAd now reached via a synthetic
+ *                                       bridge; the pause-overlay render method was
+ *                                       staticized). Patch 1b added for the IMA
+ *                                       path found un-gated in this build.]
  *
  * MECHANISM (v16.17.0, on-device verified 2026-08-04):
  *   The AVIA player's DAI resource provider
@@ -28,7 +37,8 @@
  * Coverage (v16.17.0, on-device verified):
  *   ✅ VOD ads, pre-roll AND mid-roll (movies + TV) — shouldPlayAd() gates every
  *      pod, so both are skipped. Cosmetic seekbar markers may remain on TV
- *      episodes but no ad plays through them.
+ *      episodes but no ad plays through them. Patch 1b extends the same gate to
+ *      the IMA (client-side insertion) provider; see its note below.
  *   ✅ Pause ads                     — CbsPauseWithAdsOverlay state machine
  *   ✅ Live TV                       — preserved; streams cleanly (shouldPlayAd
  *      is shared VOD/live but the live path is unaffected on-device)
@@ -66,6 +76,33 @@ val paramountPatch = bytecodePatch(
         // its native skip path instead of engaging the ad break.
         // ------------------------------------------------------------------
         ShouldPlayAdFingerprint.method.addInstructions(
+            0,
+            """
+                const/4 v0, 0x0
+                return v0
+            """.trimIndent(),
+        )
+
+        // ------------------------------------------------------------------
+        // Patch 1b: VOD ad gate, IMA path — AviaIMAResourceProvider.shouldPlayAd
+        //
+        // Patch 1 anchors on /AviaDAIResourceProvider;, so it gates the DAI path
+        // only. AviaIMAResourceProvider carries its own identical shouldPlayAd for
+        // client-side ad insertion; any VOD routed through IMA would still serve
+        // ads. Returning false makes the IMA adapter take its own teardown path
+        // (clear pod/ad/AdPodInfo/AdMediaInfo, resumeContent) — the same
+        // skip-the-pod shape as the DAI monitor, not an abort.
+        //
+        // methodOrNull, not method: a build with no reachable IMA provider skips
+        // this hook instead of failing the whole patch. This mirrors Pluto's v17
+        // SkipAdsV17Patch, which gates both providers on the same AVIA internals.
+        //
+        // NOTE (not yet on-device verified): v16.12.0 once met an IMA retry storm /
+        // ANR, but that was the empty-createVodStreamRequest approach, not a
+        // shouldPlayAd gate — Pluto runs this gate without trouble. Confirm on
+        // logcat that IMA tears down cleanly rather than re-requesting the pod.
+        // ------------------------------------------------------------------
+        ImaShouldPlayAdFingerprint.methodOrNull?.addInstructions(
             0,
             """
                 const/4 v0, 0x0
