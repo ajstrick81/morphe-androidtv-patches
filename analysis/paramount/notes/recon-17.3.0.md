@@ -225,6 +225,98 @@ itself.
 - **"Gap" below overstates its case.** The un-gated IMA `shouldPlayAd` is real,
   but nothing here shows that gating it is either necessary or safe.
 
+## The Pluto TV v17 precedent (same AVIA build, same owner)
+
+Pluto's `skipAdsV17Patch` is the only other patch here targeting AVIA 17.x, and
+`FingerprintsV17.kt` states v17 Pluto moved to "Paramount's AVIA player (same
+internals as Paramount+ / CBS)". Pluto v17 is 17.2.0, Paramount+ is 17.3.0.
+Every seam Pluto hooks exists in Paramount+ 17.3.0:
+
+| Pluto hook | Target | In Paramount+ 17.3.0 |
+|---|---|---|
+| 3 — DASH manifest strip | `AviaDashParser.parse(Uri, InputStream)` | yes, and **`.locals 23`**, the same count Pluto recorded for 17.2.0 |
+| 4 — CSAI suppression | `CLID3Processor.processAdPodStartAsync(Map, J)` | yes, `private …(Ljava/util/Map;J)V` |
+| 8 — ad metadata | `StitcherSession(id=` / `AdsData(adBreaks=` / `, adBreaksDurationInSec=` | all three anchors present |
+
+Two consequences:
+
+1. **17.x VOD ad suppression is a port of Pluto Hooks 3/4/8, not a tweak to our
+   Patch 1.** Pluto established that on this player the `shouldPlayAd` gates only
+   skip the DAI pre-roll pod; the mid-roll ad video is stitched into the
+   multi-period DASH manifest and has to be removed at the parser, with the
+   content timeline re-based and the stale ad-break metadata neutralised. That
+   is almost certainly also true of Paramount+ 17.x.
+2. **Pluto documents this exact spinner symptom, with a cause worth ruling out.**
+   Its Hook 3 comment records that a non-range `invoke-static` on a parameter
+   above v15 is *silently dropped* by the inline compiler, leaving an orphan
+   `move-result-object` → VerifyError → the class is rejected → "player never
+   starts (spinner -> menu, device-confirmed 17.2.0)". Our three injections use
+   only v0..v5 and the one register-heavy method (`intercept`, `.locals 16`)
+   already uses `move-object/from16`, so the trap should not apply — but this is
+   checkable offline by disassembling the patched APK, and that is worth doing
+   before any further install.
+
+## Lead: 17.3.0 added decoder-fallback handling that 16.21.0 lacked
+
+The AVIA package grew 826 -> 829 smali files. The three new classes are:
+
+```
+AbstractAviaDecoderFallbackStrategy.smali
+AbstractAviaDecoderFallbackStrategy$FallbackAction.smali
+AbstractAviaDecoderFallbackStrategy$RendererFailureContext.smali
+```
+
+New renderer-failure / decoder-fallback machinery is a plausible way to produce
+a silent stall with no exception, and it is independent of our patches — which
+fits the one fact that killed every patch-side hypothesis: all three patch
+configurations hang identically. It also sits with the decoder noise in the
+launch log (`CCodecConfig`, `invalid hdr type`, `no hdr10+ data`,
+`ms12 system input underrun`) and with live playing while VOD does not, if VOD
+uses a different codec or HDR profile on this panel.
+
+This is a hypothesis with a mechanism, not a conclusion. It predicts that the
+all-`nop` build hangs too, and that *unpatched* 17.3.0 hangs as well.
+
+## Patched-dex verification (2026-11-08) — the injections are sound
+
+Ruling out the Pluto failure mode on our own build. `pplus-17.3.0-patched-stablekey.apk`
+(build 2: all three patches, no IMA gate — the configuration that hung)
+disassembled to `E:\Morphe\decompiled\Paramount+\17.3.0-patched` and read at
+each injection site.
+
+| Patch | Site | Emitted bytecode |
+|---|---|---|
+| 1 | `AviaDAIResourceProvider.shouldPlayAd` :4288 | `.locals 1` intact, `const/4 v0, 0x0` + `return v0` at entry, original body below unreachable ✅ |
+| 2 | `CbsPauseWithAdsOverlay.G` :252 | `.locals 8` intact, `return-void` at entry ✅ |
+| 3 | `AviaNetworkInterceptor.intercept` :1442 | all instructions present, no orphan `move-result-object`, labels `:cond_0/:cond_1/:cond_2` resolved, `:cond_2` = the `morphe_continue` `nop` at :1565, fall-through into the original body (`move-object/from16 v1, p0`, the four `const-string`s, `:try_start_0`) intact ✅ |
+
+Specifically on the Pluto Hook 3 trap: nothing was silently dropped. Every
+register used by the Patch 3 prologue is v0..v5, well inside the v0..v15 limit
+for non-range invokes, and `p1` is read with `move-object/from16`. `.locals 16`
+is unchanged.
+
+Also worth noting for the VOD question: on a non-live URL the injected prologue
+executes three invokes (`request()`, `url()`, `toString()`), fails
+`contains("/linear/pods/v1/")` and jumps to `:cond_2`. It is inert for VOD, and
+it sits BEFORE `:try_start_0`, so it is not even inside the method's own
+exception handler.
+
+**Conclusion: the patch is not malformed on 17.3.0.** Taken with build 3
+(Patch 1 reduced to `nop`) hanging identically, the patch-side explanation for
+the VOD hang is now weak. The decoder-fallback change and the merged/re-signed
+build are the live candidates.
+
+## UNTESTED PREMISE — check this before anything else
+
+Nobody has confirmed that **VOD played on the patched 16.21.0 build**. The Onn
+had it installed and stable-key-signed since 2026-10-31 and it was treated here
+as a known-good baseline, but only live TV has ever been observed working on a
+patched Paramount+ build in this session. If VOD was already broken on patched
+16.21.0, then nothing regressed in 17.3.0 and the whole "what did 17.3 break"
+framing is wrong — the question becomes "has patched Paramount+ VOD ever worked
+on this device, and if so on which build". Answer this first; it is free and it
+can invalidate several of the hypotheses above.
+
 ## What to do next (one test at a time, each with a stated prediction)
 
 1. **Install build 4 (all-`nop`) and try VOD.** This is the only test that
