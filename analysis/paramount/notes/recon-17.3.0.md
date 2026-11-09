@@ -306,16 +306,30 @@ exception handler.
 the VOD hang is now weak. The decoder-fallback change and the merged/re-signed
 build are the live candidates.
 
-## UNTESTED PREMISE — check this before anything else
+## Baseline CONFIRMED: patched 16.21.0 played VOD
 
-Nobody has confirmed that **VOD played on the patched 16.21.0 build**. The Onn
-had it installed and stable-key-signed since 2026-10-31 and it was treated here
-as a known-good baseline, but only live TV has ever been observed working on a
-patched Paramount+ build in this session. If VOD was already broken on patched
-16.21.0, then nothing regressed in 17.3.0 and the whole "what did 17.3 break"
-framing is wrong — the question becomes "has patched Paramount+ VOD ever worked
-on this device, and if so on which build". Answer this first; it is free and it
-can invalidate several of the hypotheses above.
+Confirmed by the maintainer, 2026-11-08: **VOD worked on the patched 16.21.0
+build** (stable-key-signed, installed since 2026-10-31). So this is a real
+regression at 16.21.0 -> 17.3.0, not a long-standing gap, and the question
+"what changed in 17.3.0" is the right one.
+
+Combined with everything above, the regression is pinned between these facts:
+
+  - the three patch seams are byte-identical between the two versions
+  - the patched 17.3.0 dex is verified well-formed at all three sites
+  - Patch 3 is inert for VOD URLs
+  - a build with Patch 1 reduced to `nop` hangs identically
+  - 16.21.0 patched the same way plays VOD
+
+Those cannot all be true *and* have the patch be the cause, unless the patch
+interacts with something new in 17.3.0 rather than being wrong in itself. Which
+leaves exactly two possibilities, and one install distinguishes them:
+
+  A. 17.3.0 VOD is broken on this device however it is built — the patch is a
+     bystander. The all-`nop` build hangs.
+  B. 17.3.0 VOD breaks only on a patched/merged/re-signed build — the merge or
+     signing pipeline, or an interaction with the new decoder-fallback code.
+     The all-`nop` build plays.
 
 ## What to do next (one test at a time, each with a stated prediction)
 
