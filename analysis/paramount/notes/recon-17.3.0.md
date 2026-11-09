@@ -356,12 +356,47 @@ from `base.apk` and the 16.21.0 value from a merged universal, and
 `extractNativeLibs="true"` is Paramount's own manifest setting in 17.3.0, not
 something the merge imposed.
 
-Restoring the working app: the patched 16.21.0 builds from 2026-10-23 are still
-in `E:\Morphe\work` (`out-paramount-cle.apk`, `out-paramount-cle-clone.apk`).
-Installing one needs `adb install -r -d` — 16.21.0's versionCode (520000892) is
-lower than the 17.3.0 now on the device (520000982), so without `-d` it fails
-with `INSTALL_FAILED_VERSION_DOWNGRADE`. `-d` avoids an uninstall, so the login
-survives.
+### Downgrading to 16.21.0 is BLOCKED without an uninstall
+
+`adb install -r -d` does NOT work here. Attempted 2026-11-08:
+
+```
+INSTALL_FAILED_VERSION_DOWNGRADE: Update version code 520000892 is older
+than current 520000982
+```
+
+`-d` only permits a downgrade for *debuggable* apps; a release-signed build is
+refused regardless. So with 17.3.0 (520000982) installed, 16.21.0 (520000892)
+cannot go back in place. The remaining routes, none of them free:
+
+  - `adb shell pm uninstall -k com.cbs.ott` keeps the data/cache directory, then
+    install 16.21.0. The signature matches (same stable key), so the kept data
+    should reattach and the login should survive — but this is not guaranteed,
+    `-k` fails outright on some devices, and 17.3.0-written data may not be read
+    cleanly by 16.21.0.
+  - Full `adb uninstall` + reinstall, then sign in again. Reliable, costs the
+    login.
+  - Install the OFFICIAL 17.3.0 from the Play Store after uninstalling. Costs
+    the login too, but it is the one action that also answers the open A1/A2
+    fork for free: if official 17.3.0 plays VOD, our merge/re-sign pipeline is
+    implicated (A2); if it does not, 17.3.0 is simply broken on this device (A1).
+
+Build ready for whichever path is chosen:
+`E:\Morphe\work\pplus-16.21.0-patched-fresh.apk` — 16.21.0 re-merged with
+APKEditor 1.4.9, patched with the current source, stable-key signed, hooks
+verified live (`morphe.slate.d` present in its dex, so it is not a no-op build).
+Note APKEditor 1.4.9 applied `extractNativeLibs=true` to the 16.21.0 merge as
+well, so that setting is tool behaviour and not specific to 17.3.0.
+
+The control test this build was made for has NOT been run, because it could not
+be installed. It remains the cheapest way to separate A1 from A2 without
+touching the Play Store, once the package can be downgraded.
+
+### Device state as of the 2026-11-08 stop
+
+The Onn is running the **17.3.0 all-`nop`** build (versionCode 520000982):
+behaviourally vanilla, no ad suppression, and VOD does not play. Live TV works.
+This is not a usable daily state and should be resolved before further work.
 
 ## What to do next (one test at a time, each with a stated prediction)
 
