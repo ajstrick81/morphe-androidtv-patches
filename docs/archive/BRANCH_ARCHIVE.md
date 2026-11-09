@@ -113,3 +113,35 @@ the record.
 it has an open PR (#207) and unique tooling not on `main` (`.claude/hooks/`
 secret-guard hooks + tests, `scripts/check_docs.py`). Resolve #207 before
 archiving it.
+
+## 2026-11-08: `feat/fawesome-20.8` (issue #257)
+
+Archived on purpose rather than merged. The branch re-anchored Fawesome's ad
+and update-prompt seams for 20.8 and the work itself was sound — the patches
+compiled, CI was green, both applied to the 20.8 APK and all three injections
+were confirmed in the patched dex.
+
+It was dropped because of what the APK turned out to be. Fawesome 20.8 (build
+200, the `com.future.moviesByFawesomeAndroidTV` package on APKMirror) is the
+**phone/tablet build**, not an Android TV one: its manifest requires
+`android.hardware.touchscreen`, pins activities to `sensorPortrait`, and has no
+`LEANBACK_LAUNCHER` category. Installed on the Onn 4K Plus it rendered as a
+608×1080 portrait window letterboxed on a 1920×1080 screen, the D-pad did
+nothing, and it showed a "long press any movie to share" phone interstitial.
+19.7 (the known-good TV build) requires no touchscreen and declares no
+orientation at all. This repo does not support phone/tablet APKs, and shipping
+a "Skip ads (v20)" patch against one would only create confusion about what
+Fawesome support means.
+
+19.7 remains the newest Android TV release and the supported target: `Skip ads`
++ `Disable update prompt` were re-verified on-device on 2026-11-08 (correct TV
+layout, D-pad focus, no update nag, no pre-roll, clean next-video transition).
+
+Also on the tag, and **not** copied to `main`: a `docs/seam-map/overlay.json`
+entry for Fawesome (the app has none, so its seam map renders as `_unknown_`).
+It was written around the 20.8 seams, so it needs rewriting for 19.7/20.1
+before it belongs on `main` rather than being lifted across as-is.
+
+| Tag `archive/…` | Tip SHA | Last commit | Notes |
+|---|---|---|---|
+| `feat/fawesome-20.8` | `fdfda337` | 2026-11-08 | Fawesome 20.8 seams; 20.8 is the phone build, out of scope |
