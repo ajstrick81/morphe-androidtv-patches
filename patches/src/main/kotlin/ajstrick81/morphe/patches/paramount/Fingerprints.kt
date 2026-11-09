@@ -6,13 +6,21 @@
  * 16.17 -> 16.19 bump unchanged. See ParamountPatch.kt for the mechanism.
  *
  * Re-verified statically against v17.3.0 (versionCode 520000982) on 2026-11-08:
- * all three still resolve across the major bump. R8 moved things under them —
- * shouldPlayAd is now reached through a synthetic bridge instead of from
- * AviaDAIResourceProvider$3, and CbsPauseWithAdsOverlay's render method was
- * staticized to G(CbsPauseWithAdsOverlay, <state>)V — and neither broke a
- * fingerprint, because the anchors below describe the callee and its strings
- * rather than call sites or instance signatures. An IMA-side gate was tried
- * on-device and reverted — see the note below Patch 1.
+ * all three still resolve. A direct smali diff against v16.21.0 (versionCode
+ * 520000892) shows the seams are UNCHANGED, not merely still-matching:
+ * AviaDAIResourceProvider is 7665 lines in both with the same private
+ * shouldPlayAd and the same 3 in-class call sites; AviaNetworkInterceptor is
+ * 3357 lines in both with .locals 16; CbsPauseWithAdsOverlay's render method is
+ * static in both (16.21 H(..., Lay1;)V -> 17.3 G(..., Lr22;)V, i.e. only the R8
+ * letter and the state class name moved).
+ *
+ * CORRECTION: an earlier note here claimed 17.3.0 introduced R8 drift — a
+ * synthetic bridge in front of shouldPlayAd and a staticized overlay render
+ * method. Both were already that way in 16.21.0. The claim came from comparing
+ * against the 16.17/16.19 prose notes above rather than against 16.21 bytecode.
+ * The fingerprints were never at risk from either.
+ *
+ * An IMA-side gate was tried on-device and dropped — see the note below Patch 1.
  * Details: analysis/paramount/notes/recon-17.3.0.md.
  *
  * HARDENING NOTES (survive future version bumps):

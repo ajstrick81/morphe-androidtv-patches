@@ -11,10 +11,16 @@ look, so it is a major-version bump, not a point release.
 
 ## Verdict
 
-All three existing patch fingerprints still resolve on 17.3.0. **No
-fingerprint changes are needed.** One new gap was found (an un-gated second
-`shouldPlayAd`, see "Gap" below). Nothing here is on-device verified yet —
-static match only.
+All three existing patch fingerprints still resolve on 17.3.0, and **no
+fingerprint changes are needed** — a later smali diff against 16.21.0 showed
+the seams are not merely still-matching but *unchanged*.
+
+**However, 17.3.0 is NOT supported: VOD does not play on a patched build.**
+The title opens `VideoPlayerActivity` and sits on an infinite spinner, with no
+exception of any kind. Live TV is unaffected. The cause is not identified and
+is not a fingerprint failure. See "On-device results" and "Corrections" below;
+read those before trusting anything in the original static sections, which
+were written before any of it was tested.
 
 ## Build-level diff
 
@@ -155,7 +161,89 @@ injection is register-safe.
 **Still unverified:** not compiled and not run on-device. The 16.12-era retry
 storm is the specific thing to watch for on logcat.
 
-## Recommended next steps
+## On-device results (2026-11-08, Onn 4K Plus "coffey", 192.168.12.210)
+
+Toolchain notes for whoever repeats this: there is no
+`~/.gradle/gradle.properties` on this machine, so the documented GPR
+credentials do not exist — `gh auth token` + `GITHUB_ACTOR=ajstrick81` works
+instead. `adb` is at `E:\Android\Sdk\platform-tools\adb.exe`, not on PATH. The
+Morphe CLI's auto-generated keystore at `E:\Tools\morphe-data\morphe.keystore`
+is NOT the key the device's builds were signed with; pass
+`--keystore testing/keystore/morphe.keystore` or the install fails with
+`INSTALL_FAILED_UPDATE_INCOMPATIBLE`. 17.3.0 needs `-f` (not in targets).
+
+Every build below: `INFO: Applied: Paramount+ Android TV`, installed with `-r`
+over the device's existing 16.21.0 (so no data loss), launched clean via
+LEANBACK, no `FATAL` / `VerifyError` / `NoClassDefFound` / `UnsatisfiedLink`.
+
+| # | Build | Live TV | VOD |
+|---|---|---|---|
+| 1 | All 3 patches + the IMA gate (Patch 1b) | ✅ plays | ❌ infinite spinner |
+| 2 | All 3 patches, IMA gate removed (= the 16.21 config) | not retested | ❌ infinite spinner |
+| 3 | Patch 1 reduced to `nop`, Patches 2+3 live | not retested | ❌ infinite spinner |
+| 4 | All 3 reduced to `nop` (behaviourally vanilla) | **NOT TESTED** | **NOT TESTED** |
+
+Build 4 exists and is verified correct (`E:\Morphe\work\pplus-17.3.0-allnop.apk`,
+`morphe.slate.d` absent from its dex) but was not installed — testing stopped
+here deliberately, see "What to do next".
+
+What the logs show: nothing. No exception, no `AdError`, no retry storm,
+nothing in the app process at all. The app does load `imasdk` / `pcam.jar`
+inside `VideoPlayerActivity`, so 17.3.0 VOD really does involve the IMA
+provider. AVIA itself logs nothing at default verbosity, so logcat cannot
+discriminate between these builds — which is exactly why bisecting by
+reinstalling was the wrong tool.
+
+## Seam diff vs 16.21.0 — the decisive evidence
+
+16.21.0 (versionCode 520000892) is the build the device was running, patched
+and signed with the stable key, before this work. Decompiled to
+`E:\Morphe\decompiled\Paramount+\16.21.0` and compared:
+
+| Patch site | 16.21.0 | 17.3.0 |
+|---|---|---|
+| `AviaDAIResourceProvider` | 7665 lines, `private shouldPlayAd(AviaAdPod)Z`, 3 in-class call sites | **identical** |
+| `AviaNetworkInterceptor` | 3357 lines, `intercept(Chain)Lokhttp3/Response;`, `.locals 16` | **identical** |
+| `AviaIMAResourceProvider` | 5400 lines, own `private shouldPlayAd`, 1 call site | 5404 lines, same shape |
+| `CbsPauseWithAdsOverlay` | anchor string inside `static final H(..., Lay1;)V` | `static final G(..., Lr22;)V` |
+| dex literals | `dai.google.com`=1, `isFastStartPodServing`=1, `PodServing`=29 | **identical counts** |
+
+So the patch code is still compatible; there is nothing to port. This rules out
+seam drift as the cause and points at the merged/re-signed build or at 17.3.0
+itself.
+
+## Corrections to the static sections above
+
+- **"R8 drift" was wrong.** The synthetic bridge in front of `shouldPlayAd` and
+  the staticized overlay render method were presented as 17.3.0 changes. Both
+  were already present in 16.21.0. The error came from diffing against the
+  16.17/16.19 prose notes in `Fingerprints.kt` instead of against 16.21
+  bytecode. The fingerprints were never at risk from either.
+- **The IMA gate was not shown to break VOD.** It was the first suspect and was
+  reverted on that basis, but build 2 (gate removed) hung identically, so
+  causation was never established. The gate is dropped as unproven, not wrong.
+- **"Gap" below overstates its case.** The un-gated IMA `shouldPlayAd` is real,
+  but nothing here shows that gating it is either necessary or safe.
+
+## What to do next (one test at a time, each with a stated prediction)
+
+1. **Install build 4 (all-`nop`) and try VOD.** This is the only test that
+   discriminates, and it needs no new code. Prediction: if VOD still hangs, the
+   patch is exonerated entirely and the fault is the merged/re-signed 17.3.0
+   build or the app itself — most likely candidate being VOD's Widevine licence
+   path rejecting a re-signed client while live TV (less protected) survives.
+   If VOD plays, the fault is in Patch 2 or Patch 3, and Patch 3 is the
+   candidate since Patch 2's method is pure view work (`setAlpha`,
+   `findViewById`, Glide, `ViewPropertyAnimator`) and cannot gate playback.
+2. **Only if build 4 plays:** bisect Patch 2 vs Patch 3 — one build each.
+3. **If build 4 hangs:** stop patch-side work. Install the *unpatched* merged
+   universal (signed with the stable key) and try VOD. If that hangs too, 17.3.0
+   is unusable on this device regardless of patching, and the answer is to stay
+   on 16.21.0 until a later 17.x build changes something.
+
+Do not add `AppTarget("17.3.0")` under any of these outcomes until VOD plays.
+
+## Recommended next steps (original, superseded by the list above)
 
 1. **On-device verify 17.3.0 as-is** per `docs/AGENT_PATCH_WORKFLOW.md`:
    build `.mpp` → merge the `.apkm` → patch → install on the Onn 4K

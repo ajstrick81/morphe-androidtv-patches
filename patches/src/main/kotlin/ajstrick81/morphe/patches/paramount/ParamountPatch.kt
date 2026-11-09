@@ -7,15 +7,16 @@
  *   v16.17.0 (versionCode 520000758) — com.cbs.ott  [current mechanism]
  *   v16.19.0 (versionCode 520000827) — com.cbs.ott  [fingerprints re-verified;
  *                                       all three targets unchanged vs 16.17.0]
- *   v17.3.0  (versionCode 520000982) — com.cbs.ott  [STATIC ONLY, not yet
- *                                       on-device verified — see
- *                                       analysis/paramount/notes/recon-17.3.0.md.
- *                                       All three targets still resolve across the
- *                                       16.19 -> 17.3 major bump despite R8 drift
- *                                       (shouldPlayAd now reached via a synthetic
- *                                       bridge; the pause-overlay render method was
- *                                       staticized). Patch 1b added for the IMA
- *                                       path found un-gated in this build.]
+ *   v17.3.0  (versionCode 520000982) — com.cbs.ott  [NOT SUPPORTED. Patches apply
+ *                                       and all fingerprints resolve, and a smali
+ *                                       diff vs 16.21.0 shows the three seams are
+ *                                       UNCHANGED — but VOD does not play on a
+ *                                       patched build: the title opens
+ *                                       VideoPlayerActivity and sits on an
+ *                                       infinite spinner, silently. Live TV is
+ *                                       fine. Cause not yet identified; it is not
+ *                                       a fingerprint/compatibility failure.
+ *                                       See analysis/paramount/notes/recon-17.3.0.md.]
  *
  * MECHANISM (v16.17.0, on-device verified 2026-08-04):
  *   The AVIA player's DAI resource provider
