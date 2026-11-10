@@ -427,6 +427,50 @@ executed. Four of those nine cases are now locked down by a test rather than by
 an argument. It still cannot validate the log **patterns**; that needs real
 device logs, and remains the one genuinely open item.
 
+## Round-six outcome (2026-11-09)
+
+Codex confirmed the round-five fixes and the self-test (10 cases now), and found
+one more exit-contract gap plus one over-claim in this document.
+
+### Gap, fixed: a failed `logcat` borrowed the benign empty-buffer message
+
+`buf="$(adbh logcat -d -v time 2>/dev/null | tr -d '\r')" || true` discarded
+whether the command succeeded, so a **failed** logcat produced an empty buffer
+and was then reported as exit 3 — "expected right after `logcat -c`", complete
+with advice that it is probably safe to proceed. A transport failure must not
+inherit that reassurance.
+
+Now: command failure is an error (exit 4); only a *successful* empty read is
+inconclusive (exit 3). Added to the self-test as its tenth case, which would
+have returned 3 before this change, so it is a real regression test rather than
+a restatement.
+
+### Over-claim, corrected: the guarded `source` is a narrowed window, not a guarantee
+
+Running `source` inside `if !` also suppresses errexit *within* the sourced
+file, so an internal command such as lib.sh's `mkdir -p` can fail without making
+`source` fail, and the guard will not catch it. Previous wording here implied
+every initialisation failure maps to 4. It does not.
+
+Corrected in both this document and the script comment. What remains true, and
+is the property that actually matters: those directories (`apks/`, `out/`,
+`tools/`, `keystore/`) are unused by this script, and no status escaping that way
+can be mistaken for the exit-10 verdict. That is the guarantee worth having —
+and it is a guarantee precisely because the verdict moved off a code the shell
+can produce by accident.
+
+### Standing tally after six rounds
+
+Eight defects, all real: a false all-clear on unassessable telemetry; a silently
+ignored target override; a comment that contradicted its own code; overstated
+"void" prose; an empty-buffer case that would have fired on first use; an exit
+contract documented but not implemented; two paths that bypassed the `die()`
+override; and a failed `logcat` masquerading as a benign empty read. Plus one
+over-claim in the documentation.
+
+Every one was in the shell script and the prose — not in the bytecode analysis
+that the session had treated as the hard part.
+
 ## Verification already done
 
 - `./gradlew :patches:build -x test` — passes (Kotlin changes are comments only).

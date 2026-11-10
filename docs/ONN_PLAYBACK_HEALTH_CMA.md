@@ -90,7 +90,7 @@ Exit codes:
 | `10` | **starved** — values below the tripwires, or the signature is in the log. The signature is *historical*: if present, the recent test is suspect even if memory has since recovered, because killing the app frees CMA |
 | `2` | **telemetry unknown** — the memory values themselves were unreadable, so the main risk is unassessable. Not an all-clear |
 | `3` | **scan inconclusive** — memory read fine and passed, but the log buffer was empty so the signature couldn't be looked for. This is the *expected* result right after `adb logcat -c`, which `logs.sh` and our own test procedure both do, so don't confuse it with `2` |
-| `4` | **could not run** — any error: `adb` missing, device unreachable, unreadable `/proc/meminfo`, malformed `device.env`, bad usage |
+| `4` | **could not run** — any error: `adb` missing, device unreachable, unreadable `/proc/meminfo`, **failed `logcat` command**, malformed `device.env`, bad usage |
 | anything else | **unexpected failure** — treat as an error, never as a verdict |
 
 The verdict is `10`, not `1`, on purpose. `1` is what the shell itself produces
@@ -109,8 +109,13 @@ The exit contract is regression-tested without a device by
 fake `adb` returning canned `/proc/meminfo` and logcat output and asserts the
 code for each case (healthy, starved, signature-only, failing read, kernel
 without CMA fields, empty buffer, missing adb, bad mode, malformed
-`device.env`). It cannot validate the log *patterns* — that still needs real
-device logs.
+`device.env`, failed `logcat` command). It cannot validate the log *patterns* —
+that still needs real device logs.
+
+Note on exit `3` specifically: it means the buffer was read **successfully** and
+was empty. A *failed* `logcat` is exit 4, not 3 — the distinction matters
+because 3 carries "probably safe to proceed if you just cleared the buffer",
+which must never be said about a transport failure.
 
 **Run it before and after any playback test.** A test that begins on a starved
 device produces no usable evidence in either direction.

@@ -48,7 +48,10 @@ fake_adb() {
             echo ')"; exit 0 ;;'
         fi
         echo '  *uptime*)    echo " 10:00:00 up 2 days"; exit 0 ;;'
-        if [[ -z "$logline" ]]; then
+        if [[ "$logline" == "FAIL" ]]; then
+            # logcat COMMAND failure, as distinct from a successful empty read.
+            echo '  *logcat*)    exit 1 ;;'
+        elif [[ -z "$logline" ]]; then
             echo '  *logcat*)    exit 0 ;;'
         else
             echo "  *logcat*)    echo '$logline'; exit 0 ;;"
@@ -114,6 +117,12 @@ expect "kernel without CMA fields -> telemetry unknown" 2 \
 # 3 — good numbers, empty buffer. The expected state right after `logcat -c`.
 expect "healthy numbers, empty log buffer -> scan inconclusive" 3 \
     "$(fake_adb adb_nolog "$HEALTHY_MEM" '')"
+
+# 4 — logcat COMMAND fails. Must not borrow the benign "empty buffer" message:
+# before round six this produced exit 3 and told the operator it was probably
+# safe to proceed.
+expect "failing logcat command -> could not run" 4 \
+    "$(fake_adb adb_logfail "$HEALTHY_MEM" FAIL)"
 
 # 4 — adb missing entirely.
 expect "adb not found -> could not run" 4 "$TMP/definitely-not-adb"

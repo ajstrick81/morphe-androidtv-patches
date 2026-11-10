@@ -30,9 +30,18 @@
 
 # Sourcing lib.sh runs work of its own (mkdir -p, and it installs
 # `set -euo pipefail`) BEFORE this script can override die(), so a failure in
-# there would exit 1 while the override does not yet exist. Guarding the source
-# maps that window to the setup code. Plain echo, not lib.sh's helpers — they
-# may not be defined if this fails.
+# there would exit while the override does not yet exist. Guarding the source
+# maps a failure OF THE SOURCE ITSELF to the setup code. Plain echo, not
+# lib.sh's helpers — they may not be defined if this fails.
+#
+# Precise about what this does NOT do: running `source` inside `if !` also
+# suppresses errexit *within* the sourced file, so an internal command such as
+# lib.sh's `mkdir -p` can fail without making `source` fail, and this guard will
+# not catch that. Those directories (apks/, out/, tools/, keystore/) are unused
+# by this script, and any status that escaped that way still cannot be mistaken
+# for the exit-10 verdict — which is the property that actually matters. So this
+# is a narrowed window, not a guarantee that every initialisation failure maps
+# to 4.
 # shellcheck source=/dev/null
 if ! source "$(dirname "$0")/lib.sh"; then
     echo "[x] devicehealth: failed to initialise $(dirname "$0")/lib.sh" >&2
@@ -250,7 +259,14 @@ scan() {
     if [[ -n "$pkg" ]]; then
         info "Scanning the log buffer (starvation is system-wide, so not pid-filtered)"
     fi
-    buf="$(adbh logcat -d -v time 2>/dev/null | tr -d '\r')" || true
+    # `|| true` here used to discard WHETHER logcat succeeded, so a failed
+    # command produced an empty buffer and was then reported as the benign
+    # "expected right after logcat -c" case — complete with advice that it is
+    # safe to proceed. A transport failure must not borrow that message. Command
+    # failure is an ERROR (exit 4); only a SUCCESSFUL empty read is inconclusive.
+    if ! buf="$(adbh logcat -d -v time 2>/dev/null | tr -d '\r')"; then
+        fail "Reading logcat failed (adb transport?) — cannot scan for the starvation signature."
+    fi
     if [[ -z "$buf" ]]; then
         warn "Log buffer empty — the starvation signature could not be looked for."
         SCAN_INCONCLUSIVE=1
