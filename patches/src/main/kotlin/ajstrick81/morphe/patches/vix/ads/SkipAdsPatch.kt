@@ -13,10 +13,13 @@ val skipAdsPatch = bytecodePatch(
     name = "Skip ads",
     description = "Suppresses ViX ad delivery by emptying the LuraPlayer ad-break schedule — " +
         "both the client-side VMAP breaks (third-party ads) and the first-party house / " +
-        "cross-promo breaks — so no ad-periods are inserted into the timeline, and by " +
+        "cross-promo breaks — so no ad-periods are inserted into the timeline, by removing " +
+        "the ad periods the server stitches into on-demand stream manifests, and by " +
         "preventing the Innovid SSAI ad overlay from mounting.",
 ) {
     compatibleWith(Constants.COMPATIBILITY)
+
+    extendWith("extensions/extension.mpe")
 
     execute {
 
@@ -58,6 +61,35 @@ val skipAdsPatch = bytecodePatch(
                 invoke-static {}, Ljava/util/Collections;->emptyList()Ljava/util/List;
                 move-result-object v0
                 return-object v0
+            """
+        )
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Hook 1b — drop server-stitched ad periods from the VOD DASH manifest
+        //
+        // Device-traced on 4.52.0_tv: on-demand streams arrive from the Lura
+        // platform already stitched. The multi-period manifest
+        // (dcs4-vod.mp.lura.live/vod/p/manifest.mpd) carries unencrypted ad
+        // periods (segments on dcs110-mcdn.mp.lura.live) ahead of and between
+        // the Widevine content periods. No client ad request exists to block,
+        // and the schedule hooks below only hide the markers — the ~50 s
+        // pre-roll still played.
+        //
+        // AdPeriodFilter.filter() rewrites the manifest text before media3
+        // parses it: periods without ContentProtection are removed (only when
+        // other periods in the same static manifest have it) and the remaining
+        // periods are re-timed so the timeline stays contiguous. With the
+        // schedule emptied below, the SDK and the player then agree there are
+        // no ads. Any doubt or error returns the manifest untouched.
+        //
+        // DashManifestParser keeps its public method names, so the anchor is
+        // parse(Uri, InputStream) on the class that owns the MPD error string.
+        // ─────────────────────────────────────────────────────────────────────
+        DashManifestParseFingerprint.methodOrNull?.addInstructions(
+            0,
+            """
+                invoke-static {p2}, Lajstrick81/morphe/extension/vix/ads/AdPeriodFilter;->filter(Ljava/io/InputStream;)Ljava/io/InputStream;
+                move-result-object p2
             """
         )
 

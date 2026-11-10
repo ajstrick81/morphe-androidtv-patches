@@ -207,3 +207,9 @@
     public static *** blockWebRequest(android.webkit.WebResourceRequest);
 }
 -keep class ajstrick81.morphe.extension.tubi.privacy.TrackerBlocker$BlockInterceptor { *; }
+
+# ViX — "Skip ads": filter(InputStream) is called only from smali injected into
+# media3's DashManifestParser.parse, so R8 must keep it.
+-keep class ajstrick81.morphe.extension.vix.ads.AdPeriodFilter {
+    public static java.io.InputStream filter(java.io.InputStream);
+}

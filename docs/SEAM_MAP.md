@@ -32,12 +32,12 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 | [paramount](#paramount) | Google IMA / DAI client SDK | 16.19.0, 16.17.0, 16.12.0, 16.8.0 | 1 | 3 | **no** | **no** |
 | [peacock](#peacock) | Server-side stitching (SSAI) via manifest | 7.5.102, 7.6.100, 7.8.100, 7.10.102 | 3 | 10 | yes (6 lines) | **no** |
 | [pluto](#pluto) | Server-side stitching (SSAI) via manifest | 5.66.0-leanback, 17.2.0 | 6 | 20 | yes (47 lines) | yes |
-| [primevideo](#primevideo) | Proprietary native / JS ad engine | 6.23.23+v15.5.0.70-armv7a, 6.24.7+v16.0.0.332-allAbis, 6.24.13+v16.0.1.93-allAbis | 7 | 5 | yes (42 lines) | yes |
+| [primevideo](#primevideo) | Proprietary native / JS ad engine | 6.23.23+v15.5.0.70-armv7a, 6.24.7+v16.0.0.332-allAbis, 6.24.13+v16.0.1.93-allAbis | 7 | 5 | yes (64 lines) | yes |
 | [raiplay](#raiplay) | ? | 5.0.1, 5.0.0 | 3 | 3 | **no** | **no** |
 | [rte](#rte) | Google IMA / DAI client SDK | 3.160.3 | 1 | 3 | **no** | **no** |
 | [tubi](#tubi) | Google IMA / DAI client SDK | 10.40.5000 | 2 | 13 | yes (2 lines) | **no** |
 | [twitchatv](#twitchatv) | Proprietary native / JS ad engine | 13.0.0.2 | 2 | 2 | yes (22 lines) | **no** |
-| [vix](#vix) | Google IMA / DAI client SDK | 4.46.0_tv, 4.47.2_tv, 4.50.1_tv, 4.51.0_tv | 2 | 2 | **no** | **no** |
+| [vix](#vix) | Google IMA / DAI client SDK | 4.46.0_tv, 4.47.2_tv, 4.50.1_tv, 4.51.0_tv, 4.52.0_tv | 3 | 3 | yes (1 lines) | **no** |
 | [xumo](#xumo) | ? | 4.9.147 | 1 | 2 | **no** | **no** |
 
 ## disney
@@ -479,7 +479,7 @@ Runtime evidence (tags `MORPHE-DASH-MF`, `MORPHE-PLUTO-SLATE`; first 12 of 47):
 | Bundle native ad-strip hook | — | — | — |  |  |
 | Load native ad-strip hook | `ApplicationOnCreateFingerprint` | `primevideo/PrimeVideoApplication`.`onCreate` | `V` |  | addInstructions |
 
-Runtime evidence (tags `SkipAdsPatch`, `PVNativeHook`; first 12 of 42):
+Runtime evidence (tags `SkipAdsPatch`, `PVNativeHook`; first 12 of 64):
 
 - I `skipAllMedia3AdGroups: entries=` — SkipAdsPatch.java:99
 - E `skipAllMedia3AdGroups failed` — SkipAdsPatch.java:103
@@ -490,9 +490,9 @@ Runtime evidence (tags `SkipAdsPatch`, `PVNativeHook`; first 12 of 42):
 - I `NativeHookLoader: loaded lib` — NativeHookLoader.java:43
 - E `NativeHookLoader: could not load lib` — NativeHookLoader.java:49
 - E `NativeHookLoader: unexpected failure loading lib` — NativeHookLoader.java:51
-- N `got: … has no PT_DYNAMIC` — got_hook.cpp:60
-- N `got: … missing dynamic entries (symtab=… strtab=… jmprel=… sz=…)` — got_hook.cpp:82
-- N `got: … PLT reloc type is not DT_REL (…)` — got_hook.cpp:88
+- N `got: … has no PT_DYNAMIC` — got_hook.cpp:92
+- N `got: … missing dynamic entries (symtab=… strtab=… jmprel=… sz=…)` — got_hook.cpp:114
+- N `got: … PLT reloc type …, expected … for …` — got_hook.cpp:121
 
 </details>
 
@@ -631,7 +631,7 @@ Runtime evidence (tags `MORPHE-TW-ATV-WV`; first 12 of 22):
 
 ## vix
 
-**Package** `com.univision.prendetv` · **Targets** `4.46.0_tv`, `4.47.2_tv`, `4.50.1_tv`, `4.51.0_tv` · **Engine** Google IMA / DAI client SDK
+**Package** `com.univision.prendetv` · **Targets** `4.46.0_tv`, `4.47.2_tv`, `4.50.1_tv`, `4.51.0_tv`, `4.52.0_tv` · **Engine** Google IMA / DAI client SDK
 
 | Layer | |
 |---|---|
@@ -650,8 +650,14 @@ Runtime evidence (tags `MORPHE-TW-ATV-WV`; first 12 of 22):
 | Patch | Fingerprint | Class / method | Returns | Strings | Action |
 |---|---|---|---|---|---|
 | Skip ads | `InterstitialsDataGetBreaksFingerprint` | `(custom matcher)`.— | `Ljava/util/List;` |  | addInstructions |
+| Skip ads | `DashManifestParseFingerprint` | `(custom matcher)`.— | — |  | addInstructions |
 | Skip ads | `InnovidStartAdFingerprint` | `innovid/InnovidHelper`.— | `V` | `innovidAd` | addInstructions `                 return-void             ` |
+| Log player URLs (debug) _(opt-in)_ | — | — | — |  |  |
 | Override certificate pinning | — | — | — |  |  |
+
+Runtime evidence (tags `VixAdFilter`; first 12 of 1):
+
+- W `manifest left unchanged: ` — AdPeriodFilter.java:76
 
 </details>
 

@@ -3120,7 +3120,7 @@
           "id": "bundleNativeHookPatch",
           "kind": "resourcePatch",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/primevideo/nativehook/BundleNativeHookPatch.kt",
-          "line": 32,
+          "line": 39,
           "name": "Bundle native ad-strip hook",
           "description": "Packages libpvhook.so into the APK's native lib dir for the in-process ad strip (libignite memcpy/memmove GOT/PLT import hook).",
           "uses": []
@@ -3204,199 +3204,331 @@
             "level": "N",
             "text": "got: … has no PT_DYNAMIC",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 60
+            "line": 92
           },
           {
             "level": "N",
             "text": "got: … missing dynamic entries (symtab=… strtab=… jmprel=… sz=…)",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 82
+            "line": 114
           },
           {
             "level": "N",
-            "text": "got: … PLT reloc type is not DT_REL (…)",
+            "text": "got: … PLT reloc type …, expected … for …",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 88
+            "line": 121
           },
           {
             "level": "N",
             "text": "got: … has no JUMP_SLOT for '…'",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 103
+            "line": 137
           },
           {
             "level": "N",
             "text": "got: could not locate GOT slot for …!…",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 113
+            "line": 147
           },
           {
             "level": "N",
             "text": "got: mprotect RW failed for …!… slot=…",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 123
+            "line": 157
           },
           {
             "level": "N",
             "text": "got: hooked …!… slot=… prev=… -> proxy=…",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 134
+            "line": 168
           },
           {
             "level": "N",
             "text": "CALLER …: libignite+0x… n=… remotes=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 153
+            "line": 154
           },
           {
             "level": "N",
             "text": "CALLER …: … (no dladdr) n=… remotes=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 156
+            "line": 157
           },
           {
             "level": "N",
             "text": "PVDIAG rego cont dst=… prev_end=… contiguous=… n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 222
+            "line": 223
           },
           {
             "level": "N",
             "text": "PVKILL path=tv-reassembled playlist emptied across chunks (span=… close=…)",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 249
+            "line": 250
           },
           {
             "level": "N",
             "text": "PVDIAG rego TRUNCATED (mid-roll suspect) n=… open=… head=[…]",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 288
+            "line": 289
           },
           {
             "level": "N",
             "text": "PVKILL path=tv-trunc blanked=… complete ad item(s) in truncated chunk (n=…)",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 312
+            "line": 313
           },
           {
             "level": "N",
             "text": "[rego] TRUNCATED playlist: blanked … complete media.urls ",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 321
+            "line": 322
           },
           {
             "level": "N",
             "text": "PVKILL path=tv-trunc urls=… n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 323
+            "line": 324
           },
           {
             "level": "N",
             "text": "[rego] TRUNCATED playlist closed before tail item (tail at …) n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 340
+            "line": 341
           },
           {
             "level": "N",
             "text": "PVKILL path=tv-split n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 342
+            "line": 343
           },
           {
             "level": "N",
             "text": "PVDIAG rego trunc dst=… n=… end=… (armed for reassembly)",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 356
+            "line": 357
           },
           {
             "level": "N",
             "text": "PVDIAG rego already-empty n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 363
+            "line": 364
           },
           {
             "level": "N",
             "text": "[rego] emptied playlist (~… ad(s), interior … bytes blanked) n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 379
+            "line": 380
           },
           {
             "level": "N",
             "text": "PVKILL path=tv ads=… n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 382
+            "line": 383
           },
           {
             "level": "N",
             "text": "PVMANIFEST […] n=…: …",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 406
+            "line": 407
           },
           {
             "level": "N",
             "text": "TRUNCATED array: blanked …/… COMPLETE Remote item(s) before cut, ",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 451
+            "line": 452
           },
           {
             "level": "N",
             "text": "marker found but array TRUNCATED (not touched) n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 456
+            "line": 457
           },
           {
             "level": "N",
             "text": "PVSKIP path=movie gvaRemotesLeftForPath2=… n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 463
+            "line": 464
           },
           {
             "level": "N",
             "text": "blanked …/… Remote item(s) in complete array (n=…)",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 468
+            "line": 469
           },
           {
             "level": "N",
             "text": "PVKILL path=movie blanked=…/… n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 471
+            "line": 472
           },
           {
             "level": "N",
             "text": "marker found, array complete, 0 Remote items (n=… total=…)",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 474
+            "line": 475
           },
           {
             "level": "N",
             "text": "worker: libignite present, …/4 copy imports hooked after … attempt(s)",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 548
+            "line": 561
           },
           {
             "level": "N",
-            "text": "worker: libignite never appeared within cap — strip will not run",
+            "text": "worker: chapteringAdBreak inline patch applied after … attempt(s)",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 554
+            "line": 566
+          },
+          {
+            "level": "N",
+            "text": "worker: libignite never appeared within cap — no strip installed",
+            "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
+            "line": 572
+          },
+          {
+            "level": "N",
+            "text": "worker: ready (v15 SGAI strip=…, v16 adbreak patch=…)",
+            "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
+            "line": 575
           },
           {
             "level": "N",
             "text": "[hb] skipchunk=… malloc=… | cpy=… mov=… cpy_chk=… mov_chk=… | ",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 560
+            "line": 580
           },
           {
             "level": "N",
             "text": "PVOBS movieBlanked=… tvEmptied=… tvTruncSalvaged=… tvReassembled=… tvSplit=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 584
+            "line": 604
           },
           {
             "level": "N",
             "text": "JNI_OnLoad: pvhook loaded (GOT import hook on libignite memcpy/memmove) — writes=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 605
+            "line": 625
+          },
+          {
+            "level": "N",
+            "text": "inline: mprotect RWX failed @…",
+            "file": "experimental/primevideo-libignite-native/jni/ignite_inline_patch.cpp",
+            "line": 69
+          },
+          {
+            "level": "N",
+            "text": "inline: adbreak patch is armeabi-v7a only — skipped on this ABI",
+            "file": "experimental/primevideo-libignite-native/jni/ignite_inline_patch.cpp",
+            "line": 89
+          },
+          {
+            "level": "N",
+            "text": "inline: libignite not mapped yet — adbreak patch deferred",
+            "file": "experimental/primevideo-libignite-native/jni/ignite_inline_patch.cpp",
+            "line": 95
+          },
+          {
+            "level": "N",
+            "text": "inline: adbreak patch already applied @…",
+            "file": "experimental/primevideo-libignite-native/jni/ignite_inline_patch.cpp",
+            "line": 103
+          },
+          {
+            "level": "N",
+            "text": "inline: prologue mismatch @… (got … … … … … …) — ",
+            "file": "experimental/primevideo-libignite-native/jni/ignite_inline_patch.cpp",
+            "line": 110
+          },
+          {
+            "level": "N",
+            "text": "inline: chapteringAdBreak parser neutralized @… (bias=… +0x…) — mid-roll flag forced false",
+            "file": "experimental/primevideo-libignite-native/jni/ignite_inline_patch.cpp",
+            "line": 118
+          },
+          {
+            "level": "N",
+            "text": "timeline: mprotect RWX failed @… (errno=…)",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 123
+          },
+          {
+            "level": "N",
+            "text": "timeline: no writable segment found in libignite",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 139
+          },
+          {
+            "level": "N",
+            "text": "timeline: resolved … -> impl @… (data entry @…)",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 167
+          },
+          {
+            "level": "N",
+            "text": "timeline: could NOT resolve … (not found in NativeSymbol table)",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 176
+          },
+          {
+            "level": "N",
+            "text": "timeline DIAG: string '…' found at … (bias+0x…)",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 189
+          },
+          {
+            "level": "N",
+            "text": "timeline DIAG: data ref @… -> [0]=…(str) [1]=… [2]=… [3]=…",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 196
+          },
+          {
+            "level": "N",
+            "text": "timeline DIAG: NO data-section pointer to '…' @…",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 203
+          },
+          {
+            "level": "N",
+            "text": "timeline: libignite not mapped yet — deferred",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 224
+          },
+          {
+            "level": "N",
+            "text": "timeline: libignite bias=… text=[…,…) rodata=[…,…) data=[…,…)",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 228
+          },
+          {
+            "level": "N",
+            "text": "timeline: … @… prologue: … … … …",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 249
+          },
+          {
+            "level": "N",
+            "text": "timeline: … already patched",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 255
+          },
+          {
+            "level": "N",
+            "text": "timeline: FAILED to patch …",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 262
+          },
+          {
+            "level": "N",
+            "text": "timeline: … NEUTRALIZED @… — timeline action creation suppressed",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 268
+          },
+          {
+            "level": "N",
+            "text": "timeline: patch complete — …/… StartTimelineAction variants neutralized",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 272
           }
         ]
       },
@@ -3412,7 +3544,7 @@
         "patches": 7,
         "fingerprints": 5,
         "unusedFingerprints": [],
-        "runtimeMessages": 42
+        "runtimeMessages": 64
       }
     },
     "raiplay": {
@@ -4269,12 +4401,21 @@
           ]
         },
         {
+          "id": "DashManifestParseFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/vix/ads/Fingerprints.kt",
+          "line": 122,
+          "hasCustomMatcher": true,
+          "note": "───────────────────────────────────────────────────────────────────────────── LuraPlayer interstitials (ad-break) schedule — client-VMAP ad source com/akta/luraplayer/api/event/LuraEventData$InterstitialsData->getBreaks() ViX serves its VOD ads client-side (provider = \"generic\", VMAP from the GAM ad unit /6881/vix.tv/viewer/vod/androidtv/ondemand, confirmed on-device by the LuraAdPingExecutor AD_BREAK_START trace). After the VMAP is fetched and parsed, the ad engine emits a LuraEvent carrying an InterstitialsData payload whose getBreaks() is the List<LuraAdBreak> schedule. The player state machine (c5) ingests it — getData() → instanceof InterstitialsData → getBreaks() — and stores it into its schedule holder (j4 fields G/J, read back via c5.x() / getGetIntersititals()); the media3 layer (f5) then inserts those breaks as timeline ad-periods and plays the VAST creatives. Returning an EMPTY list (java.util.Collections.emptyList — NOT null: the ingestion site skips on a null but ingests-empty on an empty list) empties the schedule at its single ingestion point. With no breaks the player inserts no ad-periods → content plays through, seamless, no pre/mid-roll. This is the \"empty the ad DATA, never the flow the player waits on\" rule (RTE/Tubi/FoxOne IMA precedent): content playback runs on a separate path and is untouched. Why this seam and not the earlier attempts: the 4.51.0 ad IMPLEMENTATION was R8-flattened into com/akta/lura/<short>, so every impl-side anchor drifted or hit the wrong seam — d3.a→g$g is the MEDIA-FRAME producer (crashed content), m2 (LuraAdPingExecutor) and the quartile reporters fire DOWNSTREAM of delivery (device-proven: ad still played), and the LuraGam*.getAdTagUrl() config getters are never read at request time (device-proven: emptied to \"\" and the VMAP still fetched). getBreaks() lives in the RETAINED public `api/event` package — class + method names survive R8 — and sits UPSTREAM of the schedule store, so it is both obfuscation-proof and the true data source. Anchored on returnType + method name + enclosing class suffix (smallest unique set). The `$` in the nested class name is escaped for the Kotlin string. ───────────────────────────────────────────────────────────────────────────── ───────────────────────────────────────────────────────────────────────────── media3 DashManifestParser.parse(Uri, InputStream) — server-stitched VOD ads On-demand ads are stitched by the Lura platform into a multi-period DASH manifest (clear ad periods around the Widevine content periods), so the manifest itself is the ad source. The injected AdPeriodFilter rewrites the manifest text before this method parses it (see Hook 1b in SkipAdsPatch). Device-proven dead end this replaces: emptying LuraGenericConfiguration.getBreaks() (the app-supplied \"preroll\" GAM tag) changed nothing — the pre-roll is not requested by the client at all. The parser class is R8-renamed (dash/manifest/d on 4.52.0) but keeps its overridable method names, so: the public non-synthetic parse(Uri, InputStream) on the class in media3's dash.manifest package. The bridge overload returning Object is excluded by the synthetic flag check. ─────────────────────────────────────────────────────────────────────────────",
+          "usedBy": [
+            "Skip ads"
+          ]
+        },
+        {
           "id": "InterstitialsDataGetBreaksFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/vix/ads/Fingerprints.kt",
-          "line": 105,
+          "line": 132,
           "returnType": "Ljava/util/List;",
           "hasCustomMatcher": true,
-          "note": "───────────────────────────────────────────────────────────────────────────── LuraPlayer interstitials (ad-break) schedule — client-VMAP ad source com/akta/luraplayer/api/event/LuraEventData$InterstitialsData->getBreaks() ViX serves its VOD ads client-side (provider = \"generic\", VMAP from the GAM ad unit /6881/vix.tv/viewer/vod/androidtv/ondemand, confirmed on-device by the LuraAdPingExecutor AD_BREAK_START trace). After the VMAP is fetched and parsed, the ad engine emits a LuraEvent carrying an InterstitialsData payload whose getBreaks() is the List<LuraAdBreak> schedule. The player state machine (c5) ingests it — getData() → instanceof InterstitialsData → getBreaks() — and stores it into its schedule holder (j4 fields G/J, read back via c5.x() / getGetIntersititals()); the media3 layer (f5) then inserts those breaks as timeline ad-periods and plays the VAST creatives. Returning an EMPTY list (java.util.Collections.emptyList — NOT null: the ingestion site skips on a null but ingests-empty on an empty list) empties the schedule at its single ingestion point. With no breaks the player inserts no ad-periods → content plays through, seamless, no pre/mid-roll. This is the \"empty the ad DATA, never the flow the player waits on\" rule (RTE/Tubi/FoxOne IMA precedent): content playback runs on a separate path and is untouched. Why this seam and not the earlier attempts: the 4.51.0 ad IMPLEMENTATION was R8-flattened into com/akta/lura/<short>, so every impl-side anchor drifted or hit the wrong seam — d3.a→g$g is the MEDIA-FRAME producer (crashed content), m2 (LuraAdPingExecutor) and the quartile reporters fire DOWNSTREAM of delivery (device-proven: ad still played), and the LuraGam*.getAdTagUrl() config getters are never read at request time (device-proven: emptied to \"\" and the VMAP still fetched). getBreaks() lives in the RETAINED public `api/event` package — class + method names survive R8 — and sits UPSTREAM of the schedule store, so it is both obfuscation-proof and the true data source. Anchored on returnType + method name + enclosing class suffix (smallest unique set). The `$` in the nested class name is escaped for the Kotlin string. ─────────────────────────────────────────────────────────────────────────────",
           "usedBy": [
             "Skip ads"
           ]
@@ -4287,10 +4428,14 @@
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/vix/ads/SkipAdsPatch.kt",
           "line": 12,
           "name": "Skip ads",
-          "description": "Suppresses ViX ad delivery by emptying the LuraPlayer ad-break schedule — both the client-side VMAP breaks (third-party ads) and the first-party house / cross-promo breaks — so no ad-periods are inserted into the timeline, and by preventing the Innovid SSAI ad overlay from mounting.",
+          "description": "Suppresses ViX ad delivery by emptying the LuraPlayer ad-break schedule — both the client-side VMAP breaks (third-party ads) and the first-party house / cross-promo breaks — so no ad-periods are inserted into the timeline, by removing the ad periods the server stitches into on-demand stream manifests, and by preventing the Innovid SSAI ad overlay from mounting.",
           "uses": [
             {
               "fingerprint": "InterstitialsDataGetBreaksFingerprint",
+              "call": "addInstructions"
+            },
+            {
+              "fingerprint": "DashManifestParseFingerprint",
               "call": "addInstructions"
             },
             {
@@ -4299,6 +4444,16 @@
               "smali": "\r\n                return-void\r\n            "
             }
           ]
+        },
+        {
+          "id": "logUrlsPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/vix/debug/LogUrlsPatch.kt",
+          "line": 12,
+          "name": "Log player URLs (debug)",
+          "description": "Research aid, off by default: writes every URL the media player and the LuraPlayer SDK open to the device's local logcat (tag VIXURL). Nothing is sent anywhere.",
+          "default": false,
+          "uses": []
         },
         {
           "id": "certificatePinningPatch",
@@ -4311,8 +4466,17 @@
         }
       ],
       "runtime": {
-        "tags": [],
-        "messages": []
+        "tags": [
+          "VixAdFilter"
+        ],
+        "messages": [
+          {
+            "level": "W",
+            "text": "manifest left unchanged: ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/vix/ads/AdPeriodFilter.java",
+            "line": 76
+          }
+        ]
       },
       "packages": [
         "com.univision.prendetv"
@@ -4321,13 +4485,14 @@
         "4.46.0_tv",
         "4.47.2_tv",
         "4.50.1_tv",
-        "4.51.0_tv"
+        "4.51.0_tv",
+        "4.52.0_tv"
       ],
       "summary": {
-        "patches": 2,
-        "fingerprints": 2,
+        "patches": 3,
+        "fingerprints": 3,
         "unusedFingerprints": [],
-        "runtimeMessages": 0
+        "runtimeMessages": 1
       }
     },
     "xumo": {
