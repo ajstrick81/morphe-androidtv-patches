@@ -7,16 +7,23 @@
  *   v16.17.0 (versionCode 520000758) — com.cbs.ott  [current mechanism]
  *   v16.19.0 (versionCode 520000827) — com.cbs.ott  [fingerprints re-verified;
  *                                       all three targets unchanged vs 16.17.0]
- *   v17.3.0  (versionCode 520000982) — com.cbs.ott  [NOT SUPPORTED. Patches apply
- *                                       and all fingerprints resolve, and a smali
- *                                       diff vs 16.21.0 shows the three seams are
- *                                       UNCHANGED — but VOD does not play on a
- *                                       patched build: the title opens
- *                                       VideoPlayerActivity and sits on an
- *                                       infinite spinner, silently. Live TV is
- *                                       fine. Cause not yet identified; it is not
- *                                       a fingerprint/compatibility failure.
- *                                       See analysis/paramount/notes/recon-17.3.0.md.]
+ *   v17.3.0  (versionCode 520000982) — com.cbs.ott  [NOT YET SUPPORTED, pending a
+ *                                       clean re-test. Patches apply, all
+ *                                       fingerprints resolve, and a smali diff vs
+ *                                       16.21.0 shows the three seams are
+ *                                       UNCHANGED; the patched dex is verified
+ *                                       well-formed at every injection site. On
+ *                                       2026-11-08 VOD would not start on the
+ *                                       device (spinner, no exception) while live
+ *                                       TV played — BUT those tests are confounded:
+ *                                       they ran across repeated installs with no
+ *                                       reboot and no check for the CMA
+ *                                       graphics-memory starvation this device is
+ *                                       known for, whose symptom is identical and
+ *                                       whose fix is a reboot. So 17.3.0 is not
+ *                                       blessed, and is also not demonstrated
+ *                                       broken. See docs/ONN_PLAYBACK_HEALTH_CMA.md and
+ *                                       analysis/paramount/notes/recon-17.3.0.md.]
  *
  * MECHANISM (v16.17.0, on-device verified 2026-08-04):
  *   The AVIA player's DAI resource provider
@@ -95,17 +102,22 @@ val paramountPatch = bytecodePatch(
         // internals.
         //
         // It was shipped to the Onn on 2026-11-08 (17.3.0, versionCode 520000982)
-        // and VOD hung on an infinite spinner. HOWEVER: removing the gate and
-        // reinstalling a DAI-only build hung VOD in exactly the same way, so the
-        // IMA gate is NOT established as the cause — VOD on 17.3.0 is broken by
-        // something else (or by more than one thing). The gate is left out only
-        // because it is unproven and un-needed until VOD works at all; do not
-        // read this as "the IMA seam is wrong".
+        // and VOD hung on an infinite spinner — but so did a DAI-only build, and
+        // so did a build with every hook reduced to `nop`. The gate was never
+        // established as the cause of anything.
         //
-        // What IS known: VOD never starts, the hang is silent (no exception, no
-        // AdError, no retry storm, nothing in the app process), and LIVE TV plays
-        // fine on the same build. Diagnosis is open — bisect the three hooks
-        // against a resolve-only no-op build before drawing conclusions.
+        // Those tests are also confounded: they ran across repeated installs with
+        // no reboot and no check for this device's CMA graphics-memory starvation,
+        // which presents identically (spinner, decoder running, no exception) and
+        // is fixed by a reboot. See docs/ONN_PLAYBACK_HEALTH_CMA.md.
+        //
+        // So the gate is left out as UNPROVEN and un-needed — not as wrong. The
+        // seam resolves cleanly, the injection is register-safe, and Pluto ships
+        // the same gate on the same AVIA build. Do not re-add it on the strength
+        // of that symmetry either: Paramount+ 16.x VOD ads were fully handled by
+        // the DAI gate alone, so there is no evidence Paramount needs an IMA gate
+        // at all. Establish that 17.x VOD plays, then observe whether an ad
+        // actually reaches the IMA path, before touching this.
         // See analysis/paramount/notes/recon-17.3.0.md for the running trace.
         // ------------------------------------------------------------------
 

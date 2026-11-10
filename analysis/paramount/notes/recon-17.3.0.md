@@ -15,12 +15,38 @@ All three existing patch fingerprints still resolve on 17.3.0, and **no
 fingerprint changes are needed** — a later smali diff against 16.21.0 showed
 the seams are not merely still-matching but *unchanged*.
 
-**However, 17.3.0 is NOT supported: VOD does not play on a patched build.**
-The title opens `VideoPlayerActivity` and sits on an infinite spinner, with no
-exception of any kind. Live TV is unaffected. The cause is not identified and
-is not a fingerprint failure. See "On-device results" and "Corrections" below;
-read those before trusting anything in the original static sections, which
-were written before any of it was tested.
+**17.3.0 is not marked supported, but the reason is weaker than this note
+originally claimed.** On 2026-11-08 VOD would not start on any patched 17.3.0
+build — `VideoPlayerActivity` opens and sits on an infinite spinner, with no
+exception of any kind, while live TV plays.
+
+> ### ⚠️ ALL 2026-11-08 DEVICE RESULTS ARE CONFOUNDED (noted 2026-11-09)
+>
+> Every one of those four device tests ran inside one long session of repeated
+> installs, force-stops and relaunches, and **device graphics-memory (CMA)
+> starvation was never checked for**. That failure mode — spinner, no picture,
+> decoder running, and *no* FATAL / VerifyError / DRM error — is already
+> documented on this exact device (coffey, 2026-10-31) and its fix is a reboot,
+> not a rebuild. Install churn is itself a way to cause it.
+>
+> The crash scans run that day grepped only
+> `FATAL|AndroidRuntime|VerifyError|NoClassDefFound|UnsatisfiedLink`. None of
+> those match the starvation signature, so "clean, no fatals" was reported for
+> a device that may well have been starved from the second build onwards.
+>
+> **Consequence:** "17.3.0 VOD is broken" is NOT established. Neither is the
+> A1/A2 fork below. The device was never rebooted and never re-tested clean.
+> Re-run from a rebooted device with `testing/scripts/devicehealth.sh check`
+> before drawing any conclusion about 17.3.0. Full signature, thresholds and
+> method notes: [docs/ONN_PLAYBACK_HEALTH_CMA.md](../../../docs/ONN_PLAYBACK_HEALTH_CMA.md).
+>
+> What does survive, because it rests on static evidence rather than on those
+> tests: the seams are byte-identical to 16.21.0, and the patched dex is
+> verified well-formed at all three injection sites.
+
+See "On-device results" and "Corrections" below; read those before trusting
+anything in the original static sections, which were written before any of it
+was tested.
 
 ## Build-level diff
 
@@ -187,8 +213,15 @@ Build 4 exists and is verified correct (`E:\Morphe\work\pplus-17.3.0-allnop.apk`
 `morphe.slate.d` absent from its dex) but was not installed — testing stopped
 here deliberately, see "What to do next".
 
-What the logs show: nothing. No exception, no `AdError`, no retry storm,
-nothing in the app process at all. The app does load `imasdk` / `pcam.jar`
+**None of these four rows is trustworthy — see the confounder box in "Verdict".**
+They were taken across one session of repeated installs with no reboot and no
+CMA check. They are kept here as a record of what was done, not as evidence
+about the builds.
+
+What the logs show: nothing — but only because the wrong thing was grepped. No
+exception, no `AdError`, no retry storm, nothing in the app process at all.
+The CMA/gralloc starvation signature was never searched for, and it would not
+have matched any pattern that was. The app does load `imasdk` / `pcam.jar`
 inside `VideoPlayerActivity`, so 17.3.0 VOD really does involve the IMA
 provider. AVIA itself logs nothing at default verbosity, so logcat cannot
 discriminate between these builds — which is exactly why bisecting by
@@ -240,12 +273,16 @@ Every seam Pluto hooks exists in Paramount+ 17.3.0:
 
 Two consequences:
 
-1. **17.x VOD ad suppression is a port of Pluto Hooks 3/4/8, not a tweak to our
-   Patch 1.** Pluto established that on this player the `shouldPlayAd` gates only
-   skip the DAI pre-roll pod; the mid-roll ad video is stitched into the
-   multi-period DASH manifest and has to be removed at the parser, with the
-   content timeline re-based and the stale ad-break metadata neutralised. That
-   is almost certainly also true of Paramount+ 17.x.
+1. **Pluto's Hooks 3/4/8 are a HYPOTHESIS for Paramount+, not a requirement.**
+   An earlier version of this note said 17.x VOD ad suppression "is a port of
+   Pluto Hooks 3/4/8". That overreached. Pluto needs the DASH manifest strip
+   because *Pluto's* VOD mid-rolls are FreeWheel-stitched into a multi-period
+   manifest; Paramount+ 16.x VOD ads, pre-roll and mid-roll, were fully handled
+   by the `shouldPlayAd` gate alone (see the coverage list in
+   ParamountPatch.kt). Different ad delivery, so the same hooks do not
+   automatically apply. Whether Paramount+ 17.x changed delivery is unknown and
+   cannot be known until VOD plays at all — there are currently no observations
+   of a 17.3.0 ad, only of playback never starting.
 2. **Pluto documents this exact spinner symptom, with a cause worth ruling out.**
    Its Hook 3 comment records that a non-range `invoke-static` on a parameter
    above v15 is *silently dropped* by the inline compiler, leaving an orphan

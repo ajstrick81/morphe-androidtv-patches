@@ -32,6 +32,7 @@ testing/
 │   ├── patch.sh           ← patch an APK/APKM with the local bundle
 │   ├── deploy.sh          ← install the patched APK on the TV + launch it
 │   ├── logs.sh            ← stream filtered logcat from the TV
+│   ├── devicehealth.sh    ← check the TV isn't out of graphics memory (CMA)
 │   └── test.sh            ← build → patch → deploy → logs, all in one
 ├── apks/                  ← (gitignored) drop your .apkm downloads here
 ├── out/                   ← (gitignored) merged + patched APKs, local bundle
@@ -94,6 +95,7 @@ Run any of these from the `testing/` directory.
 | `./scripts/deploy.sh <app> [apk]` | Uninstalls the stock app (signatures differ), installs the patched APK over ADB, and launches it. |
 | `./scripts/logs.sh <app> [regex]` | Clears the log buffer and tails logcat for that app's process. Add a regex to grep (e.g. `ad\|advert\|volley`). |
 | `./scripts/test.sh <app> <input>` | build → patch → deploy → logs in sequence. |
+| `./scripts/devicehealth.sh [check\|snapshot\|scan]` | Checks the TV has enough contiguous graphics memory (CMA) to play anything, and scans the log buffer for the starvation signature. **Run it before and after any playback test** — on this device, running out of CMA looks exactly like a broken patch (infinite spinner, no picture) and produces no FATAL or VerifyError, so a normal crash scan reports a healthy app while playback is dead. The fix is a reboot, not a rebuild. See [docs/ONN_PLAYBACK_HEALTH_CMA.md](../docs/ONN_PLAYBACK_HEALTH_CMA.md). |
 
 `<app>` is a short key from `config/apps.conf` (`disneyplus`, `primevideo`,
 `hbomax`, `peacock`, `tubi`, `vix`, `paramount`). Add new apps by appending a

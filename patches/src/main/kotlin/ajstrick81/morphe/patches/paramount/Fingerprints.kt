@@ -66,11 +66,12 @@ internal object ShouldPlayAdFingerprint : Fingerprint(
 //
 // AviaIMAResourceProvider has its own private shouldPlayAd(AviaAdPod)Z, identical
 // to the DAI one, and 17.3.0 does route VOD through IMA. A gate on it was written
-// and shipped to the Onn on 2026-11-08; VOD hung on an infinite spinner, but a
-// DAI-only build hung identically, so the gate is NOT the proven cause. It is
-// simply unproven, and 17.3.0 VOD is under diagnosis. The seam itself resolves
-// cleanly and the injection is register-safe. See ParamountPatch.kt and
-// analysis/paramount/notes/recon-17.3.0.md.
+// and shipped to the Onn on 2026-11-08; VOD hung, but so did a DAI-only build and
+// an all-`nop` build, and those tests are confounded by unchecked device CMA
+// starvation (docs/ONN_PLAYBACK_HEALTH_CMA.md). The gate is unproven, not disproven —
+// and also unjustified, since Paramount+ 16.x VOD ads were fully handled by the
+// DAI gate alone. The seam resolves cleanly and the injection is register-safe.
+// See ParamountPatch.kt and analysis/paramount/notes/recon-17.3.0.md.
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
