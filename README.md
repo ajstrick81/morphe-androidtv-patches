@@ -40,7 +40,7 @@ That line is the reason this project exists. If you own the TV and pay for the s
 | 🟢 HBO Max | All ads, incl. baked-in SSAI (ad-free stream) | `7.9.0.61` | 8/26/26 |
 | 🟢 Peacock | VOD ads | `7.10.102` · `7.8.100` | 9/29/26 |
 | 🟢 Tubi | Ads (+ opt-in analytics block) | `10.40.5000` | 10/22/26 |
-| 🟢 ViX | Ads | `4.47.2_tv` | 7/11/26 |
+| 🟢 ViX | Ads, incl. server-stitched pre-rolls | `4.52.0_tv` | 11/10/26 |
 | 🟢 Pluto TV | VOD ads · live breaks masked (opt-in) | `5.66.0-leanback` | 9/7/26 |
 | 🟢 Paramount+ | VOD + pause ads · live untouched | `16.17.0` | 8/4/26 |
 | 🟢 Twitch | Ad overlay + blanked live ads · TV build only | `13.0.0.2` | 8/22/26 |
@@ -232,8 +232,8 @@ All patches follow the same general workflow using **Morphe Manager**:
 
 ### 🌐 ViX
 
-1. Open the **[ViX: TV, Deportes y Noticias (Android TV) 4.47.2_tv release on APKMirror](https://www.apkmirror.com/apk/univision-communications-inc/vix-cine-y-tv-en-espanol-android-tv/vix-tv-deportes-y-noticias-android-tv-4-47-2_tv-release/)** (version **`4.47.2_tv`**, package `com.univision.prendetv`)
-   > ⚠️ APKMirror files ViX under **two** Android TV listings. `4.47.2_tv` is only on the one linked above — the "ViX (Fire TV) (Android TV)" listing skips it. The fallback **`4.46.0_tv`** is on [that other listing](https://www.apkmirror.com/apk/univision-communications-inc/vix-tv-deportes-y-noticias-fire-tv-android-tv/vix-movies-tv-and-sports-in-spanish-fire-tv-android-tv-4-46-0_tv-release/) as a single universal `.apk` (no bundle).
+1. Open the **[ViX: TV, Deportes y Noticias (Android TV) 4.52.0_tv release on APKMirror](https://www.apkmirror.com/apk/univision-communications-inc/vix-cine-y-tv-en-espanol-android-tv/vix-tv-deportes-y-noticias-android-tv-4-52-0_tv-release/)** (version **`4.52.0_tv`**, package `com.univision.prendetv`)
+   > ⚠️ ViX now forces older builds to update, so use `4.52.0_tv`. APKMirror files ViX under **two** Android TV listings; `4.52.0_tv` is on the one linked above. The older **`4.46.0_tv`** is on [that other listing](https://www.apkmirror.com/apk/univision-communications-inc/vix-tv-deportes-y-noticias-fire-tv-android-tv/vix-movies-tv-and-sports-in-spanish-fire-tv-android-tv-4-46-0_tv-release/) as a single universal `.apk` (no bundle).
 2. Download the `.apkm` file
 3. Select it in Morphe Manager
 4. Apply the patch
