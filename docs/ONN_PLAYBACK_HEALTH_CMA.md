@@ -75,9 +75,24 @@ ADB=/e/Android/Sdk/platform-tools/adb.exe MORPHE_ADB_TARGET=192.168.12.210:5555 
     testing/scripts/devicehealth.sh check
 ```
 
-Thresholds are `CMA_FREE_MIN_MB` (default 60) and `MEM_AVAIL_MIN_MB` (default
-500), overridable by environment variable. They sit between the two measured
-states above.
+Thresholds are `CMA_FREE_MIN_MB` (default 60), `MEM_AVAIL_MIN_MB` (default 500)
+and `CMA_FREE_MIN_PCT` (default 15), all overridable by environment variable.
+They are **provisional device-specific tripwires** derived from the two measured
+states above, not a definition of starvation — clearing them does not prove an
+allocation of a given size will succeed. Read the raw values the script prints,
+not just the verdict.
+
+Exit codes:
+
+| Code | Meaning |
+|---|---|
+| `0` | pass — no signature, and every value read clears the tripwires |
+| `1` | **starved** — values below the tripwires, or the signature is in the log. The signature is *historical*: if present, the recent test is suspect even if memory has since recovered, because killing the app frees CMA |
+| `2` | **telemetry unknown** — the memory values themselves were unreadable, so the main risk is unassessable. Not an all-clear |
+| `3` | **scan inconclusive** — memory read fine and passed, but the log buffer was empty so the signature couldn't be looked for. This is the *expected* result right after `adb logcat -c`, which `logs.sh` and our own test procedure both do, so don't confuse it with `2` |
+
+Target precedence is `MORPHE_ADB_TARGET` > `config/device.env` > the known
+coffey address, and the resolved target is printed on every run.
 
 **Run it before and after any playback test.** A test that begins on a starved
 device produces no usable evidence in either direction.

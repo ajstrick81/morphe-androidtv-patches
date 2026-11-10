@@ -222,6 +222,63 @@ Worth verifying independently rather than taking the commit message's word:
 17.3.0 VOD remains untested from a clean device, so the headline question is
 unchanged. No patch behaviour has been altered by any of this.
 
+## Round-two outcome (2026-11-09)
+
+Codex confirmed the four round-one fixes independently (unknown and starved
+handled separately, `STARVED` winning when both set, override applied after
+config load, success message no longer claiming health, `bash -n` clean) and
+raised one new edge case plus two framing points.
+
+### New finding, accepted and fixed: empty log buffer outranked good telemetry
+
+An empty log buffer set the same `UNKNOWN` flag as unreadable memory values, so
+`check` returned "unassessable" even when `CmaFree`/`MemAvailable` were read
+fine and cleared the tripwires. That is a real defect, and worse than it looks:
+`logs.sh` runs `adb logcat -c`, and so did every one of the 2026-11-08 test
+runs, so **the natural "run it just before the test" position would have
+returned unknown on a perfectly healthy device** — exactly the cry-wolf outcome
+that gets a gate bypassed.
+
+Fixed by splitting the two kinds of unknown, as suggested:
+
+| Code | Meaning |
+|---|---|
+| `0` | pass |
+| `1` | starved (values below tripwires, **or** signature present — historical evidence, so the recent test is suspect even if memory has since recovered) |
+| `2` | telemetry unknown — memory values unreadable, main risk unassessable |
+| `3` | scan inconclusive — memory fine and passing, log buffer empty so the signature couldn't be looked for; the expected result right after `logcat -c` |
+
+Precedence verified across all six meaningful flag combinations: starved
+outranks both unknowns, and telemetry unknown outranks an inconclusive scan,
+since the former means the risk is unmeasurable while the latter only means the
+corroborating history is absent.
+
+A baseline for detecting CMA reporting disappearing after an update was
+discussed and **not** implemented, per the review's own caveat: it must not turn
+a currently-missing field into a pass without an explicit policy, and no such
+policy exists yet.
+
+### Framing points, accepted without code change
+
+- **Pattern sensitivity.** The asymmetric-cost argument holds for a diagnostic
+  that reports evidence and prompts review, and is weaker where a single broad
+  hit auto-exits `1` — benign surface teardown could cost an unnecessary reboot.
+  Kept as-is because an unnecessary reboot is cheap against a misdiagnosed
+  session, but the set is explicitly provisional and the corpus-validation gap
+  is now stated both in the script and here. Revisit with real logs, not
+  reasoning.
+- **Threshold.** 15% stands as a provisional midpoint on two observations. Worth
+  recording plainly: the percentage and the absolute floor are derived from the
+  *same* two measurements, so they are one measurement expressed two ways, not
+  two independent checks. The raw values and the device-specific caveat are what
+  make it honest.
+
+### Limitation that remains, and cannot be reviewed away
+
+The device is offline, so nothing here has been exercised end-to-end against a
+real device or a real log corpus. Code review has taken this as far as it goes;
+the outstanding checks need device data.
+
 ## Verification already done
 
 - `./gradlew :patches:build -x test` — passes (Kotlin changes are comments only).

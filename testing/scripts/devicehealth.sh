@@ -84,16 +84,30 @@ adbh() { "$ADB_BIN" -s "$ADB_TARGET" "$@"; }
 # /proc/meminfo reports kB. CmaTotal/CmaFree are absent on kernels that don't
 # expose CMA, and that case must NOT be reported as healthy: the whole point of
 # this script is to assess contiguous-graphics-memory risk, so being unable to
-# see it is an UNKNOWN result, not a pass. Exit codes:
+# see it is an UNKNOWN result, not a pass.
 #
-#   0  no starvation signature, and the values that could be read clear the
+# Two kinds of "unknown" are reported separately, because they are not equally
+# serious and a caller may reasonably accept one but not the other:
+#
+#   0  pass — no starvation signature, and every value read clears the
 #      provisional tripwires
-#   1  starved — a playback test now proves nothing
-#   2  UNKNOWN — the main risk could not be assessed (missing fields, empty log
-#      buffer). A preflight gate should treat this as "not a pass" unless you
-#      know this kernel never reports CMA.
+#   1  STARVED — either the measured values are below the tripwires, or the
+#      starvation signature is present in the log. Note the signature is
+#      historical evidence: if it is there, the recent playback test is suspect
+#      even when memory has since recovered (killing the app frees CMA).
+#   2  TELEMETRY UNKNOWN — the memory values themselves could not be read
+#      (missing CmaFree/CmaTotal or MemAvailable). The main risk is
+#      unassessable. Treat as "not a pass" unless you know this kernel never
+#      reports CMA.
+#   3  SCAN INCONCLUSIVE — memory was readable and passed, but the log buffer
+#      was empty so the signature could not be looked for. This is the EXPECTED
+#      result immediately after `adb logcat -c`, which logs.sh and our own test
+#      procedure both do, so it must not be conflated with code 2. A strict
+#      gate can still refuse anything non-zero; a caller that just cleared the
+#      buffer can accept 3.
 STARVED=0
-UNKNOWN=0
+UNKNOWN_TELEMETRY=0
+SCAN_INCONCLUSIVE=0
 
 snapshot() {
     local meminfo kb
@@ -122,7 +136,7 @@ snapshot() {
         fi
     else
         warn "CMA free:     NOT REPORTED by this kernel — the main risk cannot be assessed."
-        UNKNOWN=1
+        UNKNOWN_TELEMETRY=1
     fi
 
     if [[ -n "$mem_avail" && -n "$mem_total" ]]; then
@@ -133,7 +147,7 @@ snapshot() {
         fi
     else
         warn "MemAvailable: NOT REPORTED — cannot assess system memory."
-        UNKNOWN=1
+        UNKNOWN_TELEMETRY=1
     fi
 }
 
@@ -178,7 +192,7 @@ scan() {
     buf="$(adbh logcat -d -v time 2>/dev/null | tr -d '\r')" || true
     if [[ -z "$buf" ]]; then
         warn "Log buffer empty — the starvation signature could not be looked for."
-        UNKNOWN=1
+        SCAN_INCONCLUSIVE=1
         return
     fi
 
@@ -216,17 +230,32 @@ case "$MODE" in
     *)        die "Usage: $(basename "$0") {snapshot|scan|check} [package]" ;;
 esac
 
+# Precedence: a positive starvation finding outranks either unknown, and a
+# telemetry failure (code 2) outranks a merely inconclusive scan (code 3),
+# because the former means the main risk is unmeasurable while the latter only
+# means the historical log evidence is missing.
 if (( STARVED )); then
     remediation
     die "Device looks starved — a playback test now proves nothing."
 fi
-if (( UNKNOWN )); then
+if (( UNKNOWN_TELEMETRY )); then
     echo
-    warn "UNKNOWN — the contiguous-graphics-memory risk could not be assessed."
+    warn "TELEMETRY UNKNOWN (exit 2) — the contiguous-graphics-memory risk could"
+    warn "not be assessed, because the memory values themselves were unreadable."
     warn "This is NOT an all-clear. Treat it as 'not a pass' unless you know this"
-    warn "kernel never reports CMA. Re-run with a populated log buffer, or read"
-    warn "the raw values above and decide deliberately."
+    warn "kernel never reports CMA; then read the raw values above and decide"
+    warn "deliberately."
     exit 2
+fi
+if (( SCAN_INCONCLUSIVE )); then
+    echo
+    ok   "Memory values read fine and clear the provisional tripwires."
+    warn "SCAN INCONCLUSIVE (exit 3) — the log buffer was empty, so the starvation"
+    warn "signature could not be looked for. This is the EXPECTED result right"
+    warn "after 'adb logcat -c'. The device looks adequate on the numbers; there is"
+    warn "simply no log history to corroborate it. Safe to proceed if you just"
+    warn "cleared the buffer; re-run after the test to check for the signature."
+    exit 3
 fi
 ok "No starvation signature, and the values read clear the provisional tripwires."
 info "That is a tripwire passing, not proof the device can allocate what playback needs."
