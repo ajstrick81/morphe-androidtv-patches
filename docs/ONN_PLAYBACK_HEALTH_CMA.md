@@ -86,14 +86,22 @@ device produces no usable evidence in either direction.
 
 Install → force-stop → relaunch churn is itself a way to exhaust CMA. So a long
 session of reinstall-and-retry can *manufacture* this failure and then read it as
-evidence about whichever build happened to be installed at the time. Once the
-device goes starved, every result after that point is worthless, including the
-ones that seem to exonerate or implicate a patch.
+evidence about whichever build happened to be installed at the time.
+
+The honest framing is **confounded, not worthless**. Without a health check at
+the time, you cannot tell whether a given result reflects the build or the
+device — so the result is weak evidence with an unknown device state behind it,
+and must not carry a verdict on its own. It is not nothing; it is just not
+decisive. (An earlier version of this document said every result after the
+device goes starved is "worthless". That overstated what one incident
+establishes — thanks to Codex for the correction.)
 
 Practical consequences:
 
 - Reboot **before** a verdict-grade test, and re-check health after it.
-- If a result followed several installs with no reboot, treat it as void.
+- If a result followed several installs with no reboot, treat it as confounded:
+  keep the observation, record that the device state was unknown, and don't
+  settle anything with it alone.
 - Prefer a **resolve-only no-op build** (every injection reduced to `nop`, so
   fingerprints still resolve but nothing changes) over bisecting hooks one at a
   time. If the symptom persists on that build, the patch is a bystander and
@@ -108,7 +116,7 @@ Practical consequences:
 | Date | Misread as | Actual |
 |---|---|---|
 | 2026-10-31 | stale 16.19 client bug | stale client **and** CMA starvation; fixed by a fresh patched 16.21 install plus a reboot |
-| 2026-11-08 | Paramount+ 17.3.0 patch bug | never determined — four device tests were run across repeated installs with no reboot and no CMA check, so all four are void. See `analysis/paramount/notes/recon-17.3.0.md` |
+| 2026-11-08 | Paramount+ 17.3.0 patch bug | never determined — four device tests ran across repeated installs with no reboot and no CMA check, so the device state behind each is unknown and none can carry a verdict. Note live TV played throughout, so the device was not starved to the point of no graphics capacity at all. See `analysis/paramount/notes/recon-17.3.0.md` |
 
 The 2026-11-08 session spent four reinstalls bisecting a patch that static
 analysis had already shown to be byte-correct and seam-identical to the working

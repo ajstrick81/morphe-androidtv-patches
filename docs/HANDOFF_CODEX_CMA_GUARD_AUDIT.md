@@ -118,6 +118,39 @@ existed only in session memory, nowhere in the repo. Hence this commit.
   accept a no-op bump, or cherry-pick `c4ed051` onto a `docs/` branch and leave
   the 17.3.0 investigation parked.
 
+## Codex review outcome (2026-11-09) — 4 findings, all accepted
+
+Reviewed against `c4ed051`. All four findings were confirmed by reading the code
+and are fixed or addressed; three were genuine defects, one was overstated
+prose. Fixes landed in the commit that follows this section's addition.
+
+| # | Finding | Status |
+|---|---|---|
+| 1 | **Unknown reported as healthy.** Missing `CmaFree`/`CmaTotal` or `MemAvailable` left `STARVED=0`, so the script printed "Device health looks adequate" while unable to assess the main risk. For a preflight gate, the worst possible failure. | **Fixed.** Added an `UNKNOWN` state and a third exit code: `0` pass, `1` starved, `2` unknown. Missing fields and an empty log buffer both set it. The success line no longer claims health, and documents that a tripwire passing is not proof an allocation will succeed. |
+| 2 | **Patterns described as "anchored" are unanchored substrings.** The comment contradicted the code. | **Fixed.** Comment now says specific, case-sensitive, *not* regex-anchored, and states that specificity — not an anchor — is what prevents incidental matches. Tightened `mali_gralloc` to require the dmabufheap / system-heap phrasing, and `error pushing blank frames` to require the `SurfaceUtils` tag. Recorded as NOT YET validated against a device-log corpus. |
+| 3 | **`MORPHE_ADB_TARGET` silently ignored when `device.env` exists.** Could point the check at a different device than intended. | **Fixed.** Override now applied after `load_device_config`, with explicit precedence (env > config > default) and a warning when it overrides. The resolved target is printed on every run. |
+| 4 | **"All four results are void" too categorical.** Evidence supports confounded-with-unknown-device-state; live playback shows some graphics capacity remained. | **Accepted.** Softened in `docs/ONN_PLAYBACK_HEALTH_CMA.md`, `analysis/paramount/notes/recon-17.3.0.md` and the patch comments: confounded, weak evidence, device state unknown, cannot carry a verdict alone — explicitly *not* worthless. The live-TV observation is now recorded as arguing against assuming total starvation. |
+
+Also adopted from the review's reasoning section:
+
+- Thresholds are now labelled **provisional, device-specific tripwires**, not a
+  definition of starvation, and raw values are always printed so the numbers are
+  what you reason from.
+- Added a **fraction-of-`CmaTotal`** tripwire (`CMA_FREE_MIN_PCT`, default 15%)
+  alongside the absolute floor, since a fixed MB floor doesn't survive a change
+  in `CmaTotal`. Validated against both measured states: 35/536 = 6% trips,
+  121/536 = 22% passes, and an in-between 80MB/536MB = 14% now trips where the
+  absolute floor alone would have passed it.
+- `HEALTHY_PATTERNS` kept explicitly advisory, with a note that the markers may
+  predate the test in question and so are context rather than proof.
+- The "every result after that point is worthless" method lesson was reworded to
+  "confounded; don't use alone for a verdict".
+
+Not adopted, with reasons: nothing. The one judgement call left open is whether
+`UNKNOWN` should exit non-zero at all — it makes the script unusable as a gate
+on any kernel that never reports CMA. Chosen behaviour is to exit `2` and say so
+explicitly, so a caller can decide, rather than silently passing.
+
 ## Verification already done
 
 - `./gradlew :patches:build -x test` — passes (Kotlin changes are comments only).

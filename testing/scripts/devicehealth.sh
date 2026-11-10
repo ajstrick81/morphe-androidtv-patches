@@ -37,24 +37,43 @@ PKG_ARG="${2:-}"
 # of 536MB total with MemAvailable 425MB; after a reboot the same device showed
 # CmaFree 121MB and MemAvailable 746MB and played fine. These sit between those
 # two observations; override via the environment if the device changes.
+# These are PROVISIONAL, DEVICE-SPECIFIC TRIPWIRES, not a definition of
+# starvation. Clearing them does not mean an allocation of a given size will
+# succeed — allocation success depends on contiguity and request size, which
+# this cannot see. Raw values are always printed so the numbers, not the
+# verdict, are what you reason from.
 CMA_FREE_MIN_MB="${CMA_FREE_MIN_MB:-60}"
 MEM_AVAIL_MIN_MB="${MEM_AVAIL_MIN_MB:-500}"
+# Also checked as a fraction of CmaTotal, so the tripwire still means something
+# if CmaTotal changes. Measured: starved 35/536 = 6%, healthy 121/536 = 22%.
+CMA_FREE_MIN_PCT="${CMA_FREE_MIN_PCT:-15}"
 
 # ── ADB target ────────────────────────────────────────────────────────
 # lib.sh's load_device_config requires testing/config/device.env. This script
 # is also useful straight from the manual E:\ loop where that file may not
-# exist, so fall back rather than dying: ADB env var or MORPHE_ADB_TARGET, then
-# the known coffey address.
+# exist, so fall back rather than dying.
+#
+# Precedence, highest first: MORPHE_ADB_TARGET, then device.env, then the known
+# coffey address. MORPHE_ADB_TARGET is applied AFTER load_device_config on
+# purpose — an earlier version only consulted it when device.env was absent, so
+# an operator who set it while a config existed was silently checked against the
+# configured device instead. Pointing a health check at the wrong device is
+# worse than failing.
 ADB_BIN="${ADB:-adb}"
 command -v "$ADB_BIN" >/dev/null 2>&1 \
     || die "adb not found. Put it on PATH or set ADB=/e/Android/Sdk/platform-tools/adb.exe"
 
 if [[ -f "$CONFIG_DIR/device.env" ]]; then
     load_device_config
+    if [[ -n "${MORPHE_ADB_TARGET:-}" && "$MORPHE_ADB_TARGET" != "$ADB_TARGET" ]]; then
+        warn "MORPHE_ADB_TARGET=$MORPHE_ADB_TARGET overrides device.env ($ADB_TARGET)"
+        ADB_TARGET="$MORPHE_ADB_TARGET"
+    fi
 else
     ADB_TARGET="${MORPHE_ADB_TARGET:-192.168.12.210:5555}"
     warn "No config/device.env — using $ADB_TARGET (override with MORPHE_ADB_TARGET)"
 fi
+info "Target:       $ADB_TARGET"
 
 "$ADB_BIN" connect "$ADB_TARGET" >/dev/null 2>&1 || true
 "$ADB_BIN" -s "$ADB_TARGET" get-state >/dev/null 2>&1 \
@@ -62,9 +81,19 @@ fi
 adbh() { "$ADB_BIN" -s "$ADB_TARGET" "$@"; }
 
 # ── meminfo ───────────────────────────────────────────────────────────
-# /proc/meminfo reports kB. CmaTotal/CmaFree are absent on kernels without CMA
-# exposed, in which case the CMA half of this check simply reports unknown.
+# /proc/meminfo reports kB. CmaTotal/CmaFree are absent on kernels that don't
+# expose CMA, and that case must NOT be reported as healthy: the whole point of
+# this script is to assess contiguous-graphics-memory risk, so being unable to
+# see it is an UNKNOWN result, not a pass. Exit codes:
+#
+#   0  no starvation signature, and the values that could be read clear the
+#      provisional tripwires
+#   1  starved — a playback test now proves nothing
+#   2  UNKNOWN — the main risk could not be assessed (missing fields, empty log
+#      buffer). A preflight gate should treat this as "not a pass" unless you
+#      know this kernel never reports CMA.
 STARVED=0
+UNKNOWN=0
 
 snapshot() {
     local meminfo kb
@@ -83,29 +112,49 @@ snapshot() {
     mem_total="$(field_mb MemTotal)"
 
     info "Uptime:       $(adbh shell uptime 2>/dev/null | tr -d '\r' | sed 's/^ *//')"
-    if [[ -n "$cma_free" && -n "$cma_total" ]]; then
-        info "CMA free:     ${cma_free}MB of ${cma_total}MB   (want >= ${CMA_FREE_MIN_MB}MB)"
-        if (( cma_free < CMA_FREE_MIN_MB )); then
-            warn "CMA is low — contiguous graphics allocations will likely fail."
+
+    if [[ -n "$cma_free" && -n "$cma_total" && "$cma_total" -gt 0 ]]; then
+        local pct=$(( cma_free * 100 / cma_total ))
+        info "CMA free:     ${cma_free}MB of ${cma_total}MB (${pct}%)   tripwire: >= ${CMA_FREE_MIN_MB}MB and >= ${CMA_FREE_MIN_PCT}%"
+        if (( cma_free < CMA_FREE_MIN_MB || pct < CMA_FREE_MIN_PCT )); then
+            warn "CMA is low — contiguous graphics allocations are likely to fail."
             STARVED=1
         fi
     else
-        info "CMA free:     not reported by this kernel"
+        warn "CMA free:     NOT REPORTED by this kernel — the main risk cannot be assessed."
+        UNKNOWN=1
     fi
+
     if [[ -n "$mem_avail" && -n "$mem_total" ]]; then
-        info "MemAvailable: ${mem_avail}MB of ${mem_total}MB   (want >= ${MEM_AVAIL_MIN_MB}MB)"
+        info "MemAvailable: ${mem_avail}MB of ${mem_total}MB   tripwire: >= ${MEM_AVAIL_MIN_MB}MB"
         if (( mem_avail < MEM_AVAIL_MIN_MB )); then
             warn "System memory is low."
             STARVED=1
         fi
+    else
+        warn "MemAvailable: NOT REPORTED — cannot assess system memory."
+        UNKNOWN=1
     fi
 }
 
 # ── log scan ──────────────────────────────────────────────────────────
-# Anchored, case-sensitive patterns. A loose regex here would be worse than
-# nothing: an unanchored 'IMA' matches the word 'primary' in audio_hw_hal lines
-# and buries the real hits, which is exactly how this was missed once already.
-STARVE_PATTERNS='aml_cma_alloc|cma_alloc failed|libdmabufheap allocation failed|mali_gralloc.*(allocation failed|falling back to system heap)|error pushing blank frames|api_disconnect failed|ion_alloc.*fail'
+# These are SPECIFIC, CASE-SENSITIVE SUBSTRINGS — they are NOT regex-anchored,
+# and an earlier comment here wrongly called them "anchored". What protects
+# against incidental matches is the specificity of each phrase, not an anchor:
+# a short loose token is what causes trouble (an unanchored, case-INsensitive
+# 'IMA' matches "primary" inside audio_hw_hal_primary lines, which buried real
+# hits once already). grep -E is case-sensitive by default, which is relied on.
+#
+# NOT YET VALIDATED against a corpus of this device's logs for false positives;
+# the device is offline. 'mali_gralloc' is the loosest member, so it requires
+# the specific dmabufheap/system-heap phrasing rather than a bare
+# '.*allocation failed'. Treat a lone hit as a prompt to read the surrounding
+# lines, not as proof on its own.
+STARVE_PATTERNS='aml_cma_alloc|cma_alloc failed|libdmabufheap allocation failed|mali_gralloc.*(libdmabufheap allocation failed|falling back to system heap)|SurfaceUtils.*error pushing blank frames|api_disconnect failed|ion_alloc.*fail'
+
+# Advisory only — never affects the exit status. Seeing 'kAtClient' or 'res chg'
+# somewhere in the buffer does not establish that frames are reaching the client
+# right now; they may be from an earlier, healthy playback. Context, not proof.
 HEALTHY_PATTERNS='ServiceDeviceTask.*INs=|kAtClient|res chg'
 
 scan() {
@@ -114,7 +163,11 @@ scan() {
         info "Scanning the log buffer (starvation is system-wide, so not pid-filtered)"
     fi
     buf="$(adbh logcat -d -v time 2>/dev/null | tr -d '\r')" || true
-    [[ -n "$buf" ]] || { warn "Log buffer empty — nothing to scan."; return; }
+    if [[ -z "$buf" ]]; then
+        warn "Log buffer empty — the starvation signature could not be looked for."
+        UNKNOWN=1
+        return
+    fi
 
     hits="$(echo "$buf" | grep -E "$STARVE_PATTERNS" || true)"
     if [[ -n "$hits" ]]; then
@@ -127,7 +180,7 @@ scan() {
 
     healthy="$(echo "$buf" | grep -E "$HEALTHY_PATTERNS" || true)"
     if [[ -n "$healthy" ]]; then
-        info "Healthy-decode markers present ($(echo "$healthy" | wc -l | tr -d ' ') lines) — frames are reaching the client."
+        info "Healthy-decode markers seen ($(echo "$healthy" | wc -l | tr -d ' ') lines) — advisory only; they may predate the test you care about."
     else
         info "No healthy-decode markers (INs=/OUTs= climbing to kAtClient, a clean 'res chg')."
         info "Expected if nothing has been played yet; suspicious if you just tried to play something."
@@ -154,4 +207,13 @@ if (( STARVED )); then
     remediation
     die "Device looks starved — a playback test now proves nothing."
 fi
-ok "Device health looks adequate for a playback test."
+if (( UNKNOWN )); then
+    echo
+    warn "UNKNOWN — the contiguous-graphics-memory risk could not be assessed."
+    warn "This is NOT an all-clear. Treat it as 'not a pass' unless you know this"
+    warn "kernel never reports CMA. Re-run with a populated log buffer, or read"
+    warn "the raw values above and decide deliberately."
+    exit 2
+fi
+ok "No starvation signature, and the values read clear the provisional tripwires."
+info "That is a tripwire passing, not proof the device can allocate what playback needs."

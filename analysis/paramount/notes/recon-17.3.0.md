@@ -35,7 +35,9 @@ exception of any kind, while live TV plays.
 > a device that may well have been starved from the second build onwards.
 >
 > **Consequence:** "17.3.0 VOD is broken" is NOT established. Neither is the
-> A1/A2 fork below. The device was never rebooted and never re-tested clean.
+> A1/A2 fork below. The results are confounded rather than void — the device
+> state during each test is simply unknown, so none of them can settle anything
+> alone. The device was never rebooted and never re-tested clean.
 > Re-run from a rebooted device with `testing/scripts/devicehealth.sh check`
 > before drawing any conclusion about 17.3.0. Full signature, thresholds and
 > method notes: [docs/ONN_PLAYBACK_HEALTH_CMA.md](../../../docs/ONN_PLAYBACK_HEALTH_CMA.md).
@@ -213,10 +215,14 @@ Build 4 exists and is verified correct (`E:\Morphe\work\pplus-17.3.0-allnop.apk`
 `morphe.slate.d` absent from its dex) but was not installed — testing stopped
 here deliberately, see "What to do next".
 
-**None of these four rows is trustworthy — see the confounder box in "Verdict".**
-They were taken across one session of repeated installs with no reboot and no
-CMA check. They are kept here as a record of what was done, not as evidence
-about the builds.
+**All four rows are CONFOUNDED — see the confounder box in "Verdict".** They
+were taken across one session of repeated installs with no reboot and no CMA
+check, so the device state behind each one is unknown. Treat them as weak
+evidence that cannot carry a verdict on its own, not as proof about the builds —
+and not as nothing either. Note live TV played throughout, so the device was not
+starved to the point of having no graphics capacity at all; that doesn't show
+VOD had enough (VOD plausibly needs larger contiguous allocations), but it does
+argue against assuming total starvation.
 
 What the logs show: nothing — but only because the wrong thing was grepped. No
 exception, no `AdError`, no retry storm, nothing in the app process at all.
