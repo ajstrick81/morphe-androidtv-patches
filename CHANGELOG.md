@@ -1,3 +1,10 @@
+## [1.52.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.52.0...v1.52.1) (2026-11-10)
+
+
+### Bug Fixes
+
+* **pluto:** strip v17 channel bumpers and reordered creative paths ([#298](https://github.com/ajstrick81/morphe-androidtv-patches/issues/298)) ([77ad227](https://github.com/ajstrick81/morphe-androidtv-patches/commit/77ad2270584a5961b621d017269bbaf19173ba22)), closes [#144](https://github.com/ajstrick81/morphe-androidtv-patches/issues/144)
+
 # [1.52.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.51.0...v1.52.0) (2026-11-10)
 
 
