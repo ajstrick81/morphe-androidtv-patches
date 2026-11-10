@@ -75,6 +75,11 @@ public final class PlutoV17ManifestProbe {
     // an unrecognized content shape has probably been mis-dropped -> pass the original through.
     private static final double MIN_KEPT_FRACTION = 0.4;
 
+    // Break-filler backstop (issue #298), see findBreakFiller. Real content is >=~70% of a
+    // stitched manifest and is cut from ONE clip; the longest single ad observed is ~60s.
+    private static final double MAIN_CLIP_MIN_FRACTION = 0.5;
+    private static final double FILLER_MAX_SECONDS = 120.0;
+
     /**
      * True when the current manifest is a STATIC (on-demand/VOD) MPD. Hook 4 reads this via
      * {@link #shouldSuppressDynamicAdFetch()} to suppress the ID3/CLID3-driven CSAI ad fetch
@@ -414,11 +419,120 @@ public final class PlutoV17ManifestProbe {
         if (u.contains("_ad%2Fcreative") || u.contains("_ad/creative") || u.contains("_ad_bumper")) {
             return true;
         }
+        // Issue #298 (device-captured on "IF (2024)", 17.2.0). Two shapes the tokens above miss:
+        //   p(prd%2Fcreative%2F59_ad%2F<id>_ad%2F720p...)   the creative path with the "_ad"
+        //       directory AFTER "creative" instead of before it (a 30s spot played through)
+        //   p(757_Pluto_TV_OandO%2Fclip%2F<id>_ptv_10169_kids_bumper_english_girl_vo_r3%2F...)
+        //       a 5s channel-ident bumper on EACH side of every break ("You're watching ..."),
+        //       named "<genre>_bumper" rather than "_ad_bumper"
+        // "creative" is matched as a whole path segment and content clips are addressed by
+        // hex id + uuid (never by a title slug), so neither token can match a content period.
+        if (u.contains("%2Fcreative%2F") || u.contains("%2fcreative%2f") || u.contains("/creative/")
+                || u.contains("_bumper")) {
+            return true;
+        }
         // Click-tracked ad clips (the SECOND VOD ad class on v17): short /mp4/v1/...video_NNN.mp4
         // periods tagged id3(p=clik,id=...). Device-confirmed to carry political/gambling ads that
         // the creative/bumper tokens above miss. Content periods use /clip/ (note: "clip", not
         // "clik") + /dash/ segment addressing, so this token never false-matches content.
         return u.contains("id3(p=clik");
+    }
+
+    /**
+     * One compact line per period: verdict, original start, duration and a trimmed first
+     * BaseURL. Runs once per title load, so it is not hot, and it is what makes a period
+     * the classifier does not recognise visible in a user's logcat (issue #298).
+     */
+    private static void logPeriod(int index, String verdict, double start, double dur, Element period) {
+        try {
+            NodeList b = period.getElementsByTagName("BaseURL");
+            String u = b.getLength() == 0 ? "(none)" : String.valueOf(b.item(0).getTextContent()).trim();
+            if (u.length() > 300) u = u.substring(0, 300) + "...";
+            Log.i(TAG, "v17 period[" + index + "] " + verdict + " start="
+                    + String.format(Locale.US, "%.1f", start) + " dur="
+                    + String.format(Locale.US, "%.1f", dur) + "s base=" + u);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    /**
+     * The clip a period plays, or {@code null} if its BaseURL has no {@code /clip/<id>/}
+     * segment. Every range of one title's content is cut from the same clip
+     * ({@code .../clip/<hexId>_<uuid>/1080pDRM/<stamp>/<fromMs>-<toMs>/dash/}), so this is
+     * what tells the title's own periods apart from anything spliced in between them.
+     * Wrapped URLs carry the path percent-encoded inside {@code p(...)}, so the separators
+     * are decoded first.
+     */
+    static String clipKey(String baseUrl) {
+        if (baseUrl == null) return null;
+        String u = baseUrl.replace("%2F", "/").replace("%2f", "/");
+        int at = u.indexOf("/clip/");
+        if (at < 0) return null;
+        int from = at + "/clip/".length();
+        int to = u.indexOf('/', from);
+        String key = to < 0 ? u.substring(from) : u.substring(from, to);
+        return key.isEmpty() ? null : key;
+    }
+
+    private static String clipKey(Element period) {
+        NodeList baseUrls = period.getElementsByTagName("BaseURL");
+        for (int i = 0; i < baseUrls.getLength(); i++) {
+            String key = clipKey(baseUrls.item(i).getTextContent());
+            if (key != null) return key;
+        }
+        return null;
+    }
+
+    /**
+     * Structural backstop for ad flavours no token recognises yet (issue #298).
+     *
+     * <p>The URL tokens in {@link #isAdUrl} are a blacklist, and every new creative path or
+     * bumper name Pluto introduces leaks through it until someone reports it (#284, #298).
+     * This marks the remaining break filler by what it is NOT: a short period that does not
+     * play the title's own clip.
+     *
+     * <p>Deliberately narrow, because issue #144 was caused by a classifier that dropped
+     * content it did not recognise. It only applies when
+     * <ul>
+     *   <li>one clip accounts for at least {@link #MAIN_CLIP_MIN_FRACTION} of the manifest,
+     *       so the title's own clip is unambiguous (otherwise nothing extra is removed), and</li>
+     *   <li>the period is no longer than {@link #FILLER_MAX_SECONDS}, so a long period of
+     *       any shape is always kept.</li>
+     * </ul>
+     * A title built from several clips, or one whose content has no {@code /clip/} path,
+     * never meets the first condition and is classified by the tokens alone, exactly as
+     * before. The {@link #MIN_KEPT_FRACTION} guard still backstops the whole strip.
+     *
+     * @return per-period flags, {@code true} where the period is break filler
+     */
+    static boolean[] findBreakFiller(String[] keys, double[] durs, boolean[] tokenAd) {
+        int size = keys.length;
+        boolean[] filler = new boolean[size];
+        double total = 0.0;
+        String mainKey = null;
+        double mainDur = 0.0;
+        for (int i = 0; i < size; i++) {
+            total += durs[i];
+            if (tokenAd[i] || keys[i] == null) continue;
+            double sum = 0.0;
+            for (int j = 0; j < size; j++) {
+                if (!tokenAd[j] && keys[i].equals(keys[j])) sum += durs[j];
+            }
+            if (sum > mainDur) {
+                mainDur = sum;
+                mainKey = keys[i];
+            }
+        }
+        if (mainKey == null || total <= 0.0 || mainDur < MAIN_CLIP_MIN_FRACTION * total) {
+            return filler; // no dominant clip -> tokens only
+        }
+        for (int i = 0; i < size; i++) {
+            if (tokenAd[i]) continue;
+            if (durs[i] > 0.0 && durs[i] <= FILLER_MAX_SECONDS && !mainKey.equals(keys[i])) {
+                filler[i] = true;
+            }
+        }
+        return filler;
     }
 
     /** A period is an AD iff any of its BaseURLs carries the ad-creative/bumper signature. */
@@ -503,10 +617,11 @@ public final class PlutoV17ManifestProbe {
             clearTimelineMap();
 
             if (mpd == null || mpd.isEmpty() || !mpd.contains(DASH_IDENTIFIER)) return null;
-            if (!mpd.contains("_ad%2Fcreative") && !mpd.contains("_ad/creative")
-                    && !mpd.contains("_ad_bumper") && !mpd.contains("id3(p=clik")) {
-                return null;
-            }
+            // Live/linear manifests refresh every few seconds; skip them before the DOM
+            // parse. (The parsed-root check below stays as the authoritative guard.)
+            if (mpd.contains("type=\"dynamic\"")) return null;
+            // No token pre-check any more (issue #298): a manifest whose only ad periods are
+            // of a flavour no token recognises still has to reach the structural backstop.
 
             DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
             dbf.setNamespaceAware(false);
@@ -565,14 +680,27 @@ public final class PlutoV17ManifestProbe {
                         + " declared duration may under-report the real content length");
             }
 
+            // Classify every period up front: by URL token first, then the structural
+            // backstop for short periods that do not play the title's own clip (#298).
+            boolean[] tokenAd = new boolean[size];
+            String[] keys = new String[size];
+            for (int i = 0; i < size; i++) {
+                tokenAd[i] = isAdPeriod(periods.get(i));
+                keys[i] = clipKey(periods.get(i));
+            }
+            boolean[] filler = findBreakFiller(keys, durs, tokenAd);
+
             double cursor = 0.0; // re-based content timeline
-            int kept = 0, removed = 0, id3Removed = 0;
+            int kept = 0, removed = 0, id3Removed = 0, fillerRemoved = 0;
             // Removed ad spans in ORIGINAL coordinates, for the #300 timeline map. Collected
             // in period order, so starts stay ascending as both mappers assume.
             List<long[]> removedSpans = new ArrayList<>(); // {originalStartMs, durationMs}
             for (int i = 0; i < size; i++) {
                 Element p = periods.get(i);
-                if (isAdPeriod(p)) {
+                boolean adPeriod = tokenAd[i] || filler[i];
+                if (filler[i]) fillerRemoved++;
+                logPeriod(i, tokenAd[i] ? "AD  " : filler[i] ? "FILL" : "KEEP", starts[i], durs[i], p);
+                if (adPeriod) {
                     // AD: remove and DO NOT advance the content cursor. This is the freeze fix —
                     // ad time must never be counted into the kept-content timeline, otherwise the
                     // following content periods start too late and leave a seekbar-clamping gap.
@@ -629,7 +757,8 @@ public final class PlutoV17ManifestProbe {
             strippedDurationMs = (long) (cursor * 1000.0);
             originalDurationMs = totalDur > 0.0 ? (long) (totalDur * 1000.0) : 0L;
 
-            Log.i(TAG, "v17 STRIPPED " + removed + " ad periods, kept " + kept
+            Log.i(TAG, "v17 STRIPPED " + removed + " ad periods (" + fillerRemoved
+                    + " by structure), kept " + kept
                     + ", removedId3=" + id3Removed + ", newDur=" + cursor + "s (was " + totalDur + "s)"
                     + ", map=" + mapStarts.length + " spans");
             return out;
