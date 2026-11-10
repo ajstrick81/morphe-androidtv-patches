@@ -87,13 +87,30 @@ Exit codes:
 | Code | Meaning |
 |---|---|
 | `0` | pass — no signature, and every value read clears the tripwires |
-| `1` | **starved** — values below the tripwires, or the signature is in the log. The signature is *historical*: if present, the recent test is suspect even if memory has since recovered, because killing the app frees CMA |
+| `10` | **starved** — values below the tripwires, or the signature is in the log. The signature is *historical*: if present, the recent test is suspect even if memory has since recovered, because killing the app frees CMA |
 | `2` | **telemetry unknown** — the memory values themselves were unreadable, so the main risk is unassessable. Not an all-clear |
 | `3` | **scan inconclusive** — memory read fine and passed, but the log buffer was empty so the signature couldn't be looked for. This is the *expected* result right after `adb logcat -c`, which `logs.sh` and our own test procedure both do, so don't confuse it with `2` |
-| `4` | **could not run** — any error: `adb` missing, device unreachable, unreadable `/proc/meminfo`, malformed `device.env`, bad usage. Deliberately not `1`: `lib.sh`'s `die()` exits 1, which is the starvation code, so an automated gate would otherwise have rebooted the TV over a typo in the mode argument. The script overrides `die()` to exit 4 so that no error — including ones raised inside `lib.sh`'s own helpers — can impersonate the verdict, which is emitted explicitly instead |
+| `4` | **could not run** — any error: `adb` missing, device unreachable, unreadable `/proc/meminfo`, malformed `device.env`, bad usage |
+| anything else | **unexpected failure** — treat as an error, never as a verdict |
+
+The verdict is `10`, not `1`, on purpose. `1` is what the shell itself produces
+in all sorts of circumstances — `set -e` on a failing assignment, a failure
+inside `lib.sh` before the script can override `die()`, paths nobody has
+enumerated. Trying to prove "no error can exit 1" failed three separate review
+rounds; giving the verdict a status nothing else emits is airtight where
+enumeration is not. **Callers must treat anything outside `{0, 2, 3, 4, 10}` as
+an error.**
 
 Target precedence is `MORPHE_ADB_TARGET` > `config/device.env` > the known
 coffey address, and the resolved target is printed on every run.
+
+The exit contract is regression-tested without a device by
+`testing/scripts/devicehealth-selftest.sh`, which drives the script against a
+fake `adb` returning canned `/proc/meminfo` and logcat output and asserts the
+code for each case (healthy, starved, signature-only, failing read, kernel
+without CMA fields, empty buffer, missing adb, bad mode, malformed
+`device.env`). It cannot validate the log *patterns* — that still needs real
+device logs.
 
 **Run it before and after any playback test.** A test that begins on a starved
 device produces no usable evidence in either direction.

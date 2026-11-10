@@ -3,7 +3,7 @@
 #
 #   ./devicehealth.sh snapshot          # CMA / MemAvailable / uptime right now
 #   ./devicehealth.sh scan [pkg]        # scan the log buffer for starvation
-#   ./devicehealth.sh check [pkg]       # snapshot + scan, exit 1 if starved
+#   ./devicehealth.sh check [pkg]       # snapshot + scan, exit 10 if starved
 #
 # WHY THIS EXISTS
 # ---------------
@@ -28,9 +28,28 @@
 # Run `check` BEFORE and AFTER any playback test. A test that starts starved
 # produces no usable evidence either way.
 
-source "$(dirname "$0")/lib.sh"
+# Sourcing lib.sh runs work of its own (mkdir -p, and it installs
+# `set -euo pipefail`) BEFORE this script can override die(), so a failure in
+# there would exit 1 while the override does not yet exist. Guarding the source
+# maps that window to the setup code. Plain echo, not lib.sh's helpers — they
+# may not be defined if this fails.
+# shellcheck source=/dev/null
+if ! source "$(dirname "$0")/lib.sh"; then
+    echo "[x] devicehealth: failed to initialise $(dirname "$0")/lib.sh" >&2
+    exit 4
+fi
 
-# Exit 1 is reserved for the starvation VERDICT, so no ERROR may use it.
+# The starvation VERDICT is exit 10, not 1 — see STARVED_EXIT below. Exit 1 was
+# the verdict until round five of review showed the claim "no error can exit 1"
+# was unprovable: the shell itself produces 1 from `set -e` on a failing
+# assignment, from a failure inside lib.sh before the override is installed, and
+# from paths nobody has enumerated yet. Inverting it is airtight where
+# enumeration is not: the verdict uses a status nothing else emits, so an
+# unexpected failure can never be read as "the device is starved".
+STARVED_EXIT=10
+
+# Errors still get their own code too, so a setup problem is distinguishable
+# from a measurement result.
 # lib.sh's die() exits 1, and it is reachable from lib.sh's own helpers — e.g.
 # load_device_config() dies if device.env exists but sets neither DEVICE_SERIAL
 # nor DEVICE_IP — so patching this script's own call sites was not enough: a
@@ -102,10 +121,15 @@ adbh() { "$ADB_BIN" -s "$ADB_TARGET" "$@"; }
 #
 #   0  pass — no starvation signature, and every value read clears the
 #      provisional tripwires
-#   1  STARVED — either the measured values are below the tripwires, or the
+#  10  STARVED — either the measured values are below the tripwires, or the
 #      starvation signature is present in the log. Note the signature is
 #      historical evidence: if it is there, the recent playback test is suspect
 #      even when memory has since recovered (killing the app frees CMA).
+#      Deliberately NOT 1: see STARVED_EXIT at the top.
+#
+#   Any other status (1 included, plus 126/127/128+n) is an UNEXPECTED FAILURE.
+#   Callers must treat anything outside {0, 2, 3, 4, 10} as an error, never as
+#   a starvation verdict.
 #   2  TELEMETRY UNKNOWN — the memory values themselves could not be read
 #      (missing CmaFree/CmaTotal or MemAvailable). The main risk is
 #      unassessable. Treat as "not a pass" unless you know this kernel never
@@ -128,12 +152,22 @@ SCAN_INCONCLUSIVE=0
 
 snapshot() {
     local meminfo kb
-    meminfo="$(adbh shell cat /proc/meminfo 2>/dev/null | tr -d '\r')"
-    # A failed/empty read is TELEMETRY UNKNOWN (exit 2), not a hard exit. It
-    # previously went through die(), i.e. exit 1, which is the starvation code —
-    # so an adb hiccup read as "the device is starved". Returning instead of
-    # exiting also lets `check` still run the log scan, which can find the
-    # signature even when /proc/meminfo could not be read at all.
+    # A failed OR empty read is TELEMETRY UNKNOWN, not a hard exit, and
+    # returning instead of exiting lets `check` still run the log scan — the
+    # signature can be found even when /proc/meminfo could not be read.
+    #
+    # The assignment MUST be guarded by `if !`. Under `set -euo pipefail` a
+    # failing pipeline in a plain assignment exits the shell immediately, with
+    # the pipeline's status, before any following emptiness check can run — so
+    # `meminfo=$(...)` on its own line would have exited 1 (the old starvation
+    # code) whenever adb failed, defeating the whole point of handling this
+    # gracefully. Verified: `set -euo pipefail; v="$(false | tr -d x)"` exits 1.
+    if ! meminfo="$(adbh shell cat /proc/meminfo 2>/dev/null | tr -d '\r')"; then
+        warn "Reading /proc/meminfo failed — memory telemetry unavailable"
+        warn "(an adb/transport failure, as distinct from a kernel that omits the CMA fields)."
+        UNKNOWN_TELEMETRY=1
+        return
+    fi
     if [[ -z "$meminfo" ]]; then
         warn "Could not read /proc/meminfo — memory telemetry unavailable"
         warn "(an adb/read failure, as distinct from a kernel that omits the CMA fields)."
@@ -263,10 +297,10 @@ esac
 # means the historical log evidence is missing.
 if (( STARVED )); then
     remediation
-    # Emitted explicitly, not through die()/fail(), because exit 1 is the
-    # verdict and those helpers now mean "error" (exit 4).
+    # Emitted explicitly, not through die()/fail(): those mean "error" (exit 4),
+    # while this is the measurement verdict (exit 10).
     echo -e "${C_ERR}[✗]${C_OFF} Device looks starved — a playback test now proves nothing." >&2
-    exit 1
+    exit "$STARVED_EXIT"
 fi
 if (( UNKNOWN_TELEMETRY )); then
     echo

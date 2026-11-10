@@ -374,6 +374,59 @@ offline and intentionally untouched. Everything above is a code-contract
 question, not evidence about the device — and no further round can close that
 gap.
 
+## Round-five outcome (2026-11-09) — two more holes, and a change of approach
+
+Codex found two paths that bypassed the `die()` override, both confirmed:
+
+1. **`meminfo="$(adbh shell cat /proc/meminfo | tr -d '\r')"` could still exit 1.**
+   Under `set -euo pipefail` a failing pipeline in a plain assignment exits the
+   shell immediately with the pipeline's status, *before* the following
+   emptiness check can set `UNKNOWN_TELEMETRY`. Verified independently:
+   `bash -c 'set -euo pipefail; v="$(false | tr -d x)"; echo reached'` exits 1
+   and never prints. So the round-three "non-fatal telemetry" fix only worked
+   when adb *succeeded* and returned empty — exactly the case that didn't
+   matter. Fixed by guarding the assignment with `if !`.
+2. **`source lib.sh` does work before the override exists.** It runs `mkdir -p`
+   and installs `set -euo pipefail`, so a failure in there exits 1 while the
+   replacement `die()` is not yet defined. Fixed by guarding the `source` and
+   mapping that window to exit 4 with a plain `echo` (lib.sh's helpers may not
+   exist yet).
+
+### The approach was wrong, not just the implementation
+
+Three rounds were spent trying to prove "no error can exit 1", and each round
+found another way it could. That is unprovable by enumeration: the shell emits 1
+from `set -e`, from `source` failures, from paths nobody has listed. So, taking
+Codex's own alternative: **the verdict moved to exit 10.** Nothing else emits
+10, so an unexpected failure can never read as a starvation verdict, whatever
+its origin. Callers treat anything outside `{0, 2, 3, 4, 10}` as an error.
+
+Also adopted: the `die()` override stays **local to this script**; `lib.sh` is
+not changed for every testing script, per the review's recommendation.
+
+### New: the contract is now regression-tested without a device
+
+`testing/scripts/devicehealth-selftest.sh` drives the script against a fake
+`adb` returning canned `/proc/meminfo` and logcat output. 9/9 passing:
+
+| Case | Expected |
+|---|---|
+| healthy numbers, clean log | 0 |
+| starved numbers + signature (the real 2026-10-31 figures) | 10 |
+| signature only, memory recovered | 10 |
+| failing `/proc/meminfo` read | 2 (was 1 before this round) |
+| kernel without CMA fields | 2 |
+| healthy numbers, empty log buffer | 3 |
+| `adb` missing | 4 |
+| unknown mode argument | 4 |
+| malformed `device.env` (lib.sh dies internally) | 4 |
+
+This matters because every defect across five rounds was found by *reading*, and
+the last two were only provable with a shell probe — none had ever been
+executed. Four of those nine cases are now locked down by a test rather than by
+an argument. It still cannot validate the log **patterns**; that needs real
+device logs, and remains the one genuinely open item.
+
 ## Verification already done
 
 - `./gradlew :patches:build -x test` — passes (Kotlin changes are comments only).
