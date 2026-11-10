@@ -1,3 +1,10 @@
+# [1.52.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.51.0...v1.52.0) (2026-11-10)
+
+
+### Features
+
+* **vix:** support 4.52.0_tv and remove server-stitched pre-roll ads ([6826310](https://github.com/ajstrick81/morphe-androidtv-patches/commit/6826310fbc924c9597b363b686df4e361d8f97c0)), closes [#315](https://github.com/ajstrick81/morphe-androidtv-patches/issues/315) [#315](https://github.com/ajstrick81/morphe-androidtv-patches/issues/315)
+
 # [1.51.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.50.3...v1.51.0) (2026-11-08)
 
 
