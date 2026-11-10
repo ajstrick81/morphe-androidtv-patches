@@ -59,9 +59,12 @@ CMA_FREE_MIN_PCT="${CMA_FREE_MIN_PCT:-15}"
 # an operator who set it while a config existed was silently checked against the
 # configured device instead. Pointing a health check at the wrong device is
 # worse than failing.
+# "Could not run the check" is exit 4, never 1 — see the exit-code block below.
+fail() { echo -e "${C_ERR}[✗]${C_OFF} $*" >&2; exit 4; }
+
 ADB_BIN="${ADB:-adb}"
 command -v "$ADB_BIN" >/dev/null 2>&1 \
-    || die "adb not found. Put it on PATH or set ADB=/e/Android/Sdk/platform-tools/adb.exe"
+    || fail "adb not found. Put it on PATH or set ADB=/e/Android/Sdk/platform-tools/adb.exe"
 
 if [[ -f "$CONFIG_DIR/device.env" ]]; then
     load_device_config
@@ -77,7 +80,7 @@ info "Target:       $ADB_TARGET"
 
 "$ADB_BIN" connect "$ADB_TARGET" >/dev/null 2>&1 || true
 "$ADB_BIN" -s "$ADB_TARGET" get-state >/dev/null 2>&1 \
-    || die "Device $ADB_TARGET is not reachable (asleep? DHCP drift? see onn-tv-ip-dhcp-drift)."
+    || fail "Device $ADB_TARGET is not reachable (asleep? DHCP drift? see onn-tv-ip-dhcp-drift)."
 adbh() { "$ADB_BIN" -s "$ADB_TARGET" "$@"; }
 
 # ── meminfo ───────────────────────────────────────────────────────────
@@ -99,6 +102,12 @@ adbh() { "$ADB_BIN" -s "$ADB_TARGET" "$@"; }
 #      (missing CmaFree/CmaTotal or MemAvailable). The main risk is
 #      unassessable. Treat as "not a pass" unless you know this kernel never
 #      reports CMA.
+#   4  COULD NOT RUN — setup or connectivity failure (adb missing, device
+#      unreachable, bad usage). Deliberately NOT 1: lib.sh's die() exits 1,
+#      which this script reserves for a starvation verdict, so every die path
+#      here would otherwise be indistinguishable from "the device is starved".
+#      An automated gate would have rebooted the TV over a typo in the mode
+#      argument. Use fail() for these, never die().
 #   3  SCAN INCONCLUSIVE — memory was readable and passed, but the log buffer
 #      was empty so the signature could not be looked for. This is the EXPECTED
 #      result immediately after `adb logcat -c`, which logs.sh and our own test
@@ -112,7 +121,17 @@ SCAN_INCONCLUSIVE=0
 snapshot() {
     local meminfo kb
     meminfo="$(adbh shell cat /proc/meminfo 2>/dev/null | tr -d '\r')"
-    [[ -n "$meminfo" ]] || die "Could not read /proc/meminfo"
+    # A failed/empty read is TELEMETRY UNKNOWN (exit 2), not a hard exit. It
+    # previously went through die(), i.e. exit 1, which is the starvation code —
+    # so an adb hiccup read as "the device is starved". Returning instead of
+    # exiting also lets `check` still run the log scan, which can find the
+    # signature even when /proc/meminfo could not be read at all.
+    if [[ -z "$meminfo" ]]; then
+        warn "Could not read /proc/meminfo — memory telemetry unavailable"
+        warn "(an adb/read failure, as distinct from a kernel that omits the CMA fields)."
+        UNKNOWN_TELEMETRY=1
+        return
+    fi
 
     field_mb() {
         kb="$(echo "$meminfo" | awk -v k="^$1:" '$0 ~ k {print $2; exit}')"
@@ -227,7 +246,7 @@ case "$MODE" in
     snapshot) snapshot ;;
     scan)     scan "$PKG_ARG" ;;
     check)    snapshot; echo; scan "$PKG_ARG" ;;
-    *)        die "Usage: $(basename "$0") {snapshot|scan|check} [package]" ;;
+    *)        fail "Usage: $(basename "$0") {snapshot|scan|check} [package]" ;;
 esac
 
 # Precedence: a positive starvation finding outranks either unknown, and a

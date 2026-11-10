@@ -279,6 +279,52 @@ The device is offline, so nothing here has been exercised end-to-end against a
 real device or a real log corpus. Code review has taken this as far as it goes;
 the outstanding checks need device data.
 
+## Round-three outcome (2026-11-09)
+
+Codex confirmed the exit-code split matches the documented precedence, and found
+one remaining mismatch: an unreadable `/proc/meminfo` went through `die()`,
+i.e. **exit 1**, while the documented contract says unreadable telemetry is 2.
+An adb hiccup would therefore have read as a starvation verdict.
+
+Accepted — and on inspection the problem was larger than the one line. `die()`
+comes from `lib.sh` and always exits 1, so **every** `die` path in the script
+collided with the starvation code:
+
+| Path | Was | Now |
+|---|---|---|
+| `adb` not found | 1 (= starved) | 4 |
+| device unreachable | 1 (= starved) | 4 |
+| `/proc/meminfo` unreadable | 1 (= starved) | 2, and no longer fatal |
+| bad usage / unknown mode | 1 (= starved) | 4 |
+| genuine starvation verdict | 1 | 1 (the only remaining `die`) |
+
+The usage case is the sharpest illustration: an automated gate keyed on exit 1
+would have rebooted the TV because of a typo in the mode argument.
+
+Fixes:
+
+- Added `fail()` (exit 4) for "could not run the check at all", and repointed
+  the three setup/connectivity/usage paths to it. `die()` is now used for
+  exactly one thing: the starvation verdict.
+- The unreadable-`/proc/meminfo` path now sets `UNKNOWN_TELEMETRY` and
+  **returns instead of exiting**, so `check` still runs the log scan — the
+  signature can be found even when meminfo could not be read, which the old
+  hard exit prevented. Its message distinguishes an adb/read failure from a
+  kernel that simply omits the CMA fields, since both land on exit 2.
+
+Verified end-to-end (no device needed for these):
+
+- `ADB=/definitely/not/adb … check` → exit **4**, not 1.
+- `MORPHE_ADB_TARGET=192.0.2.1:5555 … check` → exit **4**, and it printed
+  `MORPHE_ADB_TARGET=192.0.2.1:5555 overrides device.env (192.168.12.210:5555)`.
+  That incidentally proves round one's finding 3 was a **live** bug rather than
+  a theoretical one: `testing/config/device.env` exists on this machine, so the
+  override was taking the ignored branch every time.
+- `bash -n` clean; `die` now appears exactly once.
+
+Unchanged and still outstanding: pattern accuracy and end-to-end device
+behaviour cannot be validated without device logs.
+
 ## Verification already done
 
 - `./gradlew :patches:build -x test` — passes (Kotlin changes are comments only).
