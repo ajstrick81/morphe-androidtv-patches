@@ -441,6 +441,61 @@ The Onn is running the **17.3.0 all-`nop`** build (versionCode 520000982):
 behaviourally vanilla, no ad suppression, and VOD does not play. Live TV works.
 This is not a usable daily state and should be resolved before further work.
 
+## Provider selection map (17.3.0, static — 2026-11-09)
+
+Which AVIA provider serves a given stream is decided by the CONFIGURATION the
+app builds, dispatched in `AviaDefaultResourceProviderFactory.createResourceProvider`:
+
+| Configuration | Provider |
+|---|---|
+| `CLID3ResourceConfiguration` | `AviaCLID3ResourceProvider` |
+| `UriResourceConfiguration` | `AviaUriResourceProvider` |
+| `IMAResourceConfiguration` | `AviaIMAResourceProvider` |
+| `DAIResourceConfiguration` | `AviaDAIResourceProvider` — **and**, when the DAI config carries a `clid3` sub-config, the factory additionally calls `AviaDAIResourceProvider.setCLID3(...)` |
+
+That last row matters: a DAI stream can ALSO run CLID3, which is the
+client-side (CSAI) ad path — the one Pluto's v17 Hook 4 suppresses at
+`CLID3Processor.processAdPodStartAsync`. So "VOD is DAI" would not by itself mean
+`shouldPlayAd` covers every ad on it.
+
+App-layer builders (R8-renamed, one per configuration, found by searching for
+`new-instance` of the readable config classes outside the `avia` package):
+
+| Config | Builder class (17.3.0) | Identifying evidence |
+|---|---|---|
+| DAI | `tj6` | logs its own tag `DaiResConfigUseCase`, plus `DaistreamKey: `, `DAIResourceConfiguration:: `, `playing:CMS source ID =  `, `promoskip` |
+| IMA | `aq6` | constructs `IMAResourceConfiguration` (line ~1716); large multi-purpose class, also carries DMA/affiliate strings |
+| CLID3 | `ti6` | constructs `CLID3ResourceConfiguration` |
+| Uri | `pz4`, `l52`, `AbstractAviaPeekviewPlayer` | peekview/trailer paths |
+
+`tj6` itself carries no live-vs-VOD string discriminator; the branch is in its
+callers (`yu3`, `hoe`). Rather than chase that through renamed code, note what
+the above already buys us:
+
+### The log tags defeat the "AVIA logs nothing" problem
+
+The reason install-and-compare was useless on 2026-11-08 is that AVIA logs
+nothing about ad decisions at default verbosity. But the **app's own
+configuration layer** logs readable tags. So a single filtered capture during a
+VOD attempt answers which provider VOD uses, with no guessing:
+
+```bash
+adb logcat -c
+# start a VOD title on the TV, then:
+adb logcat -d | grep -E "DaiResConfigUseCase|DAIResourceConfiguration|DaistreamKey|IMAResourceConfiguration|CLID3ResourceConfiguration|processAdPodStart|imasdk"
+```
+
+- `DaiResConfigUseCase` / `DaistreamKey:` present → VOD is DAI, so Patch 1's
+  `shouldPlayAd` gate is on the right seam.
+- `IMAResourceConfiguration` present instead → VOD is client-side IMA, and
+  Patch 1 does not cover it. That would be the first real evidence for an IMA
+  gate — the thing that was assumed in db79539 and never demonstrated.
+- `CLID3ResourceConfiguration` alongside DAI → CSAI ads run in parallel with the
+  DAI pods, and Pluto's Hook 4 becomes relevant for Paramount+ too.
+
+Capture this on the same run as the reboot-then-retest below; it costs nothing
+extra and settles a question that has so far only been speculated about.
+
 ## What to do next (one test at a time, each with a stated prediction)
 
 1. **Install build 4 (all-`nop`) and try VOD.** This is the only test that
