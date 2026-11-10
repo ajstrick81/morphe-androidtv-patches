@@ -325,6 +325,55 @@ Verified end-to-end (no device needed for these):
 Unchanged and still outstanding: pattern accuracy and end-to-end device
 behaviour cannot be validated without device logs.
 
+## Round four — self-found extension, and what is left to review (2026-11-09)
+
+### Same bug class, one layer deeper — found while applying round three
+
+Round three fixed this script's own `die` call sites. That was not enough:
+`lib.sh`'s `die()` exits 1 and is reachable from **lib.sh's own helpers**, which
+this script calls. Specifically `load_device_config()` dies if `device.env`
+exists but sets neither `DEVICE_SERIAL` nor `DEVICE_IP` — so a malformed config
+still reported as "the device is starved", through a path no amount of editing
+call sites in this file would have caught.
+
+Fixed structurally rather than by patching sites: the script now **overrides
+`die()`** immediately after sourcing `lib.sh` so every error exits 4 regardless
+of origin, and the starvation verdict is emitted explicitly at the bottom
+instead of through an error helper. Bash resolves functions at call time, so the
+override applies to calls made inside `lib.sh`.
+
+Verified end-to-end with a synthetic malformed `device.env` (no `DEVICE_IP`, no
+`DEVICE_SERIAL`): exits **4**, where the same input previously exited 1. The
+error text still comes from `lib.sh`, confirming the override takes effect on
+its internal call. `exit 1` now appears exactly once in the file: the verdict.
+
+This is the third consecutive round on one theme — that a safety check's exit
+contract is only as good as its least-examined error path — which is itself
+worth noting as the finding.
+
+### What I'd like round four to actually check
+
+1. **Is overriding a sourced library's `die()` acceptable**, or too clever? It
+   is invisible to someone reading `lib.sh`, and a future `lib.sh` helper could
+   rely on `die` meaning exit 1. The alternatives I see are worse: validate
+   `device.env` myself before calling (duplicates lib.sh's logic and drifts), or
+   give up exit 1 as the verdict and use something else (breaks the documented
+   contract and every caller). Is there a cleaner shape?
+2. **Should `lib.sh` itself grow a distinct error code** so every script in
+   `testing/scripts/` gets this property, rather than one script defending
+   itself? That is a wider change touching working scripts, which is why I did
+   not do it unprompted — but it may be the right fix.
+3. **Anything else reachable that can still exit 1.** `grep` says only the
+   verdict, but that is my own audit of my own work for the fourth time, which
+   is precisely the pattern that has missed something in each prior round.
+
+### Still unchanged, and not reviewable from here
+
+Pattern accuracy and end-to-end device behaviour need device logs. The Onn is
+offline and intentionally untouched. Everything above is a code-contract
+question, not evidence about the device — and no further round can close that
+gap.
+
 ## Verification already done
 
 - `./gradlew :patches:build -x test` — passes (Kotlin changes are comments only).

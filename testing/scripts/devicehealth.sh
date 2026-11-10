@@ -30,6 +30,17 @@
 
 source "$(dirname "$0")/lib.sh"
 
+# Exit 1 is reserved for the starvation VERDICT, so no ERROR may use it.
+# lib.sh's die() exits 1, and it is reachable from lib.sh's own helpers — e.g.
+# load_device_config() dies if device.env exists but sets neither DEVICE_SERIAL
+# nor DEVICE_IP — so patching this script's own call sites was not enough: a
+# malformed config would still have reported as "the device is starved".
+# Overriding die() here makes that structurally impossible, whatever the origin.
+# Errors are 4. The verdict is emitted explicitly at the bottom, never via a
+# helper.
+die()  { echo -e "${C_ERR}[✗]${C_OFF} $*" >&2; exit 4; }
+fail() { die "$@"; }
+
 MODE="${1:-check}"
 PKG_ARG="${2:-}"
 
@@ -59,9 +70,6 @@ CMA_FREE_MIN_PCT="${CMA_FREE_MIN_PCT:-15}"
 # an operator who set it while a config existed was silently checked against the
 # configured device instead. Pointing a health check at the wrong device is
 # worse than failing.
-# "Could not run the check" is exit 4, never 1 — see the exit-code block below.
-fail() { echo -e "${C_ERR}[✗]${C_OFF} $*" >&2; exit 4; }
-
 ADB_BIN="${ADB:-adb}"
 command -v "$ADB_BIN" >/dev/null 2>&1 \
     || fail "adb not found. Put it on PATH or set ADB=/e/Android/Sdk/platform-tools/adb.exe"
@@ -255,7 +263,10 @@ esac
 # means the historical log evidence is missing.
 if (( STARVED )); then
     remediation
-    die "Device looks starved — a playback test now proves nothing."
+    # Emitted explicitly, not through die()/fail(), because exit 1 is the
+    # verdict and those helpers now mean "error" (exit 4).
+    echo -e "${C_ERR}[✗]${C_OFF} Device looks starved — a playback test now proves nothing." >&2
+    exit 1
 fi
 if (( UNKNOWN_TELEMETRY )); then
     echo

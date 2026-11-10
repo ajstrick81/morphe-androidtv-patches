@@ -90,7 +90,7 @@ Exit codes:
 | `1` | **starved** — values below the tripwires, or the signature is in the log. The signature is *historical*: if present, the recent test is suspect even if memory has since recovered, because killing the app frees CMA |
 | `2` | **telemetry unknown** — the memory values themselves were unreadable, so the main risk is unassessable. Not an all-clear |
 | `3` | **scan inconclusive** — memory read fine and passed, but the log buffer was empty so the signature couldn't be looked for. This is the *expected* result right after `adb logcat -c`, which `logs.sh` and our own test procedure both do, so don't confuse it with `2` |
-| `4` | **could not run** — setup or connectivity failure: `adb` missing, device unreachable, bad usage. Deliberately not `1`: `lib.sh`'s `die()` exits 1, which is the starvation code, so an automated gate would otherwise have rebooted the TV over a typo in the mode argument |
+| `4` | **could not run** — any error: `adb` missing, device unreachable, unreadable `/proc/meminfo`, malformed `device.env`, bad usage. Deliberately not `1`: `lib.sh`'s `die()` exits 1, which is the starvation code, so an automated gate would otherwise have rebooted the TV over a typo in the mode argument. The script overrides `die()` to exit 4 so that no error — including ones raised inside `lib.sh`'s own helpers — can impersonate the verdict, which is emitted explicitly instead |
 
 Target precedence is `MORPHE_ADB_TARGET` > `config/device.env` > the known
 coffey address, and the resolved target is printed on every run.
