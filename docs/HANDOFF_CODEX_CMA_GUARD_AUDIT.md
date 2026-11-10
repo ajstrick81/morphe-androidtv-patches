@@ -151,6 +151,77 @@ Not adopted, with reasons: nothing. The one judgement call left open is whether
 on any kernel that never reports CMA. Chosen behaviour is to exit `2` and say so
 explicitly, so a caller can decide, rather than silently passing.
 
+## Round two — review request (2026-11-09)
+
+**Commits to review:** `0c0dce2` (the four fixes) and the follow-up commit
+containing this section. Same branch.
+
+Round one was useful precisely because it attacked the reasoning and not only
+the code, so please do that again. Three specific things, in priority order.
+
+### 1. Is `UNKNOWN` → exit 2 the right call? (the one open judgement)
+
+Round one correctly said an unassessable result must not read as adequate. I
+implemented that as a third exit code, `2`. The cost: on any kernel that never
+reports `CmaFree`/`CmaTotal`, the script can never return `0`, so as a literal
+gate it becomes permanently red and will be ignored or bypassed — the classic
+fate of a check that cries wolf.
+
+Alternatives I considered and rejected, and would like second-guessed:
+
+- exit `0` with a loud warning → back to the false all-clear round one caught
+- a `--strict` flag, default lenient → the dangerous behaviour becomes the
+  default, which seems backwards for a safety check
+- probe once and cache "this kernel has no CMA" → silently converts a real
+  regression (CMA reporting disappearing after a kernel bump) into a permanent
+  pass
+
+Chosen behaviour is loud and explicit rather than convenient. Is there a better
+shape — e.g. distinguishing "field absent on a kernel that never had it" from
+"field absent where it previously existed" by recording a known-good baseline?
+
+### 2. Sensitivity vs specificity in `STARVE_PATTERNS`
+
+I made the tradeoff explicit in the code rather than tightening quietly. The
+argument: a false positive costs an unnecessary reboot (~2 minutes), a false
+negative costs a misdiagnosed session (which is why this script exists), so the
+patterns deliberately err toward catching it. Concretely, `api_disconnect
+failed` is kept **tag-free** even though the only observed form is on a
+`SurfaceUtils` line, so a starvation logging it under another tag can't slip
+through.
+
+Is that asymmetry argument sound, or am I rationalising a pattern set I can't
+validate? The device is offline, so none of this has been checked against a real
+log corpus — if you think the unvalidated-but-broad position is worse than
+unvalidated-but-narrow, say so.
+
+Self-found since round one, already fixed: the `mali_gralloc` branch was
+redundant. Its first alternative repeated the bare `libdmabufheap allocation
+failed` pattern, so the observed line matched twice and the branch added nothing
+but `falling back to system heap`. Simplified, and regression-checked that all
+three observed starvation lines still match while the `audio_hw_hal_primary`
+decoy (the original false-positive source) does not.
+
+### 3. Did the fixes actually do what they claim?
+
+Worth verifying independently rather than taking the commit message's word:
+
+- every path that sets `UNKNOWN` (absent `CmaFree`/`CmaTotal`, absent
+  `MemAvailable`, empty log buffer) really reaches `exit 2`, and `STARVED` still
+  wins over `UNKNOWN` when both are set
+- the `MORPHE_ADB_TARGET` override applies in **both** branches now, and the
+  printed target always matches the device actually queried
+- `set -euo pipefail` is still satisfied — the new `local pct=$(( ))` arithmetic
+  and the added early `return` in `scan()` are the new risk surface
+- the percentage tripwire: 35/536 = 6% trips, 121/536 = 22% passes,
+  80/536 = 14% trips. Is 15% defensible as a midpoint, or is two data points
+  simply too few to express as a percentage at all?
+
+### Still out of scope
+
+17.3.0 VOD remains untested from a clean device, so the headline question is
+unchanged. No patch behaviour has been altered by any of this.
+
 ## Verification already done
 
 - `./gradlew :patches:build -x test` — passes (Kotlin changes are comments only).

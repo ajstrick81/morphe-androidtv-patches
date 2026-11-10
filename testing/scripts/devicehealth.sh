@@ -146,11 +146,24 @@ snapshot() {
 # hits once already). grep -E is case-sensitive by default, which is relied on.
 #
 # NOT YET VALIDATED against a corpus of this device's logs for false positives;
-# the device is offline. 'mali_gralloc' is the loosest member, so it requires
-# the specific dmabufheap/system-heap phrasing rather than a bare
-# '.*allocation failed'. Treat a lone hit as a prompt to read the surrounding
+# the device is offline. Treat a lone hit as a prompt to read the surrounding
 # lines, not as proof on its own.
-STARVE_PATTERNS='aml_cma_alloc|cma_alloc failed|libdmabufheap allocation failed|mali_gralloc.*(libdmabufheap allocation failed|falling back to system heap)|SurfaceUtils.*error pushing blank frames|api_disconnect failed|ion_alloc.*fail'
+#
+# DELIBERATELY SENSITIVE RATHER THAN SPECIFIC. The costs are wildly asymmetric:
+# a false positive means an unnecessary reboot (two minutes), while a false
+# negative means the gate passes a starved device and a whole session gets
+# misdiagnosed — which is the exact failure this script was written after. So
+# where the two trade off, this errs toward catching it. 'api_disconnect failed'
+# is the clearest example: it is kept tag-free even though the only form we have
+# observed is on a SurfaceUtils line, because a starvation that logs it under
+# another tag must not slip through. If log-corpus validation later shows it
+# firing on benign surface teardown, tighten it then, with evidence.
+#
+# 'mali_gralloc' needs only the system-heap fallback phrasing: the observed line
+# ("mali_gralloc libdmabufheap allocation failed, falling back to system heap")
+# is already matched by the bare 'libdmabufheap allocation failed' alternative,
+# so repeating that inside a mali_gralloc branch was dead weight.
+STARVE_PATTERNS='aml_cma_alloc|cma_alloc failed|libdmabufheap allocation failed|mali_gralloc.*falling back to system heap|SurfaceUtils.*error pushing blank frames|api_disconnect failed|ion_alloc.*fail'
 
 # Advisory only — never affects the exit status. Seeing 'kAtClient' or 'res chg'
 # somewhere in the buffer does not establish that frames are reaching the client
