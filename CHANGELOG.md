@@ -1,3 +1,10 @@
+# [1.53.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.52.1...v1.53.0) (2026-11-11)
+
+
+### Features
+
+* **netflix:** add opt-in legacy engine for TVs that crash at launch ([#317](https://github.com/ajstrick81/morphe-androidtv-patches/issues/317)) ([2bdc276](https://github.com/ajstrick81/morphe-androidtv-patches/commit/2bdc276f0fd63a5548a45e68b21abb70a3b282c3)), closes [#241](https://github.com/ajstrick81/morphe-androidtv-patches/issues/241)
+
 ## [1.52.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.52.0...v1.52.1) (2026-11-10)
 
 
