@@ -8,6 +8,12 @@
 //  (FP/GAID) privacy opt-ins (default OFF); (HH/MHU) household-prompt opt-in (default OFF)
 //  MONITOR (read-only): KILLMARK(__adkill)/rawRealPods = legacy manifest ad kills; rawDisplayAd =
 //  server pause ad delivered; BOOKMARK = distinct resume positions seen (resume/bookmark intact).
+// Engine compat (#317): Module.findGlobalExportByName only exists on frida 17+. The opt-in
+// "legacy engine" patch swaps in gadget 16.2.1 (for TVs whose 32-bit linker crashes under
+// 17.x), where the same lookup is Module.findExportByName(null, name). No-op on the default engine.
+if (typeof Module.findGlobalExportByName !== 'function') {
+  Module.findGlobalExportByName = function(n){ return Module.findExportByName(null, n); };
+}
 var logw = new NativeFunction(Module.findGlobalExportByName('__android_log_write'),
   'int', ['int', 'pointer', 'pointer']);
 var TAG = Memory.allocUtf8String('KILL');

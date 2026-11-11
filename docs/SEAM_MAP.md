@@ -28,10 +28,10 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 | [future](#future) | ? | 19.7, 20.1 | 2 | 5 | **no** | **no** |
 | [hbomax](#hbomax) | Server-side stitching (SSAI) via manifest | 7.14.0.69, 7.9.0.61, 7.7.0.78, 7.5.0.73, 7.2.0.41 | 5 | 12 | yes (23 lines) | **no** |
 | [mlbtv](#mlbtv) | Google IMA / DAI client SDK | 26.8.1.1 | 1 | 9 | yes (7 lines) | **no** |
-| [netflix](#netflix) | Proprietary native / JS ad engine | 13.0.1 build 25028, 13.2.1 build 27207, 13.2.2 build 27250 | 6 | 2 | **no** | **no** |
+| [netflix](#netflix) | Proprietary native / JS ad engine | 13.0.1 build 25028, 13.2.1 build 27207, 13.2.2 build 27250 | 7 | 2 | **no** | **no** |
 | [paramount](#paramount) | Google IMA / DAI client SDK | 16.19.0, 16.17.0, 16.12.0, 16.8.0 | 1 | 3 | **no** | **no** |
 | [peacock](#peacock) | Server-side stitching (SSAI) via manifest | 7.5.102, 7.6.100, 7.8.100, 7.10.102 | 3 | 10 | yes (6 lines) | **no** |
-| [pluto](#pluto) | Server-side stitching (SSAI) via manifest | 5.66.0-leanback, 17.2.0 | 6 | 20 | yes (47 lines) | yes |
+| [pluto](#pluto) | Server-side stitching (SSAI) via manifest | 5.66.0-leanback, 17.2.0 | 6 | 20 | yes (48 lines) | yes |
 | [primevideo](#primevideo) | Proprietary native / JS ad engine | 6.23.23+v15.5.0.70-armv7a, 6.24.7+v16.0.0.332-allAbis, 6.24.13+v16.0.1.93-allAbis | 7 | 5 | yes (64 lines) | yes |
 | [raiplay](#raiplay) | ? | 5.0.1, 5.0.0 | 3 | 3 | **no** | **no** |
 | [rte](#rte) | Google IMA / DAI client SDK | 3.160.3 | 1 | 3 | **no** | **no** |
@@ -316,6 +316,7 @@ Runtime evidence (tags `MORPHE-MLB-ADBREAK`, `MORPHE-MLB-MANIFEST`; first 12 of 
 | Minimize Network Fingerprint _(opt-in)_ | — | — | — |  |  |
 | Disable Netflix CertCheck | `DexGuardCertCheckFingerprint` | `(custom matcher)`.— | `V` | `CertCheck failed, crash!!!` | addInstructions `return-void` |
 | Remove Netflix ads (bundle engine) | — | — | — |  |  |
+| Remove Netflix ads (legacy engine) _(opt-in)_ | — | — | — |  |  |
 | Remove Netflix ads (loader) | `NetflixApplicationOnCreateFingerprint` | `ninja/NetflixApplication`.`onCreate` | `V` |  | addInstructions `                 const-string v0, ` |
 
 </details>
@@ -431,7 +432,7 @@ Runtime evidence (tags `MORPHE-PCK-WV`; first 12 of 6):
 | Override certificate pinning _(opt-in)_ | — | — | — |  |  |
 | Disable auto-updates | — | — | — |  |  |
 
-Runtime evidence (tags `MORPHE-DASH-MF`, `MORPHE-PLUTO-SLATE`; first 12 of 47):
+Runtime evidence (tags `MORPHE-DASH-MF`, `MORPHE-PLUTO-SLATE`; first 12 of 48):
 
 - I `dynamic (live) manifest -> untouched, periods=` — PlutoDashManifestProbe.java:144
 - W `no content periods kept (of ` — PlutoDashManifestProbe.java:170
