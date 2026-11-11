@@ -95,7 +95,9 @@ Learned during the 2026-09 cleanup (PR #191); keep the repo this way.
   Host unit test:
   `g++ -std=c++17 test_remote_strip.cpp remote_strip.cpp -o t && ./t`.
 - `patches/src/main/resources/netflix/native/armeabi-v7a/libgadget.so` must
-  stay committed. It ships in the bundle.
+  stay committed. It ships in the bundle. So must `libgadget-16.2.1.so` beside
+  it: the opt-in "Remove Netflix ads (legacy engine)" patch swaps it in on TVs
+  whose 32-bit linker crashes under the default 17.x engine (#241, #317).
 
 **Where research goes**
 - `docs/`: cross-app references, playbooks, handoffs, guides.

@@ -192,6 +192,15 @@ All patches follow the same general workflow using **Morphe Manager**:
 4. Apply the patch — leave **Clone Netflix** and the **Remove Netflix ads** patches enabled (both on by default). Optionally enable **Minimize Network Fingerprint** for the privacy pass (blanks local IP/MAC/SSID + advertising ID).
 5. Install the result **without uninstalling stock Netflix**, then open the new **Netflix clone** app and sign in.
 
+> 🧯 **Clone closes right after launch?** On some Android 12 TVs (reported on a
+> TiVo Stream 4K and a Philips TV) the default ad-remover engine crashes the app
+> a moment after it opens. Re-patch with **Remove Netflix ads (legacy engine)**
+> enabled *in addition to* the defaults. It swaps in an older engine build those
+> devices tolerate; the ad removal itself is the same. It is opt-in and
+> experimental (verified by the reporter in
+> [#317](https://github.com/ajstrick81/morphe-androidtv-patches/issues/317)), so
+> leave it off if the default patch works for you.
+
 > ⚠️ **Not a subscription bypass.** You need a valid, paid Netflix account and you
 > log in normally. This only removes ads and trims device telemetry inside an app
 > you're already entitled to use.

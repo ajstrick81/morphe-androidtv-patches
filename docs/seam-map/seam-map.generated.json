@@ -1808,6 +1808,16 @@
           "uses": []
         },
         {
+          "id": "legacyGadgetPatch",
+          "kind": "resourcePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/netflix/nativehook/LegacyGadgetPatch.kt",
+          "line": 38,
+          "name": "Remove Netflix ads (legacy engine)",
+          "description": "Only for TVs where the patched Netflix clone crashes right at launch with the default ad remover (seen on some Android 12 devices, e.g. TiVo Stream 4K and some Philips TVs). Swaps the in-process ad-kill engine for an older build (frida-gadget 16.2.1) that those devices tolerate; the ad-kill script itself is unchanged. Select it IN ADDITION to the two default \\\"Remove Netflix ads\\\" patches. Leave it off if the default patch works for you. Opt-in / experimental.",
+          "default": false,
+          "uses": []
+        },
+        {
           "id": "loadGadgetPatch",
           "kind": "bytecodePatch",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/netflix/nativehook/LoadGadgetPatch.kt",
@@ -1836,7 +1846,7 @@
         "13.2.2 build 27250"
       ],
       "summary": {
-        "patches": 6,
+        "patches": 7,
         "fingerprints": 2,
         "unusedFingerprints": [],
         "runtimeMessages": 0
@@ -2810,127 +2820,133 @@
             "level": "I",
             "text": "v17 StitcherSession.adBreaks neutralised (#300): ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 210
+            "line": 215
           },
           {
             "level": "E",
             "text": "v17 StitcherSession.adBreaks neutralise failed -> original: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 215
+            "line": 220
           },
           {
             "level": "I",
             "text": "v17 adBreaks neutralised (#300): ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 238
+            "line": 243
           },
           {
             "level": "E",
             "text": "v17 adBreaks neutralise failed -> original: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 242
+            "line": 247
           },
           {
             "level": "I",
             "text": "v17 adBreaksDuration zeroed (#300): was ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 272
+            "line": 277
           },
           {
             "level": "E",
             "text": "v17 adBreaksDuration zero failed -> original: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 276
+            "line": 281
           },
           {
             "level": "I",
             "text": "v17 duration passthrough (#300): provider reported ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 288
+            "line": 293
           },
           {
             "level": "I",
             "text": "v17 duration fix (#300): provider reported ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 293
+            "line": 298
           },
           {
             "level": "E",
             "text": "v17 duration fix failed -> provider value: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 299
+            "line": 304
           },
           {
             "level": "I",
             "text": "v17 map O->S (#300): ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 348
+            "line": 353
           },
           {
             "level": "E",
             "text": "v17 map O->S failed -> identity: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 352
+            "line": 357
           },
           {
             "level": "I",
             "text": "v17 map S->O (#300): ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 387
+            "line": 392
           },
           {
             "level": "E",
             "text": "v17 map S->O failed -> identity: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 391
+            "line": 396
+          },
+          {
+            "level": "I",
+            "text": "v17 period[",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 451
           },
           {
             "level": "E",
             "text": "v17 strip failed -> original manifest: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 479
+            "line": 593
           },
           {
             "level": "E",
             "text": "v17 read failed -> original stream: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 487
+            "line": 601
           },
           {
             "level": "I",
             "text": "v17 dynamic (live) MPD -> untouched",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 522
+            "line": 637
           },
           {
             "level": "W",
             "text": "v17 strip: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 563
+            "line": 678
           },
           {
             "level": "W",
             "text": "v17 strip: no content periods kept (of ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 600
+            "line": 728
           },
           {
             "level": "W",
             "text": "v17 GUARD tripped: kept ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 604
+            "line": 732
           },
           {
             "level": "I",
             "text": "v17 STRIPPED ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 632
+            "line": 760
           },
           {
             "level": "E",
             "text": "v17 strip failed -> original manifest: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
-            "line": 637
+            "line": 766
           }
         ]
       },
@@ -2950,7 +2966,7 @@
           "AviaUriContentDurationFingerprint",
           "AviaPlayerSeekFingerprint"
         ],
-        "runtimeMessages": 47
+        "runtimeMessages": 48
       }
     },
     "primevideo": {
