@@ -91,6 +91,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew clean :patches:buildAndroid generatePatchesList
 
+      # The build above runs at the PREVIOUS version (gradle.properties is only
+      # bumped inside semantic-release, which then rebuilds at the new version).
+      # Left in place, that old bundle matches the asset glob in .releaserc and
+      # the Attest step's subject-path, so every release shipped (and attested)
+      # a second, mislabelled patches-<previous>.mpp. Drop it here; this build
+      # is only needed to validate and to generate patches-list.json.
+      - name: Remove pre-bump bundle
+        run: rm -fv patches/build/libs/patches-*.mpp patches/build/libs/patches-*.mpp.asc
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
