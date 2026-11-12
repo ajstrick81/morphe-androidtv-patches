@@ -46,6 +46,7 @@ That line is the reason this project exists. If you own the TV and pay for the s
 | 🟢 Twitch | Ad overlay + blanked live ads · TV build only | `13.0.0.2` | 8/22/26 |
 | 🟢 ESPN | Live breaks masked (slate + mute) · VOD ads | `6.11.1` | 9/5/26 |
 | 🟢 RTÉ Player | VOD ads · 🇮🇪 geo-locked | `3.160.3` | 9/14/26 |
+| 🔴 YouTube TV | Under development | `7.05.301` | — |
 | 🔴 Fox One | Under development | — | — |
 | 🔴 MLB TV | Under development | — | — |
 

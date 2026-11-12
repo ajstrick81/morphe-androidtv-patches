@@ -213,3 +213,24 @@
 -keep class ajstrick81.morphe.extension.vix.ads.AdPeriodFilter {
     public static java.io.InputStream filter(java.io.InputStream);
 }
+
+# YouTube TV — GmsCore support (MicroG-RE) availability check.
+# checkGmsCore(Object) is called via invoke-static from smali injected into
+# CobaltActivity.onCreate (see youtubetv/misc/gms/GmsCoreSupportPatch.kt), so R8
+# sees it as unreferenced and would strip or rename it. The parameter stays
+# java.lang.Object: the extension is reflection-only and the injected descriptor
+# is (Ljava/lang/Object;)V.
+-keep class ajstrick81.morphe.extension.youtubetv.gms.GmsCoreSupportPatch {
+    public static void checkGmsCore(java.lang.Object);
+}
+
+# YouTube TV — "Skip ads" script injection into the Cobalt leanback web app.
+# TvScripts.setWebContents / onPageEvent / onTitle are called only from smali
+# injected into StartupGuardNavigationObserver (see youtubetv/misc/scripts/
+# TvScriptsPatch.kt), so R8 sees them as unreferenced and would strip or rename
+# them. TvScriptsPayload needs no rule: its SCRIPT constant is inlined by javac.
+-keep class ajstrick81.morphe.extension.youtubetv.scripts.TvScripts {
+    public static void setWebContents(java.lang.Object);
+    public static void onPageEvent(java.lang.String);
+    public static void onTitle(java.lang.String);
+}
