@@ -10,6 +10,12 @@ object AppCompatibilities {
     packageName = "com.cbs.ott",
     appIconColor = 0x0064FF,
     targets = listOf(
+        // 17.3.0 (experimental): device-tested 2026-11-12 on an onn 4K Plus. VOD movies
+        // play with no pre-roll/promo pod (a title showed one unpatched and none patched).
+        // Not yet verified on this build: pause ads, mid-rolls on TV episodes, live slate.
+        // All three fingerprints resolve unchanged; the two patched AVIA methods are
+        // instruction-identical to 16.21.0.
+        AppTarget("17.3.0", isExperimental = true),
         AppTarget("16.19.0"),
         AppTarget("16.17.0"),
         AppTarget("16.12.0"),
