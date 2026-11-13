@@ -47,8 +47,8 @@ current `main`.
 | `claude/prime-video-continuation-kaplat` | 2026-07-23 | `experimental/native-adstrip-toolkit/`, `experimental/primevideo-research/2026-07-23_continuation/` |
 | `claude/primevideo-interception-handoff-pxhsn0` | 2026-07-25 | `experimental/primevideo-research/2026-07-25_interception-handoff/` |
 | `claude/scte35-youtube-tv-signaling-vyy0cy` | 2026-08-22 | `docs/SCTE35_AD_SIGNALING_REFERENCE.md`, `docs/YOUTUBE_TV_*`, `experimental/youtubetv-scte35/`, `testing/youtubetv-capture-runbook.md` (the YouTube TV patch code stays in the tag) |
-| `claude/youtube-tv-apkm-decompile-hb84gr` | 2026-08-19 | `analysis/youtubetv/` (YouTube TV patch code stays in the tag) |
-| `claude/powershell-atv-youtube-upload-0m7mg2` | 2026-08-19 | `analysis/youtube-tv/711300320/*.md` (the APK split and patch code stay in the tag) |
+| `claude/youtube-tv-apkm-decompile-hb84gr` | 2026-08-19 | `docs/analysis/youtubetv/` (YouTube TV patch code stays in the tag) |
+| `claude/powershell-atv-youtube-upload-0m7mg2` | 2026-08-19 | `docs/analysis/youtube-tv/711300320/*.md` (the APK split and patch code stay in the tag) |
 | `claude/onn-usb-install-method-zr8qd7` | 2026-08-24 | `docs/ONN_WAYNE_RTD1325_ROOT_GUIDE.md`, `testing/onn-wayne/` |
 | `claude/twitch-ad-blocking-techniques-x0pi28` | 2026-08-14 | `docs/twitch-ad-delivery-map.md`, `experimental/twitchatv-ad-probe/` |
 | `claude/netflix-household-android-tv-bou10v` | 2026-08-23 | `experimental/netflix-household-loadhook/lolomo_probe.js`, `experimental/netflix-native-adstrip/frida/ad_drift_probe.js` |

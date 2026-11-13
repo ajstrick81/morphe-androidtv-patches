@@ -10,7 +10,7 @@ Walmart **Onn Google TV** box. Follow top to bottom.
 - [ ] **The exact APK we patched.** The `.apkm` bundle for
       `com.google.android.youtube.tv` **7.11.300 (711300320)**, armeabi-v7a —
       the same one already in the repo at
-      `analysis/youtube-tv/711300320/` (base + split). Re-download from APKMirror
+      `docs/analysis/youtube-tv/711300320/` (base + split). Re-download from APKMirror
       if needed; confirm SHA256 of `base.apk` = `cdd3f1f3…5c3fe24b`.
 - [ ] **Morphe Manager** installed (on the Onn itself, or on a PC/Android that
       can build). This is the standard apply path — it ingests the `.apkm` and
@@ -129,6 +129,6 @@ installing fresh, and keep the stock `.apkm` handy to restore.
 - Target locked to `7.11.300` and fingerprint **verified against the shipped
   bytecode** (`Lfam;->c(Context)Z` → caller `Lfht;` sets OS "Android Automotive").
 - Patches written to the repo's own API idioms (`patches/.../youtubetv/`).
-- Full architecture + feasibility notes in `analysis/youtube-tv/711300320/`.
+- Full architecture + feasibility notes in `docs/analysis/youtube-tv/711300320/`.
 - Approach chosen (context spoof) is a single verifier-safe instruction — lowest
   risk of the options we scoped.

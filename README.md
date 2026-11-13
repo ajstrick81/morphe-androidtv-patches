@@ -195,7 +195,7 @@ Read more: [system design teardown](docs/PLUTO_TV_ATV_SYSTEM_DESIGN.md)
 | **Disable auto-updates** | ✅ On | Stops the Play Store from reinstalling the official ESPN and wiping the patch. Update by re-patching a newer APK. |
 | **Clone ESPN** | ⬜ Off (opt-in) | Installs alongside a stock ESPN that can't be uninstalled (common on Amazon Fire TV and some TV boxes), with its own package and icon. |
 
-**Slate styles:** while a break is up, press the D-pad to open a picker and switch between **Video** (your own clips), **Video + Score** (clips plus a live-score strip), **Be Right Back** (an animated broadcast graphic with a live countdown) and **Blank**. Slate media is user-supplied local files in the app's external files dir; nothing is bundled. Drop a `slate_off` marker file there to disable the live slate without re-patching. Overlay assets and setup: [`slates/espn_overlay/`](slates/espn_overlay/).
+**Slate styles:** while a break is up, press the D-pad to open a picker and switch between **Video** (your own clips), **Video + Score** (clips plus a live-score strip), **Be Right Back** (an animated broadcast graphic with a live countdown) and **Blank**. Slate media is user-supplied local files in the app's external files dir; nothing is bundled. Drop a `slate_off` marker file there to disable the live slate without re-patching. Overlay assets and setup: [`docs/slates/espn_overlay/`](docs/slates/espn_overlay/).
 
 </details>
 
