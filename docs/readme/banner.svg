@@ -18,9 +18,24 @@
         <rect transform="skewX(-20)" x="-330" y="-10" width="1940" height="300" fill="url(#wipeg)"/>
       </g>
       <rect x="0" y="0" width="1280" height="280" fill="#fff" opacity="0">
-        <animate attributeName="opacity" dur="16s" repeatCount="indefinite" values="0; 0; 0.55; 0.05; 0.4; 0; 0; 0" keyTimes="0; 0.165; 0.172; 0.185; 0.195; 0.21; 0.22; 1"/>
+        <animate attributeName="opacity" dur="16s" repeatCount="indefinite" calcMode="discrete" values="0; 0.6; 0; 0.45; 0" keyTimes="0; 0.204; 0.208; 0.212; 0.216"/>
       </rect>
     </mask>
+    <filter id="neon" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="9" result="b"/>
+      <feColorMatrix in="b" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.75 0" result="g"/>
+      <feDropShadow in="SourceGraphic" dx="0" dy="10" stdDeviation="10" flood-color="#000" flood-opacity="0.55" result="s"/>
+      <feMerge><feMergeNode in="g"/><feMergeNode in="s"/></feMerge>
+    </filter>
+    <filter id="pop" x="-10%" y="-30%" width="120%" height="180%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#000" flood-opacity="0.7" result="d"/>
+      <feDropShadow in="SourceGraphic" dx="0" dy="0" stdDeviation="10" flood-color="#22d3ee" flood-opacity="0.28" result="c"/>
+      <feMerge><feMergeNode in="c"/><feMergeNode in="d"/></feMerge>
+    </filter>
+    <filter id="lift" x="-10%" y="-40%" width="120%" height="200%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity="0.6"/>
+    </filter>
+    <radialGradient id="vig" cx="0.5" cy="0.45" r="0.75"><stop offset="0.55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.5"/></radialGradient>
     <style>
       .w { fill: none; stroke-linecap: round; animation: flow linear infinite; }
       .w1 { stroke-width: 2.5; animation-duration: 9s; }
@@ -57,22 +72,25 @@
     </g>
   </g>
   <g class="morph" mask="url(#wipe)">
-    <animate attributeName="opacity" dur="16s" repeatCount="indefinite" values="1; 1; 0.45; 0.95; 0.6; 1; 1" keyTimes="0; 0.725; 0.732; 0.745; 0.755; 0.77; 1"/>
+    <animate attributeName="opacity" dur="16s" repeatCount="indefinite" calcMode="discrete" values="1; 0.4; 1; 0.55; 1" keyTimes="0; 0.764; 0.768; 0.772; 0.776"/>
     <rect x="1" y="1" width="1278" height="278" rx="18" fill="url(#bgB)" stroke="#30363d" stroke-width="2"/>
+    <rect x="2" y="2" width="1276" height="276" rx="17" fill="url(#vig)"/>
     <g clip-path="url(#card)"><ellipse class="glow" cx="180" cy="140" rx="460" ry="260" fill="url(#glowB)"/></g>
     <g mask="url(#fade)" stroke="url(#flowB)">
       <path class="w w1" opacity=".55" d="M-320 118 Q-240 72 -160 118 T0 118 T160 118 T320 118 T480 118 T640 118 T800 118 T960 118 T1120 118 T1280 118 T1440 118 T1600 118"/>
       <path class="w w2" opacity=".4" d="M-320 142 Q-240 78 -160 142 T0 142 T160 142 T320 142 T480 142 T640 142 T800 142 T960 142 T1120 142 T1280 142 T1440 142 T1600 142"/>
       <path class="w w3" opacity=".3" d="M-320 166 Q-240 132 -160 166 T0 166 T160 166 T320 166 T480 166 T640 166 T800 166 T960 166 T1120 166 T1280 166 T1440 166 T1600 166"/>
     </g>
+    <g filter="url(#neon)">
     <rect x="70" y="62" width="230" height="140" rx="14" fill="#0b0f19" stroke="url(#accB)" stroke-width="5"/>
-    <path class="play" d="M166 104 L166 160 L212 132 Z" fill="url(#accB)"/>
     <path d="M185 204 V222 M148 222 H222" stroke="url(#accB)" stroke-width="5" stroke-linecap="round" fill="none"/>
+    </g>
+    <path class="play" d="M166 104 L166 160 L212 132 Z" fill="url(#accB)"/>
     <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
       <text x="361" y="86" font-size="18" font-weight="600" letter-spacing="5" fill="#22d3ee">ANDROID TV</text>
-      <text x="358" y="146" font-size="60" font-weight="700" fill="#f0f6fc">Morphe Patches</text>
+      <text x="358" y="146" font-size="60" font-weight="700" fill="#f0f6fc" filter="url(#pop)">Morphe Patches</text>
       <text x="361" y="184" font-size="22" fill="#9da7b3">You own the glass. Ad-free streaming, patched on your own TV.</text>
-      <g font-size="15" font-weight="600" fill="#c9d1d9" text-anchor="middle">
+      <g font-size="15" font-weight="600" fill="#c9d1d9" text-anchor="middle" filter="url(#lift)">
         <rect x="360" y="206" width="140" height="32" rx="16" fill="#161b22" stroke="#30363d"/><text x="430" y="227">Runs locally</text>
         <rect x="512" y="206" width="140" height="32" rx="16" fill="#161b22" stroke="#30363d"/><text x="582" y="227">Open source</text>
         <rect x="664" y="206" width="190" height="32" rx="16" fill="#161b22" stroke="#30363d"/><text x="759" y="227">No data collection</text>

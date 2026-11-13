@@ -1,8 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: light)" srcset="docs/readme/banner-light.svg">
-    <img src="docs/readme/banner-dark.svg" alt="Morphe Patches for Android TV: ad-free streaming, patched on your own TV" width="100%">
-  </picture>
+  <img src="docs/readme/banner.svg" alt="Morphe Patches for Android TV: ad-free streaming, patched on your own TV" width="100%">
 </p>
 
 <p align="center">
