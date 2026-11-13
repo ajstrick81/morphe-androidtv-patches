@@ -1,3 +1,10 @@
+# [1.54.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.53.0...v1.54.0) (2026-11-13)
+
+
+### Features
+
+* **paramount:** add experimental 17.3.0 target ([e56d694](https://github.com/ajstrick81/morphe-androidtv-patches/commit/e56d69473ffa98147bd5abd36a2a93da64d8cca4))
+
 # [1.53.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.52.1...v1.53.0) (2026-11-11)
 
 
