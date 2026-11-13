@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 280" width="1280" height="280" role="img" aria-label="Morphe Patches for Android TV: ad-free streaming, patched on your own TV">
+  <defs>
+    <linearGradient id="bgA" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6f8fa"/><stop offset="1" stop-color="#eef0ff"/></linearGradient>
+    <linearGradient id="accA" gradientUnits="userSpaceOnUse" x1="70" y1="62" x2="300" y2="222"><stop offset="0" stop-color="#0891b2"/><stop offset="1" stop-color="#7c3aed"/></linearGradient>
+    <linearGradient id="flowA" gradientUnits="userSpaceOnUse" x1="900" y1="0" x2="1280" y2="0"><stop offset="0" stop-color="#0891b2"/><stop offset="1" stop-color="#7c3aed"/></linearGradient>
+    <radialGradient id="glowA" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#0891b2" stop-opacity="0.14"/><stop offset="1" stop-color="#0891b2" stop-opacity="0"/></radialGradient>
+    <linearGradient id="bgB" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0d1117"/><stop offset="1" stop-color="#171c30"/></linearGradient>
+    <linearGradient id="accB" gradientUnits="userSpaceOnUse" x1="70" y1="62" x2="300" y2="222"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#a78bfa"/></linearGradient>
+    <linearGradient id="flowB" gradientUnits="userSpaceOnUse" x1="900" y1="0" x2="1280" y2="0"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#a78bfa"/></linearGradient>
+    <radialGradient id="glowB" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#22d3ee" stop-opacity="0.20"/><stop offset="1" stop-color="#22d3ee" stop-opacity="0"/></radialGradient>
+    <linearGradient id="fadeg" gradientUnits="userSpaceOnUse" x1="900" y1="0" x2="1120" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity="1"/></linearGradient>
+    <mask id="fade" maskUnits="userSpaceOnUse" x="0" y="0" width="1280" height="280"><rect x="2" y="2" width="1276" height="276" rx="17" fill="url(#fadeg)"/></mask>
+    <clipPath id="card"><rect x="2" y="2" width="1276" height="276" rx="17"/></clipPath>
+    <linearGradient id="wipeg" gradientUnits="userSpaceOnUse" x1="-330" y1="0" x2="1610" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.0928" stop-color="#fff" stop-opacity="1"/><stop offset="0.9072" stop-color="#fff" stop-opacity="1"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <mask id="wipe" maskUnits="userSpaceOnUse" x="0" y="0" width="1280" height="280">
+      <g transform="translate(-2000 0)">
+        <animateTransform attributeName="transform" type="translate" dur="6.4s" fill="freeze" calcMode="spline" values="-2000 0; -2000 0; 0 0" keyTimes="0; 0.55; 1" keySplines="0 0 1 1; 0.45 0 0.55 1"/>
+        <rect transform="skewX(-20)" x="-330" y="-10" width="1940" height="300" fill="url(#wipeg)"/>
+      </g>
+    </mask>
+    <filter id="neon" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="9" result="b"/>
+      <feColorMatrix in="b" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.75 0" result="g"/>
+      <feDropShadow in="SourceGraphic" dx="0" dy="10" stdDeviation="10" flood-color="#000" flood-opacity="0.55" result="s"/>
+      <feMerge><feMergeNode in="g"/><feMergeNode in="s"/></feMerge>
+    </filter>
+    <filter id="pop" x="-10%" y="-30%" width="120%" height="180%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="6" stdDeviation="7" flood-color="#000" flood-opacity="0.7" result="d"/>
+      <feDropShadow in="SourceGraphic" dx="0" dy="0" stdDeviation="10" flood-color="#22d3ee" flood-opacity="0.28" result="c"/>
+      <feMerge><feMergeNode in="c"/><feMergeNode in="d"/></feMerge>
+    </filter>
+    <filter id="lift" x="-10%" y="-40%" width="120%" height="200%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity="0.6"/>
+    </filter>
+    <radialGradient id="vig" cx="0.5" cy="0.45" r="0.75"><stop offset="0.55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.5"/></radialGradient>
+    <linearGradient id="barg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="220" y2="0"><stop offset="0" stop-color="#7dd3fc" stop-opacity="0"/><stop offset="0.8" stop-color="#7dd3fc" stop-opacity="0.10"/><stop offset="0.96" stop-color="#e0f2fe" stop-opacity="0.38"/><stop offset="1" stop-color="#e0f2fe" stop-opacity="0"/></linearGradient>
+    <style>
+      .w { fill: none; stroke-linecap: round; animation: flow linear infinite; }
+      .w1 { stroke-width: 2.5; animation-duration: 9s; }
+      .w2 { stroke-width: 2; animation-duration: 14s; animation-direction: reverse; }
+      .w3 { stroke-width: 1.5; animation-duration: 20s; }
+      .glow { animation: drift 16s ease-in-out infinite alternate; }
+      .play { transform-box: fill-box; transform-origin: center; animation: pulse 3.2s ease-in-out infinite; }
+      @keyframes flow { from { transform: translateX(0); } to { transform: translateX(320px); } }
+      @keyframes drift { from { transform: translateX(0); } to { transform: translateX(260px); } }
+      @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .72; transform: scale(.94); } }
+      @media (prefers-reduced-motion: reduce) { .w, .glow, .play { animation: none; } .morph { mask: none; } .tvf, .bar { display: none; } }
+    </style>
+  </defs>
+  <g>
+    <rect x="1" y="1" width="1278" height="278" rx="18" fill="url(#bgA)" stroke="#d0d7de" stroke-width="2"/>
+    <g clip-path="url(#card)"><ellipse class="glow" cx="180" cy="140" rx="460" ry="260" fill="url(#glowA)"/></g>
+    <g mask="url(#fade)" stroke="url(#flowA)">
+      <path class="w w1" opacity=".5" d="M-320 118 Q-240 72 -160 118 T0 118 T160 118 T320 118 T480 118 T640 118 T800 118 T960 118 T1120 118 T1280 118 T1440 118 T1600 118"/>
+      <path class="w w2" opacity=".35" d="M-320 142 Q-240 78 -160 142 T0 142 T160 142 T320 142 T480 142 T640 142 T800 142 T960 142 T1120 142 T1280 142 T1440 142 T1600 142"/>
+      <path class="w w3" opacity=".25" d="M-320 166 Q-240 132 -160 166 T0 166 T160 166 T320 166 T480 166 T640 166 T800 166 T960 166 T1120 166 T1280 166 T1440 166 T1600 166"/>
+    </g>
+    <rect x="70" y="62" width="230" height="140" rx="14" fill="#ffffff" stroke="url(#accA)" stroke-width="5"/>
+    <rect class="tvf" x="72.5" y="64.5" width="225" height="135" rx="11.5" fill="#0b0f19" opacity="0">
+      <animate attributeName="opacity" dur="6.4s" fill="freeze" calcMode="discrete" values="0; 0.9; 0; 0.9; 0; 0.9; 0; 0.9; 0; 0.9; 0" keyTimes="0; 0.43; 0.44; 0.45; 0.46; 0.47; 0.48; 0.49; 0.5; 0.51; 0.52"/>
+    </rect>
+    <path class="play" d="M166 104 L166 160 L212 132 Z" fill="url(#accA)"/>
+    <path d="M185 204 V222 M148 222 H222" stroke="url(#accA)" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
+      <text x="361" y="86" font-size="18" font-weight="600" letter-spacing="5" fill="#0e7490">ANDROID TV</text>
+      <text x="358" y="146" font-size="60" font-weight="700" fill="#1f2328">Morphe Patches</text>
+      <text x="361" y="184" font-size="22" fill="#59636e">You own the glass. Ad-free streaming, patched on your own TV.</text>
+      <g font-size="15" font-weight="600" fill="#424a53" text-anchor="middle">
+        <rect x="360" y="206" width="140" height="32" rx="16" fill="#ffffff" stroke="#d0d7de"/><text x="430" y="227">Runs locally</text>
+        <rect x="512" y="206" width="140" height="32" rx="16" fill="#ffffff" stroke="#d0d7de"/><text x="582" y="227">Open source</text>
+        <rect x="664" y="206" width="190" height="32" rx="16" fill="#ffffff" stroke="#d0d7de"/><text x="759" y="227">No data collection</text>
+      </g>
+    </g>
+  </g>
+  <g class="morph" mask="url(#wipe)">
+    <rect x="1" y="1" width="1278" height="278" rx="18" fill="url(#bgB)" stroke="#30363d" stroke-width="2"/>
+    <rect x="2" y="2" width="1276" height="276" rx="17" fill="url(#vig)"/>
+    <g clip-path="url(#card)" class="bar">
+      <g transform="translate(-400 0)">
+        <animateTransform attributeName="transform" type="translate" begin="16.4s" dur="10s" repeatCount="indefinite" calcMode="spline" values="-400 0; 1600 0; 1600 0" keyTimes="0; 0.18; 1" keySplines="0.4 0 0.6 1; 0 0 1 1"/>
+        <rect transform="skewX(-20)" x="0" y="-10" width="220" height="300" fill="url(#barg)"/>
+      </g>
+    </g>
+    <g clip-path="url(#card)"><ellipse class="glow" cx="180" cy="140" rx="460" ry="260" fill="url(#glowB)"/></g>
+    <g mask="url(#fade)" stroke="url(#flowB)">
+      <path class="w w1" opacity=".55" d="M-320 118 Q-240 72 -160 118 T0 118 T160 118 T320 118 T480 118 T640 118 T800 118 T960 118 T1120 118 T1280 118 T1440 118 T1600 118"/>
+      <path class="w w2" opacity=".4" d="M-320 142 Q-240 78 -160 142 T0 142 T160 142 T320 142 T480 142 T640 142 T800 142 T960 142 T1120 142 T1280 142 T1440 142 T1600 142"/>
+      <path class="w w3" opacity=".3" d="M-320 166 Q-240 132 -160 166 T0 166 T160 166 T320 166 T480 166 T640 166 T800 166 T960 166 T1120 166 T1280 166 T1440 166 T1600 166"/>
+    </g>
+    <g filter="url(#neon)">
+    <rect x="70" y="62" width="230" height="140" rx="14" fill="#0b0f19" stroke="url(#accB)" stroke-width="5"/>
+    <path d="M185 204 V222 M148 222 H222" stroke="url(#accB)" stroke-width="5" stroke-linecap="round" fill="none"/>
+    </g>
+    <path class="play" d="M166 104 L166 160 L212 132 Z" fill="url(#accB)"/>
+    <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
+      <text x="361" y="86" font-size="18" font-weight="600" letter-spacing="5" fill="#22d3ee">ANDROID TV</text>
+      <text x="358" y="146" font-size="60" font-weight="700" fill="#f0f6fc" filter="url(#pop)">Morphe Patches</text>
+      <text x="361" y="184" font-size="22" fill="#9da7b3">You own the glass. Ad-free streaming, patched on your own TV.</text>
+      <g font-size="15" font-weight="600" fill="#c9d1d9" text-anchor="middle" filter="url(#lift)">
+        <rect x="360" y="206" width="140" height="32" rx="16" fill="#161b22" stroke="#30363d"/><text x="430" y="227">Runs locally</text>
+        <rect x="512" y="206" width="140" height="32" rx="16" fill="#161b22" stroke="#30363d"/><text x="582" y="227">Open source</text>
+        <rect x="664" y="206" width="190" height="32" rx="16" fill="#161b22" stroke="#30363d"/><text x="759" y="227">No data collection</text>
+      </g>
+    </g>
+  </g>
+</svg>
