@@ -18,7 +18,7 @@
         <rect transform="skewX(-20)" x="-330" y="-10" width="1940" height="300" fill="url(#wipeg)"/>
       </g>
       <rect x="0" y="0" width="1280" height="280" fill="#fff" opacity="0">
-        <animate attributeName="opacity" dur="16s" repeatCount="indefinite" calcMode="discrete" values="0; 0.6; 0; 0.45; 0" keyTimes="0; 0.204; 0.208; 0.212; 0.216"/>
+        <animate attributeName="opacity" dur="16s" repeatCount="indefinite" calcMode="discrete" values="0; 0.5; 0; 0.6; 0; 0.4; 0; 0.55; 0" keyTimes="0; 0.188; 0.192; 0.196; 0.2; 0.204; 0.208; 0.212; 0.216"/>
       </rect>
     </mask>
     <filter id="neon" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
@@ -72,7 +72,7 @@
     </g>
   </g>
   <g class="morph" mask="url(#wipe)">
-    <animate attributeName="opacity" dur="16s" repeatCount="indefinite" calcMode="discrete" values="1; 0.4; 1; 0.55; 1" keyTimes="0; 0.764; 0.768; 0.772; 0.776"/>
+    <animate attributeName="opacity" dur="16s" repeatCount="indefinite" calcMode="discrete" values="1; 0.45; 1; 0.4; 1; 0.6; 1; 0.55; 1" keyTimes="0; 0.748; 0.752; 0.756; 0.76; 0.764; 0.768; 0.772; 0.776"/>
     <rect x="1" y="1" width="1278" height="278" rx="18" fill="url(#bgB)" stroke="#30363d" stroke-width="2"/>
     <rect x="2" y="2" width="1276" height="276" rx="17" fill="url(#vig)"/>
     <g clip-path="url(#card)"><ellipse class="glow" cx="180" cy="140" rx="460" ry="260" fill="url(#glowB)"/></g>
