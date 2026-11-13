@@ -33,8 +33,8 @@ import ajstrick81.morphe.patches.shared.compat.AppCompatibilities
 //   3. ExoPlayerDashManifestParser.parse(Uri, InputStream) (entry): filter(uri, stream)
 //      drops the ad periods and recomputes Period starts and the MPD duration.
 // A per-session decision (FILTER / PASS-THROUGH) is shared by hooks 2 and 3, so timeline
-// and manifest can not disagree. Period matching: 1 ms tolerance, exactly ONE alignment of
-// content periods; ambiguity is resolved only by audio-language count (content 14-24 vs.
+// and manifest can not disagree. Period matching: ~1-2 ms tolerance (2 ms + 1 ms per merged period), 
+// exactly ONE alignment of content periods; ambiguity is resolved only by audio-language count (content 14-24 vs.
 // ads 2-4), otherwise nothing is changed. Fail-open on any doubt.
 //
 // Exclusive with "HBO Max - Prefer Ad-Free Stream": when this patch is installed that remap

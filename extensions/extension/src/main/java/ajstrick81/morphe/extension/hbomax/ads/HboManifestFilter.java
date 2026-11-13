@@ -51,7 +51,9 @@ public final class HboManifestFilter implements Runnable {
 
     private static final String TAG = "HboManifestFilter";
     private static final int MAX_BYTES = 8 * 1024 * 1024;
-    private static final double TOLERANCE_SECONDS = 0.001;
+    /** Duration match tolerance: 2 ms base + 1 ms per merged FALLBACK period (rounding of ms-precision durations). */
+    private static final double TOLERANCE_BASE_SECONDS = 0.002;
+    private static final double TOLERANCE_PER_PERIOD_SECONDS = 0.001;
     /** Overall budget for waiting on / downloading the FALLBACK manifest. */
     private static final long DEADLINE_MS = 3000;
     private static final int MAX_SESSIONS = 8;
@@ -532,7 +534,8 @@ public final class HboManifestFilter implements Runnable {
     }
 
     private static boolean fits(double primaryDuration, double fallbackSum, int merged) {
-        return Math.abs(primaryDuration - fallbackSum) <= 0.002 + 0.001 * merged;
+        return Math.abs(primaryDuration - fallbackSum)
+                <= TOLERANCE_BASE_SECONDS + TOLERANCE_PER_PERIOD_SECONDS * merged;
     }
 
     private static void enumerate(List<Double> primary, double[] ps, long[][] suf, int i, int j,
