@@ -29,7 +29,7 @@ DateRanges), slate render + mute, D-pad picker. Runtime markers in the app's ext
 - `overlay_secs` = optional countdown length (else uses REAL ad-window remaining, else 150)
 - `espn_slate_1.mp4` / `_2.mp4` (round-robin video slates); `espn_slate*.png` also works
 - `espn_overlay/` = `index.html` + `bg-three.js` + `three.min.js` (the animated overlay; source
-  vendored in repo `slates/espn_overlay/`, with README)
+  vendored in repo `docs/slates/espn_overlay/`, with README)
 
 ## Build / deploy recipe (Onn 4K test unit)
 - `adb connect 192.168.12.211:5555`

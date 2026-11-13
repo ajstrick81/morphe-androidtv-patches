@@ -104,7 +104,7 @@ Learned during the 2026-09 cleanup (PR #191); keep the repo this way.
 - `experimental/<topic>/`: probes, frida scripts, prototypes and failed
   experiments (keep a README recording what was learned). Nothing here
   ships unless CI builds it explicitly.
-- `analysis/<app>/`: decompile and recon notes for an app.
+- `docs/analysis/<app>/`: decompile and recon notes for an app.
 - `testing/`: device test harness, runbooks, capture scripts.
 - Never commit APKs or decompiled app sources (`.gitignore` covers
   `*.apk` and `decompiled/`).
