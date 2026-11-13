@@ -21,19 +21,21 @@
 | App | What's removed | Version to patch | Updated |
 |-----|----------------|------------------|---------|
 | 🟢 [Disney+](#disney) | Ads (pre/mid-roll) · pause ads on `≤26.15.2` | [`26.20.0+rc3-2026.11.02`](https://www.apkmirror.com/apk/disney/disney-android-tv/disney-android-tv-26-20-0rc3-2026-11-02-release/) ⚠️ experimental · `26.16.0+rc2-2026.09.08` | 11/7/26 |
-| 🟢 [Prime Video](#prime-video) | Movie + TV-show ads (native strip) · `6.23.23` recommended | [`6.23.23+v15.5.0.70-armv7a`](https://www.apkmirror.com/apk/amazon-mobile-llc/prime-video-android-tv-android-tv/prime-video-android-tv-6-23-23v15-5-0-70-armv7a-release/) · ⚠️ experimental: `6.24.7+v16.0.0.332-allAbis`, `6.24.13+v16.0.1.93-allAbis` | 11/8/26 |
+| 🟢 [Prime Video](#prime-video) | Movie + TV-show ads (native strip) · `6.23.23` recommended | [`6.23.23+v15.5.0.70-armv7a`](https://www.apkmirror.com/apk/amazon-mobile-llc/prime-video-android-tv-android-tv/prime-video-android-tv-6-23-23v15-5-0-70-armv7a-release/) · ⚠️ experimental: [`6.24.7+v16.0.0.332-allAbis`](https://www.apkmirror.com/apk/amazon-mobile-llc/prime-video-android-tv-android-tv/prime-video-android-tv-6-24-7v16-0-0-332-allabis-release/prime-video-android-tv-6-24-7v16-0-0-332-allabis-android-apk-download/), [`6.24.13+v16.0.1.93-allAbis`](https://www.apkmirror.com/apk/amazon-mobile-llc/prime-video-android-tv-android-tv/prime-video-android-tv-6-24-13v16-0-1-93-allabis-release/prime-video-android-tv-6-24-13v16-0-1-93-allabis-android-apk-download/) | 11/8/26 |
 | 🟢 [Netflix](#netflix) | Pre/mid-roll + pause ads · installs as a clone | [`13.0.1 build 25028`](https://www.apkmirror.com/apk/netflix-inc/netflix-android-tv/netflix-android-tv-13-0-1-build-25028-release/) · ⚠️ experimental: `13.2.1 build 27207`, `13.2.2 build 27250` | 11/11/26 |
-| 🟢 [HBO Max](#hbo-max) | All ads, incl. baked-in SSAI (ad-free stream) | [`7.9.0.61`](https://www.apkmirror.com/apk/warnermedia-direct-llc/hbo-max-stream-movies-tv-android-tv/hbo-max-stream-movies-tv-android-tv-7-9-0-61-release/hbo-max-stream-movies-tv-android-tv-7-9-0-61-android-apk-download/) · ⚠️ experimental: `7.14.0.69` | 11/7/26 |
+| 🟢 [HBO Max](#hbo-max) | All ads, incl. baked-in SSAI (ad-free stream) | [`7.9.0.61`](https://www.apkmirror.com/apk/warnermedia-direct-llc/hbo-max-stream-movies-tv-android-tv/hbo-max-stream-movies-tv-android-tv-7-9-0-61-release/hbo-max-stream-movies-tv-android-tv-7-9-0-61-android-apk-download/) · ⚠️ experimental: [`7.14.0.69`](https://www.apkmirror.com/apk/warnermedia-direct-llc/hbo-max-stream-movies-tv-android-tv/hbo-max-stream-movies-tv-android-tv-7-14-0-69-release/hbo-max-stream-movies-tv-android-tv-7-14-0-69-android-apk-download/) | 11/7/26 |
 | 🟢 [Peacock](#peacock) | VOD ads | `7.10.102` · [`7.8.100`](https://www.apkmirror.com/apk/peacock-tv-llc/peacock-tv-android-tv/peacock-tv-stream-tv-movies-android-tv-7-8-100-apk-release/) | 10/6/26 |
 | 🟢 [Tubi](#tubi) | Ads (+ opt-in analytics block) | [`10.40.5000`](https://www.apkmirror.com/apk/tubi-tv/tubi-free-movies-live-tv-android-tv/) | 10/22/26 |
 | 🟢 [ViX](#vix) | Ads, incl. server-stitched pre-rolls | [`4.52.0_tv`](https://www.apkmirror.com/apk/univision-communications-inc/vix-cine-y-tv-en-espanol-android-tv/vix-tv-deportes-y-noticias-android-tv-4-52-0_tv-release/) | 11/10/26 |
-| 🟢 [Pluto TV](#pluto-tv) | VOD ads · live breaks masked on `5.66` | [`5.66.0-leanback`](https://www.apkmirror.com/apk/pluto-inc/pluto-tv-android-tv/plutotv-stream-free-movies-tv-android-tv-5-66-0-release/plutotv-stream-free-movies-tv-android-tv-5-66-0-leanback-android-apk-download/) · `17.2.0` | 11/10/26 |
-| 🟢 [Paramount+](#paramount) | VOD + pause ads · live untouched | [`16.17.0`](https://www.apkmirror.com/apk/cbs-interactive-inc/paramount-2/paramount-android-tv-16-17-0-release/paramount-android-tv-16-17-0-2-android-apk-download/) · `16.19.0` · ⚠️ experimental: `17.3.0` | 11/12/26 |
+| 🟢 [Pluto TV](#pluto-tv) | VOD ads · live breaks masked on `5.66` | [`5.66.0-leanback`](https://www.apkmirror.com/apk/pluto-inc/pluto-tv-android-tv/plutotv-stream-free-movies-tv-android-tv-5-66-0-release/plutotv-stream-free-movies-tv-android-tv-5-66-0-leanback-android-apk-download/) · [`17.2.0`](https://www.apkmirror.com/apk/pluto-inc/pluto-tv-android-tv/pluto-tv-watch-free-movies-tv-android-tv-17-2-0-release/pluto-tv-watch-free-movies-tv-android-tv-17-2-0-3-android-apk-download/) | 11/10/26 |
+| 🟢 [Paramount+](#paramount) | VOD + pause ads · live untouched | [`16.17.0`](https://www.apkmirror.com/apk/cbs-interactive-inc/paramount-2/paramount-android-tv-16-17-0-release/paramount-android-tv-16-17-0-2-android-apk-download/) · `16.19.0` · ⚠️ experimental: [`17.3.0`](https://www.apkmirror.com/apk/cbs-interactive-inc/paramount-2/paramount-android-tv-17-3-0-release/paramount-android-tv-17-3-0-3-android-apk-download/) | 11/12/26 |
 | 🟢 [Twitch](#twitch) | Ad overlay + blanked live ads · TV build only | [`13.0.0.2`](https://www.apkmirror.com/apk/twitch-interactive-inc/twitch-android-tv/twitch-live-streaming-android-tv-13-0-0-2-release/) | 10/28/26 |
 | 🟢 [ESPN](#espn) | Live breaks masked (slate + mute) · VOD ads | [`6.11.1`](https://www.apkmirror.com/apk/disney/espn-android-tv/espn-android-tv-6-11-1-release/) | 9/28/26 |
 | 🟢 [RTÉ Player](#rte-player) | VOD ads · 🇮🇪 geo-locked | [`3.160.3`](https://www.apkmirror.com/apk/rte/rte-player-android-tv/rte-player-android-tv-3-160-3-release/) | 9/14/26 |
-| 🔴 Fox One | Under development | — | — |
-| 🔴 MLB TV | Under development | — | — |
+| 🟢 [RaiPlay](#raiplay) | VOD ads · live-channel 404 fix | `5.0.1` · `5.0.0` | 9/27/26 |
+| 🟡 [Xumo Play](#xumo-play) | Client-inserted ads (VOD + live) · not yet device-verified | `4.9.147` | 10/29/26 |
+| 🟢 [Fawesome](#fawesome) | Pre/mid-roll, banner + pause ads · update prompt | `19.7` | 10/26/26 |
+| 🟢 [F1 TV](#f1-tv) | No ads involved: unlocks 4K (UHD) · needs F1 TV Premium | `3.0.49.4-SP166.4.1-release-R54.2-tv` | 10/16/26 |
 
 <sub>🟢 Working &nbsp;·&nbsp; 🟡 Partial / testing &nbsp;·&nbsp; 🔴 Under development / broken &nbsp;·&nbsp; Version links go to the exact Android TV release on APKMirror.</sub>
 
@@ -208,6 +210,47 @@ Read more: [system design teardown](docs/PLUTO_TV_ATV_SYSTEM_DESIGN.md)
 - **VOD:** client-side (Google IMA) pre-roll and mid-roll ads are removed in-app. Content plays straight through where a break would be. No DNS filter needed. A cosmetic ad-break marker may still appear on the scrubber, but it no longer pauses playback.
 - **Live channels still show ads.** Live is server-stitched (DAI) into the video itself and can't be removed client-side without breaking the stream.
 - **Geo-locked.** RTÉ Player only streams from an Irish IP, so you need a VPN set to Ireland and a valid RTÉ account. This removes ads; it is not an access bypass.
+
+</details>
+
+<a id="raiplay"></a>
+<details>
+<summary><b>🎞️ RaiPlay</b> · VOD ads removed · live-channel fix included</summary>
+
+- **Versions:** `5.0.1` or `5.0.0`. Support for `5.0.1` was contributed by [Michael Bompani](https://github.com/michaelbompani).
+- **Skip ads:** every title takes RaiPlay's own ad-free playback path, so there are no pre-roll, mid-roll or post-roll breaks on VOD. Live-channel server-side ads, if any, are not affected.
+- **Fix live HLS variant 404** (on by default): fixes live channels such as Rai 2 that fail with an error toast.
+
+</details>
+
+<a id="xumo-play"></a>
+<details>
+<summary><b>📼 Xumo Play</b> · client-inserted ads · not yet verified on a device</summary>
+
+- **Version:** `4.9.147`.
+- **Skip ads:** removes Xumo's client-inserted ads in both the VOD and Live TV players, so content continues where an ad would play.
+- **Limits:** ads that are server-stitched into the stream (FreeWheel SSAI) can't be removed client-side and may remain. Xumo is moving toward SSAI, so coverage can vary by title and region.
+- **Status:** not yet device-verified on `4.9.147`. Please report results in an issue.
+
+</details>
+
+<a id="fawesome"></a>
+<details>
+<summary><b>🎥 Fawesome</b> · all client-side ads removed · stay on <code>19.7</code></summary>
+
+- **Version:** `19.7`. The ad patch does not work on `20.1`.
+- **Skip ads:** removes the pre-roll and mid-roll video ads, the in-player banner and the pause-screen ad. Ads are requested client-side, so this is a full removal.
+- **Disable update prompt** (on by default): stops the "New version Available" dialog on every launch. This one also works on `20.1`.
+
+</details>
+
+<a id="f1-tv"></a>
+<details>
+<summary><b>🏎️ F1 TV</b> · unlocks 4K (UHD) · needs F1 TV Premium</summary>
+
+- **Version:** `3.0.49.4-SP166.4.1-release-R54.2-tv`.
+- **Unlock UHD (4K):** removes the client-side device-capability gates so the 2160p tier is offered on all Android TV hardware.
+- **Not an entitlement bypass.** It requires a paid F1 TV Premium subscription and only changes which video tier the app's own checks allow.
 
 </details>
 
