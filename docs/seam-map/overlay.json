@@ -85,7 +85,7 @@
       "action": "VOD: shouldPlayAd → false. Live: pure slate-redirect (accepted ceiling — in-interceptor PTS alignment crashed weak hardware).",
       "patch_evidence": null,
       "device_signature": null,
-      "drift": "16.17 ANR fixed in v1.19.0; fingerprints hardened for 16.19.",
+      "drift": "16.17 ANR fixed in v1.19.0; fingerprints hardened for 16.19. 17.3.0 (experimental): all three seams unchanged; VOD device-verified 2026-11-12, pause/mid-roll/live not yet re-verified.",
       "gaps": [
         "Device signature not captured."
       ]
