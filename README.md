@@ -21,16 +21,16 @@
 | App | What's removed | Version to patch | Updated |
 |-----|----------------|------------------|---------|
 | 🟢 [Disney+](#disney) | Ads (pre/mid-roll) · pause ads on `≤26.15.2` | [`26.20.0+rc3-2026.11.02`](https://www.apkmirror.com/apk/disney/disney-android-tv/disney-android-tv-26-20-0rc3-2026-11-02-release/) ⚠️ experimental · `26.16.0+rc2-2026.09.08` | 11/7/26 |
-| 🟢 [Prime Video](#prime-video) | Movie + TV-show ads (native strip) · ⚠️ stay on `6.23.23` | [`6.23.23+v15.5.0.70-armv7a`](https://www.apkmirror.com/apk/amazon-mobile-llc/prime-video-android-tv-android-tv/prime-video-android-tv-6-23-23v15-5-0-70-armv7a-release/) | 9/20/26 |
-| 🟢 [Netflix](#netflix) | Pre/mid-roll + pause ads · installs as a clone | [`13.0.1 build 25028`](https://www.apkmirror.com/apk/netflix-inc/netflix-android-tv/netflix-android-tv-13-0-1-build-25028-release/) | 9/14/26 |
-| 🟢 [HBO Max](#hbo-max) | All ads, incl. baked-in SSAI (ad-free stream) | [`7.9.0.61`](https://www.apkmirror.com/apk/warnermedia-direct-llc/hbo-max-stream-movies-tv-android-tv/hbo-max-stream-movies-tv-android-tv-7-9-0-61-release/hbo-max-stream-movies-tv-android-tv-7-9-0-61-android-apk-download/) | 8/26/26 |
-| 🟢 [Peacock](#peacock) | VOD ads | `7.10.102` · [`7.8.100`](https://www.apkmirror.com/apk/peacock-tv-llc/peacock-tv-android-tv/peacock-tv-stream-tv-movies-android-tv-7-8-100-apk-release/) | 9/29/26 |
+| 🟢 [Prime Video](#prime-video) | Movie + TV-show ads (native strip) · `6.23.23` recommended | [`6.23.23+v15.5.0.70-armv7a`](https://www.apkmirror.com/apk/amazon-mobile-llc/prime-video-android-tv-android-tv/prime-video-android-tv-6-23-23v15-5-0-70-armv7a-release/) · ⚠️ experimental: `6.24.7+v16.0.0.332-allAbis`, `6.24.13+v16.0.1.93-allAbis` | 11/8/26 |
+| 🟢 [Netflix](#netflix) | Pre/mid-roll + pause ads · installs as a clone | [`13.0.1 build 25028`](https://www.apkmirror.com/apk/netflix-inc/netflix-android-tv/netflix-android-tv-13-0-1-build-25028-release/) · ⚠️ experimental: `13.2.1 build 27207`, `13.2.2 build 27250` | 11/11/26 |
+| 🟢 [HBO Max](#hbo-max) | All ads, incl. baked-in SSAI (ad-free stream) | [`7.9.0.61`](https://www.apkmirror.com/apk/warnermedia-direct-llc/hbo-max-stream-movies-tv-android-tv/hbo-max-stream-movies-tv-android-tv-7-9-0-61-release/hbo-max-stream-movies-tv-android-tv-7-9-0-61-android-apk-download/) · ⚠️ experimental: `7.14.0.69` | 11/7/26 |
+| 🟢 [Peacock](#peacock) | VOD ads | `7.10.102` · [`7.8.100`](https://www.apkmirror.com/apk/peacock-tv-llc/peacock-tv-android-tv/peacock-tv-stream-tv-movies-android-tv-7-8-100-apk-release/) | 10/6/26 |
 | 🟢 [Tubi](#tubi) | Ads (+ opt-in analytics block) | [`10.40.5000`](https://www.apkmirror.com/apk/tubi-tv/tubi-free-movies-live-tv-android-tv/) | 10/22/26 |
 | 🟢 [ViX](#vix) | Ads, incl. server-stitched pre-rolls | [`4.52.0_tv`](https://www.apkmirror.com/apk/univision-communications-inc/vix-cine-y-tv-en-espanol-android-tv/vix-tv-deportes-y-noticias-android-tv-4-52-0_tv-release/) | 11/10/26 |
-| 🟢 [Pluto TV](#pluto-tv) | VOD ads · live breaks masked (opt-in) | [`5.66.0-leanback`](https://www.apkmirror.com/apk/pluto-inc/pluto-tv-android-tv/plutotv-stream-free-movies-tv-android-tv-5-66-0-release/plutotv-stream-free-movies-tv-android-tv-5-66-0-leanback-android-apk-download/) | 9/7/26 |
-| 🟢 [Paramount+](#paramount) | VOD + pause ads · live untouched | [`16.17.0`](https://www.apkmirror.com/apk/cbs-interactive-inc/paramount-2/paramount-android-tv-16-17-0-release/paramount-android-tv-16-17-0-2-android-apk-download/) | 8/4/26 |
-| 🟢 [Twitch](#twitch) | Ad overlay + blanked live ads · TV build only | [`13.0.0.2`](https://www.apkmirror.com/apk/twitch-interactive-inc/twitch-android-tv/twitch-live-streaming-android-tv-13-0-0-2-release/) | 8/22/26 |
-| 🟢 [ESPN](#espn) | Live breaks masked (slate + mute) · VOD ads | [`6.11.1`](https://www.apkmirror.com/apk/disney/espn-android-tv/espn-android-tv-6-11-1-release/) | 9/5/26 |
+| 🟢 [Pluto TV](#pluto-tv) | VOD ads · live breaks masked on `5.66` | [`5.66.0-leanback`](https://www.apkmirror.com/apk/pluto-inc/pluto-tv-android-tv/plutotv-stream-free-movies-tv-android-tv-5-66-0-release/plutotv-stream-free-movies-tv-android-tv-5-66-0-leanback-android-apk-download/) · `17.2.0` | 11/10/26 |
+| 🟢 [Paramount+](#paramount) | VOD + pause ads · live untouched | [`16.17.0`](https://www.apkmirror.com/apk/cbs-interactive-inc/paramount-2/paramount-android-tv-16-17-0-release/paramount-android-tv-16-17-0-2-android-apk-download/) · `16.19.0` · ⚠️ experimental: `17.3.0` | 11/12/26 |
+| 🟢 [Twitch](#twitch) | Ad overlay + blanked live ads · TV build only | [`13.0.0.2`](https://www.apkmirror.com/apk/twitch-interactive-inc/twitch-android-tv/twitch-live-streaming-android-tv-13-0-0-2-release/) | 10/28/26 |
+| 🟢 [ESPN](#espn) | Live breaks masked (slate + mute) · VOD ads | [`6.11.1`](https://www.apkmirror.com/apk/disney/espn-android-tv/espn-android-tv-6-11-1-release/) | 9/28/26 |
 | 🟢 [RTÉ Player](#rte-player) | VOD ads · 🇮🇪 geo-locked | [`3.160.3`](https://www.apkmirror.com/apk/rte/rte-player-android-tv/rte-player-android-tv-3-160-3-release/) | 9/14/26 |
 | 🔴 Fox One | Under development | — | — |
 | 🔴 MLB TV | Under development | — | — |
@@ -91,7 +91,7 @@ Read more: [current write-up and install recommendations](docs/PRIME_VIDEO_ANNOU
 
 Pre-rolls, mid-rolls and the full-screen pause ad are removed in-app by a script the app runs itself at launch. No DNS, PC, root or frida server.
 
-1. Open the [`13.0.1 build 25028`](https://www.apkmirror.com/apk/netflix-inc/netflix-android-tv/netflix-android-tv-13-0-1-build-25028-release/) release (publisher **Netflix, Inc.**, package `com.netflix.ninja`). Don't pick a newer `13.1.x`.
+1. Open the [`13.0.1 build 25028`](https://www.apkmirror.com/apk/netflix-inc/netflix-android-tv/netflix-android-tv-13-0-1-build-25028-release/) release (publisher **Netflix, Inc.**, package `com.netflix.ninja`). This is the recommended build. `13.2.1 build 27207` and `13.2.2 build 27250` are also supported as **experimental** targets; other versions, including `13.1.x`, are not.
 2. Download the `.apkm` bundle. It is the only variant and is `armeabi-v7a` only, so **Optimize for device architecture must be off**. Morphe Manager shows it as **Recommended**.
 3. Apply the patch with **Clone Netflix** and **Remove Netflix ads** enabled (both on by default). Optionally enable **Minimize Network Fingerprint**, which blanks local IP/MAC/SSID and the advertising ID.
 4. Install the result **without uninstalling stock Netflix**, then open the new **Netflix clone** and sign in.
@@ -112,6 +112,7 @@ Read more: [system design teardown](docs/NETFLIX_ATV_SYSTEM_DESIGN.md)
 - **Keep the defaults.** Since v1.30.0, **Prefer Ad-Free Stream** loads HBO's own ad-free manifest, so pre-rolls, mid-rolls, the ad tier's stitched SSAI ads and the ad markers/countdown are gone on fresh start and resume. No DNS required, and it loads faster.
 - **Leave "Block SSAI Ad Origins" off.** It is superseded, and turning it on can make mid-roll breaks fail with error `39999`.
 - **Get the right package.** These patches target **`com.wbd.hbomax`**. WarnerMedia also publishes a separate `com.wbd.stream` build under a near-identical name, and APKMirror's listing URLs have shifted between the two before. Confirm the download page shows `com.wbd.hbomax`.
+- **Experimental `7.14.0.69`:** tested on a Shield TV by a contributor. The clean combination there is **Disable Ads** plus the opt-in **Remove Ad Periods (keep 5.1)**, which keeps 5.1 audio; **Prefer Ad-Free Stream** also works but plays in stereo. **Block SSAI Ad Origins** hangs playback on this build and is not offered for it.
 - **Version:** [`7.9.0.61`](https://www.apkmirror.com/apk/warnermedia-direct-llc/hbo-max-stream-movies-tv-android-tv/hbo-max-stream-movies-tv-android-tv-7-9-0-61-release/hbo-max-stream-movies-tv-android-tv-7-9-0-61-android-apk-download/), or search APKMirror for the fallback `7.7.0.78` if it is unavailable.
 
 </details>
@@ -148,7 +149,8 @@ Open the [Tubi (Android TV) listing](https://www.apkmirror.com/apk/tubi-tv/tubi-
 <details>
 <summary><b>📡 Pluto TV</b> · VOD ads removed · live breaks can be masked</summary>
 
-- **Version:** [`5.66.0-leanback`](https://www.apkmirror.com/apk/pluto-inc/pluto-tv-android-tv/plutotv-stream-free-movies-tv-android-tv-5-66-0-release/plutotv-stream-free-movies-tv-android-tv-5-66-0-leanback-android-apk-download/). The listing also shows newer `17.x` releases; the patch targets `5.66.0-leanback`. Pick a **`-leanback`** build, not the phone or Fire TV build.
+- **Version:** [`5.66.0-leanback`](https://www.apkmirror.com/apk/pluto-inc/pluto-tv-android-tv/plutotv-stream-free-movies-tv-android-tv-5-66-0-release/plutotv-stream-free-movies-tv-android-tv-5-66-0-leanback-android-apk-download/). Pick a **`-leanback`** build, not the phone or Fire TV build.
+- **Pluto `17.2.0`:** v17 is a ground-up rebuild of the app, so it has its own patch, **Skip ads (v17)**. Morphe applies whichever generation matches the APK you picked. The live-break mask below does nothing on v17.
 - **VOD:** Pluto stitches ads into the content stream server-side (SSAI), so there is no ad domain to block and DNS filters don't help. The patch empties the client-side ad-break timeline, which removes on-demand breaks entirely: ad video, timeline markers, overlays and tracking beacons.
 - **Live TV:** live ads are real broadcast time and can't be removed. The optional **Mask live ad breaks** patch covers the player with a black screen and mutes the audio during a break, then restores both the instant the show returns. It reads Pluto's own ad-state signal and works alongside the main **Skip ads** patch.
 - **On-device tweaks:** in `Android/data/tv.pluto.android/files/`, create a file named `slate_off` to disable masking without re-patching, or `pluto_slate_mode` containing `black` (cover only) or `mute` (mute only).
@@ -162,7 +164,8 @@ Read more: [system design teardown](docs/PLUTO_TV_ATV_SYSTEM_DESIGN.md)
 <summary><b>⭐ Paramount+</b> · VOD and pause ads removed · live TV preserved</summary>
 
 - **Recommended:** [`16.17.0`](https://www.apkmirror.com/apk/cbs-interactive-inc/paramount-2/paramount-android-tv-16-17-0-release/paramount-android-tv-16-17-0-2-android-apk-download/). VOD ads (movies and TV shows, pre-roll and mid-roll) and pause ads are removed, and live TV is preserved.
-- **Fallback:** `16.8.0`, the previous recommended build. Use it only if you can't get `16.17.0`.
+- **Also supported:** `16.19.0`, `16.12.0` and `16.8.0`.
+- **Experimental `17.3.0`:** device-tested on an onn 4K Plus. VOD movies play with no pre-roll. Pause ads, mid-rolls on TV episodes and live TV are not yet verified on this build.
 - **Publisher:** the listing is published by **CBS Interactive, Inc.**, which is the correct one. Do not use the separate Viacom-published build.
 
 </details>
@@ -174,6 +177,7 @@ Read more: [system design teardown](docs/PLUTO_TV_ATV_SYSTEM_DESIGN.md)
 - **Version:** exactly [`13.0.0.2`](https://www.apkmirror.com/apk/twitch-interactive-inc/twitch-android-tv/twitch-live-streaming-android-tv-13-0-0-2-release/), the Android TV "Starshot" build. The phone and Fire TV builds are not supported. The release has two bundles and either works; **`arm64-v8a + armeabi-v7a`** is the safe pick.
 - **What it does:** Twitch live ads are server-side stitched (SSAI) and the TV app runs Twitch's web player in a WebView. The patch intercepts the live HLS playlist, strips the ad-pod tags behind the on-screen "Ad · 1 of 3" countdown, and blanks the stitched ad video. DNS filters don't help here.
 - **A brief black gap can remain** during a break, because the ad occupies real live stream time that still has to pass.
+- **Playback speed controls** are available as an opt-in patch.
 - **Want zero ads and no gap?** Point a VPN at **Albania**. Twitch serves that region ad-free playlists. Verified first-hand with NordVPN.
 
 </details>
