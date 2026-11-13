@@ -6,7 +6,7 @@ import ajstrick81.morphe.patches.vix.shared.Constants
 // ─────────────────────────────────────────────────────────────────────────────
 // Certificate Pinning Override (ViX Android TV)
 //
-// Companion to the AdGuard/AGP SSAI ruleset (see adguard/vix_ssai_v1_0_agp.txt).
+// Companion to the AdGuard/AGP SSAI ruleset (see docs/adguard/vix_ssai_v1_0_agp.txt).
 // ViX live ads are server-side stitched (true SSAI) via Google DAI Pod Serving,
 // relayed through Lura (dcs4-live.mp.lura.live/server/podserve2/...). The
 // stream is decisioned by a DAI session call (dai.google.com/ssai/pods/...)

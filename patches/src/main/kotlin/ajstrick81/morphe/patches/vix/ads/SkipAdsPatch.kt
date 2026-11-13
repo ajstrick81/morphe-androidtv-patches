@@ -49,7 +49,7 @@ val skipAdsPatch = bytecodePatch(
         //
         // (Live SSAI ads are Google DAI Pod Serving, stitched server-side and
         // out of scope for bytecode — see the "Override certificate pinning"
-        // patch and adguard/vix_ssai_v1_0_agp.txt.)
+        // patch and docs/adguard/vix_ssai_v1_0_agp.txt.)
         //
         // methodOrNull so a drift on one target version degrades gracefully
         // instead of aborting the whole patch (incl. Innovid) — per the repo
