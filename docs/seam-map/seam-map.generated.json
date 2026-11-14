@@ -83,7 +83,7 @@
             {
               "fingerprint": "PauseAdStartedFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                    return-void\r\n                "
+              "smali": "\n                    return-void\n                "
             },
             {
               "fingerprint": "InsertionGetPointsFingerprint",
@@ -693,7 +693,7 @@
             {
               "fingerprint": "DeviceNeedsNoPostProcessFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const/4 v0, 0x0\r\n                return v0\r\n            "
+              "smali": "\n                const/4 v0, 0x0\n                return v0\n            "
             },
             {
               "fingerprint": "GetDefaultDisplaySizeFingerprint",
@@ -702,7 +702,7 @@
             {
               "fingerprint": "IsVideoQualityEnabledFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const/4 v0, 0x1\r\n                return v0\r\n            "
+              "smali": "\n                const/4 v0, 0x1\n                return v0\n            "
             }
           ]
         }
@@ -916,12 +916,12 @@
             {
               "fingerprint": "FoxImaVodStreamRequestFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const-string v0, "
+              "smali": "\n                const-string v0, "
             },
             {
               "fingerprint": "FoxImaLiveStreamRequestFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const-string v0, "
+              "smali": "\n                const-string v0, "
             },
             {
               "fingerprint": "YospaceDispatchAdEventFingerprint",
@@ -1062,7 +1062,8 @@
           "uses": [
             {
               "fingerprint": "CheckCurrentAppVersionFingerprint",
-              "call": "apply"
+              "call": "apply",
+              "smali": "Lcom/future/util/Utilities;->updateAlert("
             },
             {
               "fingerprint": "SplashUpdateStateMethodFingerprint",
@@ -1248,7 +1249,7 @@
             {
               "fingerprint": "NowtilusEnabledFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const/4 v0, 0x0\r\n                return v0\r\n            "
+              "smali": "\n                const/4 v0, 0x0\n                return v0\n            "
             }
           ]
         },
@@ -1337,127 +1338,127 @@
             "level": "W",
             "text": "fallback prefetch failed: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 98
+            "line": 100
           },
           {
             "level": "I",
             "text": "decision for ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 113
+            "line": 115
           },
           {
             "level": "I",
             "text": "session ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 184
+            "line": 186
           },
           {
             "level": "I",
             "text": "playable has no fallback stream - nothing is filtered for it",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 190
+            "line": 192
           },
           {
             "level": "W",
             "text": "captureStreams failed: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 192
+            "line": 194
           },
           {
             "level": "I",
             "text": "timeline: no fallback bound to ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 240
+            "line": 242
           },
           {
             "level": "I",
             "text": "hook order: timeline hook runs ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 246
+            "line": 248
           },
           {
             "level": "I",
             "text": "timeline: using FALLBACK timeline (len=",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 282
+            "line": 284
           },
           {
             "level": "W",
             "text": "timelineStreamInfo failed: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 286
+            "line": 288
           },
           {
             "level": "W",
             "text": "read failed: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 315
+            "line": 317
           },
           {
             "level": "W",
             "text": "filter failed, passing manifest through: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 323
+            "line": 325
           },
           {
             "level": "I",
             "text": "manifest ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 335
+            "line": 337
           },
           {
             "level": "I",
             "text": "hook order: manifest parse runs ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 340
+            "line": 342
           },
           {
             "level": "I",
             "text": "manifest left unchanged to match the unchanged timeline",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 343
+            "line": 345
           },
           {
             "level": "W",
             "text": "MISALIGNED: timeline was already switched to the fallback timeline but the",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 357
+            "line": 359
           },
           {
             "level": "I",
             "text": "timeline already decided pass-through - manifest left unchanged",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 367
+            "line": 369
           },
           {
             "level": "I",
             "text": "dry run for ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 419
+            "line": 421
           },
           {
             "level": "I",
             "text": "no ad periods found in manifest for ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 424
+            "line": 426
           },
           {
             "level": "I",
             "text": "removed ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 447
+            "line": 449
           },
           {
             "level": "I",
             "text": "ambiguous durations resolved by audio-language count (",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 528
+            "line": 530
           },
           {
             "level": "I",
             "text": "manifest HTTP ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 640
+            "line": 643
           },
           {
             "level": "I",
@@ -1488,6 +1489,114 @@
         "fingerprints": 12,
         "unusedFingerprints": [],
         "runtimeMessages": 23
+      }
+    },
+    "mediasetinfinity": {
+      "app": "mediasetinfinity",
+      "sourceRoots": [
+        "patches/src/main/kotlin/ajstrick81/morphe/patches/mediasetinfinity"
+      ],
+      "fingerprints": [
+        {
+          "id": "ShellWebClientInterceptFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/mediasetinfinity/ads/Fingerprints.kt",
+          "line": 34,
+          "name": "shouldInterceptRequest",
+          "returnType": "Landroid/webkit/WebResourceResponse;",
+          "parameters": [
+            "Landroid/webkit/WebView;",
+            "Landroid/webkit/WebResourceRequest;"
+          ],
+          "accessFlags": [
+            "PUBLIC"
+          ],
+          "hasCustomMatcher": true,
+          "note": "───────────────────────────────────────────────────────────────────────────── Mediaset Infinity Android TV (it.mediaset.infinitytv) — ad seam. Autopsy of 8.1.13: the APK is a thin, un-obfuscated Kotlin SHELL (it.mediaset.mediasetplay.ctv.*, ~130 classes). It hosts one WebView that loads the remote \"ctv-lng\" SPA https://static1.mediasetplay.mediaset.it/app/ctv-lng/androidtv/bootstrap.js and exposes two JS bridges: ISAndroidTVBridge (CTVJavascriptBridge) — device info, lifecycle, ad ID ISExoPlayerBridge (Media3JavascriptBridge) — a \"dumb\" media3/ExoPlayer the SPA drives with prepare(url, mime, drm…)/seekTo/setPlayWhenReady. There is NO ad code in the APK: no Google IMA, no FreeWheel/Smartclip SDK, no ad classes, no ad strings (only AdvertisingIdHelper, which hands the ad ID to JS). Ad decisioning, scheduling and UI all live in the remote SPA. So unlike RaiPlay (native parseAdContext seam) there is nothing native to null out — the only place the shell can see ads is the SPA's own network traffic. SEAM: the shell's single WebViewClient (BaseActivity.getClient() → anonymous BaseActivity$getClient$1) already overrides shouldInterceptRequest (to serve bundled assets). Every XHR/fetch/script request the SPA makes passes through it, so the ad-decision call can be answered locally before it leaves the TV. Matched structurally rather than by the anonymous class's `$1` suffix (which renumbers when Mediaset adds another anonymous class): the method named shouldInterceptRequest(WebView, WebResourceRequest) in an app-package class that extends android.webkit.WebViewClient. Exactly one such class on 8.1.13. ─────────────────────────────────────────────────────────────────────────────",
+          "usedBy": [
+            "Skip ads"
+          ]
+        },
+        {
+          "id": "ShellActivityOnCreateFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/mediasetinfinity/debug/Fingerprints.kt",
+          "line": 13,
+          "definingClass": "Lit/mediaset/mediasetplay/ctv/BaseActivity;",
+          "name": "onCreate",
+          "returnType": "V",
+          "parameters": [
+            "Landroid/os/Bundle;"
+          ],
+          "accessFlags": [
+            "PROTECTED"
+          ],
+          "hasCustomMatcher": false,
+          "note": "BaseActivity.onCreate(Bundle) — builds the WebView that hosts the remote SPA. The app's own switch, BaseActivity.isWebViewDebuggable(), is deliberately NOT flipped: besides enabling inspection it also makes onReceivedSslError proceed on EVERY certificate error, which would weaken TLS. Calling WebView.setWebContentsDebuggingEnabled(true) directly gives chrome://inspect without that side effect. v0 is free at index 0 (8 registers, p0/p1 = v6/v7; BaseApplication.onCreate has no free local, hence the Activity).",
+          "usedBy": [
+            "Enable WebView debugging"
+          ]
+        }
+      ],
+      "patches": [
+        {
+          "id": "skipAdsPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/mediasetinfinity/ads/SkipAdsPatch.kt",
+          "line": 13,
+          "name": "Skip ads",
+          "description": "EXPERIMENTAL, not yet verified on a device. Mediaset Infinity's Android TV app is a WebView shell, so its ads are requested by the remote web app. This answers the web app's ad-decision requests (FreeWheel, Google ad servers) locally with an empty response so no client-inserted ad break is scheduled. Ads stitched into the stream server-side (possible on live channels) are not affected.",
+          "uses": [
+            {
+              "fingerprint": "ShellWebClientInterceptFingerprint",
+              "call": "addInstructionsWithLabels"
+            }
+          ]
+        },
+        {
+          "id": "webViewDebugPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/mediasetinfinity/debug/WebViewDebugPatch.kt",
+          "line": 8,
+          "name": "Enable WebView debugging",
+          "description": "Debug only: enables chrome://inspect on the Mediaset Infinity WebView so the web app's console, network requests and native-bridge calls can be inspected. Do not leave enabled.",
+          "default": false,
+          "uses": [
+            {
+              "fingerprint": "ShellActivityOnCreateFingerprint",
+              "call": "addInstructions"
+            }
+          ]
+        }
+      ],
+      "runtime": {
+        "tags": [
+          "MORPHE-MSI"
+        ],
+        "messages": [
+          {
+            "level": "I",
+            "text": "blocked ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/mediasetinfinity/ads/MediasetWebViewHelper.java",
+            "line": 91
+          },
+          {
+            "level": "D",
+            "text": "host ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/mediasetinfinity/ads/MediasetWebViewHelper.java",
+            "line": 131
+          }
+        ]
+      },
+      "packages": [
+        "it.mediaset.infinitytv"
+      ],
+      "targets": [
+        "8.1.13"
+      ],
+      "summary": {
+        "patches": 2,
+        "fingerprints": 2,
+        "unusedFingerprints": [],
+        "runtimeMessages": 2
       }
     },
     "mlbtv": {
@@ -1616,17 +1725,17 @@
             {
               "fingerprint": "SsaiMediaSourceStartupFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                return-void\r\n            "
+              "smali": "\n                return-void\n            "
             },
             {
               "fingerprint": "DaiStreamManagerHandlerFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                return-void\r\n            "
+              "smali": "\n                return-void\n            "
             },
             {
               "fingerprint": "ExoMediaPlayerMetadataFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                return-void\r\n            "
+              "smali": "\n                return-void\n            "
             },
             {
               "fingerprint": "SsaiDisplayContainerFingerprint",
@@ -1636,7 +1745,7 @@
             {
               "fingerprint": "AdBreakStartedFingerprint",
               "call": "addInstructions",
-              "smali": ".trimIndent(),\r\n        )\r\n\r\n        AdBreakEndedFingerprint.method.addInstructions(\r\n            0,\r\n            "
+              "smali": ".trimIndent(),\n        )\n\n        AdBreakEndedFingerprint.method.addInstructions(\n            0,\n            "
             },
             {
               "fingerprint": "AdBreakEndedFingerprint",
@@ -1828,7 +1937,7 @@
             {
               "fingerprint": "NetflixApplicationOnCreateFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const-string v0, "
+              "smali": "\n                const-string v0, "
             }
           ]
         }
@@ -1904,12 +2013,12 @@
             {
               "fingerprint": "ShouldPlayAdFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const/4 v0, 0x0\r\n                return v0\r\n            "
+              "smali": "\n                const/4 v0, 0x0\n                return v0\n            "
             },
             {
               "fingerprint": "PauseAdOverlayFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                return-void\r\n            "
+              "smali": "\n                return-void\n            "
             },
             {
               "fingerprint": "AviaNetworkInterceptorFingerprint",
@@ -2084,22 +2193,22 @@
             {
               "fingerprint": "MediaTailorProxyHostFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const-string v0, "
+              "smali": "\n                const-string v0, "
             },
             {
               "fingerprint": "MediaTailorAdServiceMethodFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const/4 v0, 0x0\r\n                return-object v0\r\n            "
+              "smali": "\n                const/4 v0, 0x0\n                return-object v0\n            "
             },
             {
               "fingerprint": "SsaiConfigurationProviderFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const/4 v0, 0x0\r\n                return-object v0\r\n            "
+              "smali": "\n                const/4 v0, 0x0\n                return-object v0\n            "
             },
             {
               "fingerprint": "HandleAdBreakStartedFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                return-void\r\n            "
+              "smali": "\n                return-void\n            "
             },
             {
               "fingerprint": "FreewheelModuleSkipFingerprint",
@@ -2593,12 +2702,12 @@
             {
               "fingerprint": "AviaDaiShouldPlayAdFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const/4 v0, 0x0\r\n                return v0\r\n            "
+              "smali": "\n                const/4 v0, 0x0\n                return v0\n            "
             },
             {
               "fingerprint": "AviaImaShouldPlayAdFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const/4 v0, 0x0\r\n                return v0\r\n            "
+              "smali": "\n                const/4 v0, 0x0\n                return v0\n            "
             },
             {
               "fingerprint": "AviaDashParserParseFingerprint",
@@ -3630,7 +3739,7 @@
             {
               "fingerprint": "ParseAdContextFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const/4 v0, 0x0\r\n                return-object v0\r\n            "
+              "smali": "\n                const/4 v0, 0x0\n                return-object v0\n            "
             }
           ]
         },
@@ -3660,7 +3769,7 @@
             {
               "fingerprint": "NativePlaybackRequestInitFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const-string v0, "
+              "smali": "\n                const-string v0, "
             }
           ]
         }
@@ -3756,7 +3865,7 @@
             {
               "fingerprint": "CuePointsToTimesFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const/4 v0, 0x0\r\n                new-array v0, v0, [J\r\n                return-object v0\r\n            "
+              "smali": "\n                const/4 v0, 0x0\n                new-array v0, v0, [J\n                return-object v0\n            "
             }
           ]
         }
@@ -4084,12 +4193,12 @@
             {
               "fingerprint": "FoxImaVodStreamRequestFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const-string v0, "
+              "smali": "\n                const-string v0, "
             },
             {
               "fingerprint": "FoxImaLiveStreamRequestFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const-string v0, "
+              "smali": "\n                const-string v0, "
             },
             {
               "fingerprint": "TubiWebClientInterceptFingerprint",
@@ -4098,12 +4207,12 @@
             {
               "fingerprint": "TubiWebClientPageFinishedFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const-string v0, "
+              "smali": "\n                const-string v0, "
             },
             {
               "fingerprint": "QfcSuspendGetAdBreaksFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                new-instance v0, Ljava/io/IOException;\r\n                const-string v1, "
+              "smali": "\n                new-instance v0, Ljava/io/IOException;\n                const-string v1, "
             },
             {
               "fingerprint": "TubiPauseAdsManagerShowImageFingerprint",
@@ -4458,7 +4567,7 @@
             {
               "fingerprint": "InnovidStartAdFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                return-void\r\n            "
+              "smali": "\n                return-void\n            "
             }
           ]
         },

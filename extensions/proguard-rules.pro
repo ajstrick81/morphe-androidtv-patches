@@ -213,3 +213,10 @@
 -keep class ajstrick81.morphe.extension.vix.ads.AdPeriodFilter {
     public static java.io.InputStream filter(java.io.InputStream);
 }
+
+# Mediaset Infinity — "Skip ads": intercept(WebResourceRequest) is called only
+# from smali injected into the shell WebViewClient's shouldInterceptRequest, so
+# R8 must keep it.
+-keep class ajstrick81.morphe.extension.mediasetinfinity.ads.MediasetWebViewHelper {
+    public static android.webkit.WebResourceResponse intercept(android.webkit.WebResourceRequest);
+}

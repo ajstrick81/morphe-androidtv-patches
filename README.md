@@ -34,6 +34,7 @@
 | 🟢 [RTÉ Player](#rte-player) | VOD ads · 🇮🇪 geo-locked | [`3.160.3`](https://www.apkmirror.com/apk/rte/rte-player-android-tv/rte-player-android-tv-3-160-3-release/) | 9/14/26 |
 | 🟢 [RaiPlay](#raiplay) | VOD ads · live-channel 404 fix | `5.0.1` · `5.0.0` | 9/27/26 |
 | 🟡 [Xumo Play](#xumo-play) | Client-inserted ads (VOD + live) · not yet device-verified | `4.9.147` | 10/29/26 |
+| 🟡 [Mediaset Infinity](#mediaset-infinity) | Client-requested ads · experimental, not yet device-verified · 🇮🇹 geo-locked | `8.1.13` | 11/14/26 |
 | 🟢 [Fawesome](#fawesome) | Pre/mid-roll, banner + pause ads · update prompt | `19.7` | 10/26/26 |
 | 🟢 [F1 TV](#f1-tv) | No ads involved: unlocks 4K (UHD) · needs F1 TV Premium | `3.0.49.4-SP166.4.1-release-R54.2-tv` | 10/16/26 |
 
@@ -231,6 +232,18 @@ Read more: [system design teardown](docs/PLUTO_TV_ATV_SYSTEM_DESIGN.md)
 - **Skip ads:** removes Xumo's client-inserted ads in both the VOD and Live TV players, so content continues where an ad would play.
 - **Limits:** ads that are server-stitched into the stream (FreeWheel SSAI) can't be removed client-side and may remain. Xumo is moving toward SSAI, so coverage can vary by title and region.
 - **Status:** not yet device-verified on `4.9.147`. Please report results in an issue.
+
+</details>
+
+<a id="mediaset-infinity"></a>
+<details>
+<summary><b>📡 Mediaset Infinity</b> · experimental · not yet verified on a device</summary>
+
+- **Version:** `8.1.13` (`it.mediaset.infinitytv`).
+- **Skip ads:** the app is a WebView shell, so its ads are requested by Mediaset's remote web app. The patch answers the web app's ad-decision requests (FreeWheel, Google ad servers) on the TV with an empty response, so no client-inserted break is scheduled.
+- **Limits:** ads stitched into the stream server-side (possible on live channels) can't be removed this way. The ad-host list comes from Mediaset's public ad stack, not from a capture of this version.
+- **Enable WebView debugging** (off by default): debug only, turns on `chrome://inspect` for the web app.
+- **Status:** not yet device-verified. If you test it, please open an issue with `adb logcat -s MORPHE-MSI` output (run `adb shell setprop log.tag.MORPHE-MSI DEBUG` and restart the app first to also list the hosts the web app calls).
 
 </details>
 

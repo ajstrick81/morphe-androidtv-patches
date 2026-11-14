@@ -210,6 +210,21 @@
       "gaps": [
         "Device signature not captured."
       ]
+    },
+    "mediasetinfinity": {
+      "engine": "proprietary",
+      "runtime": "WebView shell (it.mediaset.mediasetplay.ctv, un-obfuscated) around the remote ctv-lng SPA; the SPA drives a bare media3/ExoPlayer through the ISExoPlayerBridge JS bridge. No ad SDK in the APK.",
+      "delivery": "Ad decisions are requested by the remote SPA from JS (FreeWheel per Mediaset's public ad stack; not yet captured on 8.1.13). Live-channel SSAI unknown.",
+      "seam": "The shell WebViewClient's `shouldInterceptRequest` (anonymous `BaseActivity$getClient$1`), which every SPA request passes through.",
+      "action": "Answer FreeWheel `/ad/` requests and Google ad-server hosts with an empty 204 so no client-inserted break is scheduled.",
+      "patch_evidence": "`MORPHE-MSI: blocked <host><path>`",
+      "device_signature": null,
+      "drift": null,
+      "gaps": [
+        "Not device-verified.",
+        "Ad hosts not captured from the SPA (bundle is remote; needs a `log.tag.MORPHE-MSI DEBUG` host log or chrome://inspect).",
+        "Unknown whether the SPA gates content on the ad response or uses SSAI on live."
+      ]
     }
   }
 }
