@@ -1,3 +1,10 @@
+# [1.55.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.54.0...v1.55.0) (2026-11-16)
+
+
+### Features
+
+* **youtubetv:** YouTube for Android TV - skip ads and MicroG support ([965478a](https://github.com/ajstrick81/morphe-androidtv-patches/commit/965478a21f4d792b433e6e0e696161edb8ab98d4))
+
 # [1.54.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.53.0...v1.54.0) (2026-11-13)
 
 
