@@ -36,6 +36,7 @@
 | 🟡 [Xumo Play](#xumo-play) | Client-inserted ads (VOD + live) · not yet device-verified | `4.9.147` | 10/29/26 |
 | 🟢 [Fawesome](#fawesome) | Pre/mid-roll, banner + pause ads · update prompt | `19.7` | 10/26/26 |
 | 🟢 [F1 TV](#f1-tv) | No ads involved: unlocks 4K (UHD) · needs F1 TV Premium | `3.0.49.4-SP166.4.1-release-R54.2-tv` | 10/16/26 |
+| 🟡 [YouTube (Android TV)](#youtube) | Video ads + sponsored feed items · needs MicroG RE | [`7.31.300`](https://www.apkmirror.com/apk/google-inc/youtube-for-android-tv/youtube-for-android-tv-7-31-300-release/) ⚠️ experimental · `7.05.301` static only | 11/16/26 |
 
 <sub>🟢 Working &nbsp;·&nbsp; 🟡 Partial / testing &nbsp;·&nbsp; 🔴 Under development / broken &nbsp;·&nbsp; Version links go to the exact Android TV release on APKMirror.</sub>
 
@@ -254,6 +255,17 @@ Read more: [system design teardown](docs/PLUTO_TV_ATV_SYSTEM_DESIGN.md)
 
 </details>
 
+<a id="youtube"></a>
+<details>
+<summary><b>📺 YouTube (Android TV)</b> · needs MicroG RE · the clone patch is on by default</summary>
+
+- **Experimental.** Contributor-tested on a MiTV-AFMU0 (Android 14, `armeabi-v7a`) with `7.31.300`: several videos in a row, no pre-roll or mid-roll ads. `7.05.301` was only checked statically — the fingerprints exist in its dex, but it was never run on a device.
+- **MicroG RE is required.** A resigned build exits a few seconds after launch: Google Play services answers the package check with `SecurityException: PackageVerificationRslt`. Install [MicroG RE](https://github.com/MorpheApp/MicroG-RE/releases) (`app.revanced.android.gms`) and keep **GmsCore support** enabled (on by default).
+- **The clone is on by default.** Many Android TV boxes ship YouTube as a system app (`/product/app/YouTubeLeanback`) and refuse a resigned APK with a signature mismatch. **Clone YouTube (Android TV)** renames the package to `com.google.android.youtube.tv.morphe` so the patched app installs next to the stock one. Leave it on unless you fully uninstalled the original.
+- **How it works.** The app is a Cobalt shell that loads `youtube.com/tv`, so there is no ad code in the APK. The patch injects a script into the page and hooks `JSON.parse` to drop `adPlacements`, `adSlots`, `playerAds` and `adBreakHeartbeatParams` from the responses, plus sponsored tiles from the feeds.
+- **Ads can come back.** The ad logic is JavaScript served from `youtube.com/tv`, so it can change without an app update. If an ad shows up, update to the newest patch first.
+
+</details>
 <a id="why"></a>
 
 ## 🧭 Why this exists

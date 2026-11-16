@@ -92,4 +92,24 @@ Modifications:
   Contributed code, used with credit under GPL-3.0.
   Source: https://github.com/Joker4Life12/morphe-androidtv-patches (PR #285)
 
+- farotv-patches (jair1c/farotv-patches), GPL-3.0
+  Author: jair1c (github.com/jair1c)
+  Source of the YouTube for Android TV (com.google.android.youtube.tv) script
+  injection seam behind our "Skip ads" patch: the StartupGuardNavigationObserver
+  hook, the org.jni_zero.GEN_JNI -> WebContentsImpl.evaluateJavaScript injection
+  path and the ad-key stripping payload are ported from its YouTvScriptsPatch,
+  TvScripts.java and extensions/extension/src/main/js/ads.js, retargeted to
+  7.05.301 and reduced to the ad block (its settings UI, SponsorBlock/DeArrow,
+  native device spoof and branding were left out). farotv in turn credits
+  ysamjo/morphe-patches (GPLv3, CobaltScriptInjector) and DylanDuff/utv-runtime
+  (MIT, RuntimeObserver) for the injection technique.
+  Source: https://github.com/jair1c/farotv-patches
+
+- DylanDuff/utv-runtime, MIT
+  Author: Dylan Duff (github.com/DylanDuff)
+  The idea of hooking JSON.parse inside the leanback web app to delete InnerTube
+  ad keys (adPlacements, adSlots, playerAds) before the player reads them comes
+  from utv-runtime's adblock patch, reached through farotv-patches' runtime.js.
+  Source: https://github.com/DylanDuff/utv-runtime
+
 All original authors retain credit for their contributions.
