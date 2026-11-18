@@ -69,6 +69,16 @@ We are grateful to the many communities and individual contributors — includin
   * **Summary:** Magisk module for the onn 4K Pro (2026, `jarvis2`, Amlogic S905X5M, Android TV 14) that re-enables lossless Dolby TrueHD / TrueHD Atmos bitstreaming over HDMI, plus onn's hidden Passthrough, Dolby/DTS DRC, and Dolby preferred-output settings. Firmware-locked to `URO3.260203.035.A1.15640252`; no license file at time of writing.
   * **Techniques worth noting:** everything is applied at boot and in memory only — a small kernel module (`t9015rate.ko`) lifts the HDMI multichannel rate cap from 96 kHz to 192 kHz, existing firmware TrueHD flags are toggled on, a copy of the audio config is bind-mounted with hidden flags enabled, and a product overlay APK adds a Settings entry into onn's otherwise unreachable sound menu. A good model for non-persistent, firmware-gated device mods on rooted onn hardware (see also [ONN_WAYNE_RTD1325_ROOT_GUIDE.md](ONN_WAYNE_RTD1325_ROOT_GUIDE.md) — different device/SoC).
 
+* **onn 4K Streaming Box (YOC) — direct AVB unlock**
+  * **Repository:** [firejackson1 / yoc-14-root-unlock](https://github.com/firejackson1/yoc-14-root-unlock)
+  * **Summary:** Port of a tested jarvis2 (onn 4K Pro 2026) bootloader-unlock workflow to the onn 4K Streaming Box (`YOC`, Android 14, Amlogic). Unlocks by talking to the AVB trusted app in the TEE (read state, then a single one-shot write) rather than via fastboot, with strict identity pinning (serial prefix, fingerprint, bootloader version, slot), hash-verified native binaries, no retries and no automatic reboot. No license file at time of writing.
+  * **Why it's pinned:** the shared-core-plus-swapped-identity-constants structure shows how the jarvis2 method can be carried to other onn/Amlogic boxes — a candidate path for unlocking the onn 4K Plus (2023), pending confirmation that its TEE exposes the same AVB TA.
+
+* **jarvis2-recovery**
+  * **Repository:** [firejackson1 / jarvis2-recovery](https://github.com/firejackson1/jarvis2-recovery) (MIT)
+  * **Summary:** Patches the stock recovery on the onn 4K Pro (`jarvis2`, S905X5M, Android 14) to give a root ADB shell with `busybox` and `magiskboot`. Requires an already unlocked and Magisk-rooted device; backs up stock `vendor_boot` and supports restore. Note the trade-off it states: recovery ADB accepts unauthorized USB hosts, so anyone with USB access in recovery gets root.
+  * **Why it's pinned:** documents that on this generation recovery is a ramdisk fragment inside `vendor_boot` (boot header v4, lz4-legacy), not a partition, and the exact prop/init/sepolicy edits needed — a useful map when inspecting the onn 4K Plus (2023) boot layout.
+
 ---
 
 ### 5. Reverse Engineering & Protocol Analysis
