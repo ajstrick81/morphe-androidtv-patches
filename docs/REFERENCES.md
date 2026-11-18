@@ -64,6 +64,11 @@ We are grateful to the many communities and individual contributors — includin
   * **Repository:** [HighwindBR / PrimeVideoTB](https://github.com/HighwindBR/PrimeVideoTB)
   * **Summary:** TizenBrew module for Amazon Prime Video on Samsung Tizen OS, implementing enhanced playback features and ad-blocking capabilities.
 
+* **onn 4K Pro TrueHD / Atmos Passthrough**
+  * **Repository:** [Spark-NV / ONN4k-TrueHD](https://github.com/Spark-NV/ONN4k-TrueHD)
+  * **Summary:** Magisk module for the onn 4K Pro (2026, `jarvis2`, Amlogic S905X5M, Android TV 14) that re-enables lossless Dolby TrueHD / TrueHD Atmos bitstreaming over HDMI, plus onn's hidden Passthrough, Dolby/DTS DRC, and Dolby preferred-output settings. Firmware-locked to `URO3.260203.035.A1.15640252`; no license file at time of writing.
+  * **Techniques worth noting:** everything is applied at boot and in memory only — a small kernel module (`t9015rate.ko`) lifts the HDMI multichannel rate cap from 96 kHz to 192 kHz, existing firmware TrueHD flags are toggled on, a copy of the audio config is bind-mounted with hidden flags enabled, and a product overlay APK adds a Settings entry into onn's otherwise unreachable sound menu. A good model for non-persistent, firmware-gated device mods on rooted onn hardware (see also [ONN_WAYNE_RTD1325_ROOT_GUIDE.md](ONN_WAYNE_RTD1325_ROOT_GUIDE.md) — different device/SoC).
+
 ---
 
 ### 5. Reverse Engineering & Protocol Analysis
