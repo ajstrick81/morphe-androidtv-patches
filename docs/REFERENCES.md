@@ -79,6 +79,11 @@ We are grateful to the many communities and individual contributors — includin
   * **Summary:** Patches the stock recovery on the onn 4K Pro (`jarvis2`, S905X5M, Android 14) to give a root ADB shell with `busybox` and `magiskboot`. Requires an already unlocked and Magisk-rooted device; backs up stock `vendor_boot` and supports restore. Note the trade-off it states: recovery ADB accepts unauthorized USB hosts, so anyone with USB access in recovery gets root.
   * **Why it's pinned:** documents that on this generation recovery is a ramdisk fragment inside `vendor_boot` (boot header v4, lz4-legacy), not a partition, and the exact prop/init/sepolicy edits needed — a useful map when inspecting the onn 4K Plus (2023) boot layout.
 
+* **OnnDemand-4kplus**
+  * **Repository:** [ShaneBreazeale / OnnDemand-4kplus](https://github.com/ShaneBreazeale/OnnDemand-4kplus) (Apache-2.0 for original code; inherited jarvis2 material carries no license grant — see its `LICENSE_SCOPE.md`)
+  * **Summary:** On-demand **temporary** root plus a root SSH server for the onn 4K Plus (`coffey`, Android 14), tested on firmware 15051976 (`URO4.260304.011.B1`). Uses a memory-only kernel exploit (GhostLock, CVE-2026-43499) — no bootloader unlock, no flashing, no factory reset; a reboot clears root and stops SSH. Retargets [openensemble/onn-4k-pro-2026-unlock-root](https://github.com/openensemble/onn-4k-pro-2026-unlock-root) from jarvis2 to coffey. Also includes device backup, stock-image archiving, slot reporting and reversible debloat tooling.
+  * **Why it's pinned:** the first project in this list that targets the onn 4K Plus directly. Root without touching verified boot keeps the stock boot chain (and Widevine/streaming behavior) intact, which makes it the lowest-risk way to inspect the Plus's audio HAL/config, boot layout and installed apps from a root shell. Caveats it states: root lowers runtime protections until reboot, only one unit/firmware is validated, and a firmware update that patches the CVE will close the path — hold OTAs if relying on it.
+
 ---
 
 ### 5. Reverse Engineering & Protocol Analysis
