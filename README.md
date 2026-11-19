@@ -33,7 +33,7 @@
 | 🟢 [ESPN](#espn) | Live breaks masked (slate + mute) · VOD ads | [`6.11.1`](https://www.apkmirror.com/apk/disney/espn-android-tv/espn-android-tv-6-11-1-release/) | 9/28/26 |
 | 🟢 [RTÉ Player](#rte-player) | VOD ads · 🇮🇪 geo-locked | [`3.160.3`](https://www.apkmirror.com/apk/rte/rte-player-android-tv/rte-player-android-tv-3-160-3-release/) | 9/14/26 |
 | 🟢 [RaiPlay](#raiplay) | VOD ads · live-channel 404 fix | `5.0.1` · `5.0.0` | 9/27/26 |
-| 🟡 [Mediaset Infinity](#mediaset-infinity) | Pre/mid-roll, pause + welcome ads · 🇮🇹 geo-locked · not yet device-verified | [`8.1.13`](https://apkpure.com/mediaset-infinity-tv/it.mediaset.infinitytv/download) ⚠️ experimental | 11/18/26 |
+| 🟢 [Mediaset Infinity](#mediaset-infinity) | VOD + live ads, pause + welcome ads · 🇮🇹 geo-locked | `8.1.20` · [`8.1.13`](https://apkpure.com/mediaset-infinity-tv/it.mediaset.infinitytv/download) | 11/19/26 |
 | 🟡 [Xumo Play](#xumo-play) | Client-inserted ads (VOD + live) · not yet device-verified | `4.9.147` | 10/29/26 |
 | 🟢 [Fawesome](#fawesome) | Pre/mid-roll, banner + pause ads · update prompt | `19.7` | 10/26/26 |
 | 🟢 [F1 TV](#f1-tv) | No ads involved: unlocks 4K (UHD) · needs F1 TV Premium | `3.0.49.4-SP166.4.1-release-R54.2-tv` | 10/16/26 |
@@ -227,11 +227,11 @@ Read more: [system design teardown](docs/PLUTO_TV_ATV_SYSTEM_DESIGN.md)
 
 <a id="mediaset-infinity"></a>
 <details>
-<summary><b>📺 Mediaset Infinity</b> · ads blocked · not yet verified on a device</summary>
+<summary><b>📺 Mediaset Infinity</b> · VOD and live ads blocked</summary>
 
-- **Version:** [`8.1.13`](https://apkpure.com/mediaset-infinity-tv/it.mediaset.infinitytv/download) from APKPure, as an `.xapk` (package `it.mediaset.infinitytv`, the Android TV app. The phone app `it.fabbricadigitale.android.videomediaset` is a different package and is not supported).
+- **Versions:** `8.1.20` (the current Play Store build) or [`8.1.13`](https://apkpure.com/mediaset-infinity-tv/it.mediaset.infinitytv/download) from APKPure, as an `.xapk` (package `it.mediaset.infinitytv`, the Android TV app. The phone app `it.fabbricadigitale.android.videomediaset` is a different package and is not supported).
 - **Skip ads:** the app is a WebView around Mediaset's web player, which asks FreeWheel or Google for ads before each title. This patch answers those ad calls with "no ads", so pre-roll, mid-roll, pause and welcome ads are never picked.
-- **Live channels** may still show ads if Mediaset stitches them into the stream on the server.
+- **Tested in Italy** on a free account (the most ads): no ads on on-demand episodes or live channels. Thanks to [DarkSofter](https://github.com/DarkSofter) for testing.
 - **Geo-locked.** Mediaset Infinity only streams in Italy. This removes ads; it is not an access bypass.
 
 </details>

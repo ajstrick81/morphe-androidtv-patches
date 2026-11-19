@@ -27,7 +27,7 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 | [foxone](#foxone) | Google IMA / DAI client SDK | 1.9.2 | 1 | 8 | **no** | **no** |
 | [future](#future) | ? | 19.7, 20.1 | 2 | 5 | **no** | **no** |
 | [hbomax](#hbomax) | Server-side stitching (SSAI) via manifest | 7.14.0.69, 7.9.0.61, 7.7.0.78, 7.5.0.73, 7.2.0.41 | 5 | 12 | yes (23 lines) | **no** |
-| [mediaset](#mediaset) | Proprietary native / JS ad engine | 8.1.13 | 1 | 1 | yes (2 lines) | **no** |
+| [mediaset](#mediaset) | Proprietary native / JS ad engine | 8.1.20, 8.1.13 | 1 | 1 | yes (2 lines) | **no** |
 | [mlbtv](#mlbtv) | Google IMA / DAI client SDK | 26.8.1.1 | 1 | 9 | yes (7 lines) | **no** |
 | [netflix](#netflix) | Proprietary native / JS ad engine | 13.0.1 build 25028, 13.2.1 build 27207, 13.2.2 build 27250 | 7 | 2 | **no** | **no** |
 | [paramount](#paramount) | Google IMA / DAI client SDK | 17.3.0, 16.19.0, 16.17.0, 16.12.0, 16.8.0 | 1 | 3 | **no** | **no** |
@@ -253,7 +253,7 @@ Runtime evidence (tags `HboManifestFilter`, `HboStreamSelector`, `HboSpeed`; fir
 
 ## mediaset
 
-**Package** `it.mediaset.infinitytv` · **Targets** `8.1.13` · **Engine** Proprietary native / JS ad engine
+**Package** `it.mediaset.infinitytv` · **Targets** `8.1.20`, `8.1.13` · **Engine** Proprietary native / JS ad engine
 
 | Layer | |
 |---|---|
@@ -263,9 +263,9 @@ Runtime evidence (tags `HboManifestFilter`, `HboStreamSelector`, `HboSpeed`; fir
 | Patch action | Answer ad-decision hosts (fwmrm.net, doubleclick.net, springserve.com, 2mdn.net) with an empty 204 + CORS, so no ad is ever chosen. |
 | Patch evidence | logcat tag MediasetAds: `blocked ad call: <host><path>`. |
 | Device signature | _unknown_ |
-| Drift history | Seam is the shell's own Java (unobfuscated); ad logic is remote JS and can change without an APK update. Fallback seam: remote config keys freewheel.skipAdsVod / freewheel.skipAdsLive. |
+| Drift history | Seam is the shell's own Java (unobfuscated); ad logic is remote JS and can change without an APK update. Fallback seam: remote config keys freewheel.skipAdsVod / freewheel.skipAdsLive. Field-verified on 8.1.13 and 8.1.20 (#217): VOD and live ad-free on a free account. |
 
-**Gaps:** Not yet verified on-device in Italy (content is geo-restricted). · Live channels may carry FreeWheel server-stitched ads (config serverSideSpaceId mplay) that host blocking cannot remove. · Device signature not captured.
+**Gaps:** Device signature not captured (field test in Italy had no logcat).
 
 <details><summary>Patches and fingerprints (generated)</summary>
 

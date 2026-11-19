@@ -10,8 +10,8 @@ object Constants {
         name = "Mediaset Infinity Android TV",
         packageName = "it.mediaset.infinitytv",
         appIconColor = 0x1A6BFF,
-        // Experimental until a viewer in Italy confirms playback on-device (#217):
-        // the content is geo-restricted, so it can't be fully verified from the US test TV.
-        targets = listOf(AppTarget("8.1.13", isExperimental = true)),
+        // Both field-verified in Italy by @DarkSofter (#217): no ads on VOD episodes or live
+        // channels on a free account. 8.1.20 is the current Play Store build.
+        targets = listOf(AppTarget("8.1.20"), AppTarget("8.1.13")),
     )
 }
