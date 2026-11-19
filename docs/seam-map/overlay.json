@@ -210,6 +210,21 @@
       "gaps": [
         "Device signature not captured."
       ]
+    },
+    "mediaset": {
+      "engine": "proprietary",
+      "runtime": "Thin native shell: WebView runs Mediaset's remote React TV app (static1.mediasetplay.mediaset.it/app/ctv-lng/androidtv/), media3 ExoPlayer driven over Media3JavascriptBridge. No ad SDK in Java.",
+      "delivery": "Client-side: per play request the web app gets advData (engine FREEWHEEL or IMA) and calls FreeWheel (*.fwmrm.net) or a Google VMAP tag (pubads.g.doubleclick.net, optionally via SpringServe); pause/welcome display ads from gampad/adx. Ad media then goes to the native player.",
+      "seam": "Shell WebViewClient `shouldInterceptRequest` (BaseActivity$getClient$1) — every web-app request passes through it.",
+      "action": "Answer ad-decision hosts (fwmrm.net, doubleclick.net, springserve.com, 2mdn.net) with an empty 204 + CORS, so no ad is ever chosen.",
+      "patch_evidence": "logcat tag MediasetAds: `blocked ad call: <host><path>`.",
+      "device_signature": null,
+      "drift": "Seam is the shell's own Java (unobfuscated); ad logic is remote JS and can change without an APK update. Fallback seam: remote config keys freewheel.skipAdsVod / freewheel.skipAdsLive.",
+      "gaps": [
+        "Not yet verified on-device in Italy (content is geo-restricted).",
+        "Live channels may carry FreeWheel server-stitched ads (config serverSideSpaceId mplay) that host blocking cannot remove.",
+        "Device signature not captured."
+      ]
     }
   }
 }
