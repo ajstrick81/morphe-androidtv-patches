@@ -1552,6 +1552,7 @@
         "it.mediaset.infinitytv"
       ],
       "targets": [
+        "8.1.20",
         "8.1.13"
       ],
       "summary": {

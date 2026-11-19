@@ -219,11 +219,9 @@
       "action": "Answer ad-decision hosts (fwmrm.net, doubleclick.net, springserve.com, 2mdn.net) with an empty 204 + CORS, so no ad is ever chosen.",
       "patch_evidence": "logcat tag MediasetAds: `blocked ad call: <host><path>`.",
       "device_signature": null,
-      "drift": "Seam is the shell's own Java (unobfuscated); ad logic is remote JS and can change without an APK update. Fallback seam: remote config keys freewheel.skipAdsVod / freewheel.skipAdsLive.",
+      "drift": "Seam is the shell's own Java (unobfuscated); ad logic is remote JS and can change without an APK update. Fallback seam: remote config keys freewheel.skipAdsVod / freewheel.skipAdsLive. Field-verified on 8.1.13 and 8.1.20 (#217): VOD and live ad-free on a free account.",
       "gaps": [
-        "Not yet verified on-device in Italy (content is geo-restricted).",
-        "Live channels may carry FreeWheel server-stitched ads (config serverSideSpaceId mplay) that host blocking cannot remove.",
-        "Device signature not captured."
+        "Device signature not captured (field test in Italy had no logcat)."
       ]
     }
   }
