@@ -1,3 +1,10 @@
+# [1.57.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.56.0...v1.57.0) (2026-11-19)
+
+
+### Features
+
+* **mediaset:** support Mediaset Infinity 8.1.20 and mark it stable ([#217](https://github.com/ajstrick81/morphe-androidtv-patches/issues/217)) ([91ba4c0](https://github.com/ajstrick81/morphe-androidtv-patches/commit/91ba4c016ec2906c08d9b74e98e041521953beb8))
+
 # [1.56.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.55.0...v1.56.0) (2026-11-19)
 
 
