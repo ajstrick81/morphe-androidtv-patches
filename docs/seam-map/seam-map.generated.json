@@ -1337,127 +1337,127 @@
             "level": "W",
             "text": "fallback prefetch failed: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 98
+            "line": 100
           },
           {
             "level": "I",
             "text": "decision for ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 113
+            "line": 115
           },
           {
             "level": "I",
             "text": "session ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 184
+            "line": 186
           },
           {
             "level": "I",
             "text": "playable has no fallback stream - nothing is filtered for it",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 190
+            "line": 192
           },
           {
             "level": "W",
             "text": "captureStreams failed: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 192
+            "line": 194
           },
           {
             "level": "I",
             "text": "timeline: no fallback bound to ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 240
+            "line": 242
           },
           {
             "level": "I",
             "text": "hook order: timeline hook runs ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 246
+            "line": 248
           },
           {
             "level": "I",
             "text": "timeline: using FALLBACK timeline (len=",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 282
+            "line": 284
           },
           {
             "level": "W",
             "text": "timelineStreamInfo failed: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 286
+            "line": 288
           },
           {
             "level": "W",
             "text": "read failed: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 315
+            "line": 317
           },
           {
             "level": "W",
             "text": "filter failed, passing manifest through: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 323
+            "line": 325
           },
           {
             "level": "I",
             "text": "manifest ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 335
+            "line": 337
           },
           {
             "level": "I",
             "text": "hook order: manifest parse runs ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 340
+            "line": 342
           },
           {
             "level": "I",
             "text": "manifest left unchanged to match the unchanged timeline",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 343
+            "line": 345
           },
           {
             "level": "W",
             "text": "MISALIGNED: timeline was already switched to the fallback timeline but the",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 357
+            "line": 359
           },
           {
             "level": "I",
             "text": "timeline already decided pass-through - manifest left unchanged",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 367
+            "line": 369
           },
           {
             "level": "I",
             "text": "dry run for ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 419
+            "line": 421
           },
           {
             "level": "I",
             "text": "no ad periods found in manifest for ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 424
+            "line": 426
           },
           {
             "level": "I",
             "text": "removed ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 447
+            "line": 449
           },
           {
             "level": "I",
             "text": "ambiguous durations resolved by audio-language count (",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 528
+            "line": 530
           },
           {
             "level": "I",
             "text": "manifest HTTP ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
-            "line": 640
+            "line": 643
           },
           {
             "level": "I",
@@ -1488,6 +1488,77 @@
         "fingerprints": 12,
         "unusedFingerprints": [],
         "runtimeMessages": 23
+      }
+    },
+    "mediaset": {
+      "app": "mediaset",
+      "sourceRoots": [
+        "patches/src/main/kotlin/ajstrick81/morphe/patches/mediaset"
+      ],
+      "fingerprints": [
+        {
+          "id": "ShouldInterceptRequestFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/mediaset/ads/Fingerprints.kt",
+          "line": 28,
+          "name": "shouldInterceptRequest",
+          "returnType": "Landroid/webkit/WebResourceResponse;",
+          "parameters": [
+            "Landroid/webkit/WebView;",
+            "Landroid/webkit/WebResourceRequest;"
+          ],
+          "hasCustomMatcher": true,
+          "note": "The shell's WebViewClient.shouldInterceptRequest(WebView, WebResourceRequest). The app's own classes are not obfuscated; pinned to the ctv package so it can't match a WebViewClient from a library (androidx.webkit, Sentry, ...).",
+          "usedBy": [
+            "Skip ads"
+          ]
+        }
+      ],
+      "patches": [
+        {
+          "id": "skipAdsPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/mediaset/ads/SkipAdsPatch.kt",
+          "line": 13,
+          "name": "Skip ads",
+          "description": "Blocks the FreeWheel and Google ad calls the Mediaset Infinity Android TV web app makes, so no pre-roll, mid-roll, pause or welcome ad is ever chosen. Ads stitched into a live channel's stream on the server (if any) are not affected.",
+          "uses": [
+            {
+              "fingerprint": "ShouldInterceptRequestFingerprint",
+              "call": "apply"
+            }
+          ]
+        }
+      ],
+      "runtime": {
+        "tags": [
+          "MediasetAds"
+        ],
+        "messages": [
+          {
+            "level": "I",
+            "text": "blocked ad call: ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/mediaset/ads/MediasetAdBlocker.java",
+            "line": 55
+          },
+          {
+            "level": "E",
+            "text": "intercept failed; letting the request through",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/mediaset/ads/MediasetAdBlocker.java",
+            "line": 58
+          }
+        ]
+      },
+      "packages": [
+        "it.mediaset.infinitytv"
+      ],
+      "targets": [
+        "8.1.13"
+      ],
+      "summary": {
+        "patches": 1,
+        "fingerprints": 1,
+        "unusedFingerprints": [],
+        "runtimeMessages": 2
       }
     },
     "mlbtv": {
@@ -4583,6 +4654,227 @@
         "fingerprints": 2,
         "unusedFingerprints": [],
         "runtimeMessages": 0
+      }
+    },
+    "youtubetv": {
+      "app": "youtubetv",
+      "sourceRoots": [
+        "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv"
+      ],
+      "fingerprints": [
+        {
+          "id": "GooglePlayUtilityFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/gms/Fingerprints.kt",
+          "line": 32,
+          "returnType": "I",
+          "parameters": [
+            "Landroid/content/Context;",
+            "I"
+          ],
+          "strings": [
+            "MetadataValueReader",
+            "This should never happen.",
+            "com.google.android.gms"
+          ],
+          "hasCustomMatcher": false,
+          "usedBy": [
+            "GmsCore support"
+          ]
+        },
+        {
+          "id": "ServiceCheckFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/gms/Fingerprints.kt",
+          "line": 56,
+          "returnType": "V",
+          "parameters": [
+            "Landroid/content/Context;",
+            "I"
+          ],
+          "accessFlags": [
+            "PUBLIC",
+            "STATIC"
+          ],
+          "strings": [
+            "Google Play Services not available"
+          ],
+          "hasCustomMatcher": false,
+          "usedBy": [
+            "GmsCore support"
+          ]
+        },
+        {
+          "id": "PrimeMethodFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/gms/Fingerprints.kt",
+          "line": 76,
+          "returnType": "Z",
+          "strings": [
+            "com.android.vending",
+            "com.google.android.GoogleCamera"
+          ],
+          "hasCustomMatcher": false,
+          "usedBy": [
+            "GmsCore support"
+          ]
+        },
+        {
+          "id": "CobaltActivityOnCreateFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/gms/Fingerprints.kt",
+          "line": 98,
+          "definingClass": "Ldev/cobalt/coat/CobaltActivity;",
+          "name": "onCreate",
+          "returnType": "V",
+          "parameters": [
+            "Landroid/os/Bundle;"
+          ],
+          "hasCustomMatcher": false,
+          "usedBy": [
+            "GmsCore support"
+          ]
+        },
+        {
+          "id": "StartupGuardObserverConstructorFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/scripts/Fingerprints.kt",
+          "line": 22,
+          "name": "<init>",
+          "parameters": [
+            "WEB_CONTENTS"
+          ],
+          "hasCustomMatcher": false,
+          "usedBy": []
+        },
+        {
+          "id": "StartupGuardFinishNavigationFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/scripts/Fingerprints.kt",
+          "line": 28,
+          "name": "didFinishNavigationInPrimaryMainFrame",
+          "returnType": "V",
+          "parameters": [
+            "NAVIGATION_HANDLE"
+          ],
+          "hasCustomMatcher": false,
+          "usedBy": []
+        },
+        {
+          "id": "StartupGuardRedirectNavigationFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/scripts/Fingerprints.kt",
+          "line": 35,
+          "name": "didRedirectNavigation",
+          "returnType": "V",
+          "parameters": [
+            "NAVIGATION_HANDLE"
+          ],
+          "hasCustomMatcher": false,
+          "usedBy": []
+        }
+      ],
+      "patches": [
+        {
+          "id": "skipAdsPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/ads/SkipAdsPatch.kt",
+          "line": 9,
+          "name": "Skip ads",
+          "description": "Removes the ad schedule (adPlacements, adSlots, playerAds, adBreakHeartbeatParams) from every InnerTube response before the YouTube leanback web app (youtube.com/tv) reads it, and removes sponsored tiles (adSlotRenderer and the promoted* renderers) from feeds. Also keeps the existing Android Automotive OS-name spoof that suppresses video ads client-side.",
+          "uses": []
+        },
+        {
+          "id": "cloneAppPatch",
+          "kind": "resourcePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/clone/CloneAppPatch.kt",
+          "line": 42,
+          "name": "Clone YouTube (Android TV)",
+          "description": "Installs the patched YouTube Android TV as a separate app alongside the stock one, instead of replacing it. Enable this when YouTube is a preinstalled system app that can't be uninstalled — most Android TV boxes ship it in /product, and a patched build cannot be installed over it (signature mismatch). The clone gets its own package (suffix .$CLONE_SUFFIX) and its own settings. Leave OFF if the original was uninstalled first, or if the app is not a system app. Makes no changes when \\\"GmsCore support\\\" is applied, because that patch already renames the app. Opt-in.",
+          "uses": []
+        },
+        {
+          "id": "clientContextHookPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/contexthook/ClientContextHookPatch.kt",
+          "line": 22,
+          "name": "Client context hook",
+          "description": "Spoofs the OS name to Android Automotive to suppress video ads.",
+          "uses": [
+            {
+              "fingerprint": "automotiveCheckFingerprint",
+              "call": "addInstructions",
+              "smali": "\r\n                const/4 v0, 0x1\r\n                return v0\r\n            "
+            }
+          ]
+        },
+        {
+          "id": "gmsCoreSupportPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/gms/GmsCoreSupportPatch.kt",
+          "line": 209,
+          "name": "GmsCore support",
+          "description": "Signs in to Google through MicroG-RE (GmsCore) instead of Google Play services. Points every Play services package name, permission, intent action and content provider at $GMS_CORE_PACKAGE_NAME, telling MicroG-RE to present the stock package name and signing certificate. Required for resigned builds: Google Play services rejects them with \\\"PackageVerificationRslt: not allowed\\\". MicroG-RE must be installed; without it the app cannot sign in.",
+          "uses": [
+            {
+              "fingerprint": "GooglePlayUtilityFingerprint",
+              "smali": "GMS availability method (Context, int) not found — the bundled Play services "
+            },
+            {
+              "fingerprint": "ServiceCheckFingerprint",
+              "smali": "GooglePlayServicesNotAvailable throw not found — re-verify the fingerprint"
+            },
+            {
+              "fingerprint": "PrimeMethodFingerprint",
+              "smali": "Primes package allowlist method not found — re-verify the fingerprint"
+            },
+            {
+              "fingerprint": "CobaltActivityOnCreateFingerprint",
+              "smali": "CobaltActivity.onCreate(Bundle) not found — re-verify the fingerprint"
+            }
+          ]
+        }
+      ],
+      "runtime": {
+        "tags": [
+          "MorpheYTTV"
+        ],
+        "messages": [
+          {
+            "level": "D",
+            "text": "scripts injected (",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/youtubetv/scripts/TvScripts.java",
+            "line": 42
+          },
+          {
+            "level": "W",
+            "text": "native pointer field not found",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/youtubetv/scripts/TvScripts.java",
+            "line": 65
+          },
+          {
+            "level": "W",
+            "text": "evaluateJavaScript native not found",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/youtubetv/scripts/TvScripts.java",
+            "line": 73
+          },
+          {
+            "level": "W",
+            "text": "script injection failed",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/youtubetv/scripts/TvScripts.java",
+            "line": 80
+          }
+        ]
+      },
+      "packages": [
+        "com.google.android.youtube.tv"
+      ],
+      "targets": [
+        "7.31.300",
+        "7.05.301"
+      ],
+      "summary": {
+        "patches": 4,
+        "fingerprints": 7,
+        "unusedFingerprints": [
+          "StartupGuardObserverConstructorFingerprint",
+          "StartupGuardFinishNavigationFingerprint",
+          "StartupGuardRedirectNavigationFingerprint"
+        ],
+        "runtimeMessages": 4
       }
     }
   }

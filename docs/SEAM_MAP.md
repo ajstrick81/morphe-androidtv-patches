@@ -15,7 +15,7 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 |---|---|---|---|
 | **Google IMA / DAI client SDK** | paramount, mlbtv, tubi, foxone, rte, vix | The app's player asks Google's IMA SDK (client-side) or DAI (server-stitched pods) for ad breaks. The ad schedule surfaces in Java/Kotlin as cue points, ad-break lists or an AdsManager. | Empty the cue-point / ad-break accessor; neuter AdsManager.start; null the SSAI AdsLoader getter; redirect live pods to a slate. Seams found in one IMA app usually port to the next (Fox One = Tubi-class). |
 | **Server-side stitching (SSAI) via manifest** | hbomax, pluto, espn, peacock | The CDN stitches ads into the stream itself. The only client-visible trace is the manifest (ad periods, DateRanges, ID3/beacon tags) and the host names that serve it. | Force a clean manifest (origin block, CDN fallback, ad-free URL swap); strip ad periods; or, for live passthrough SSAI, detect the break and MASK it (slate + mute). |
-| **Proprietary native / JS ad engine** | primevideo, netflix, disney, twitchatv | The ad decision lives in the app's own runtime — a native library, a JS VM inside a .so, or a WebView — not in a standard SDK. | Find where the ad schedule crosses into the player (a response buffer, a JS function, an insertion-point accessor) and empty it there; native seams need re-pointing per version. |
+| **Proprietary native / JS ad engine** | primevideo, netflix, disney, twitchatv, mediaset | The ad decision lives in the app's own runtime — a native library, a JS VM inside a .so, or a WebView — not in a standard SDK. | Find where the ad schedule crosses into the player (a response buffer, a JS function, an insertion-point accessor) and empty it there; native seams need re-pointing per version. |
 
 ## Coverage
 
@@ -27,6 +27,7 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 | [foxone](#foxone) | Google IMA / DAI client SDK | 1.9.2 | 1 | 8 | **no** | **no** |
 | [future](#future) | ? | 19.7, 20.1 | 2 | 5 | **no** | **no** |
 | [hbomax](#hbomax) | Server-side stitching (SSAI) via manifest | 7.14.0.69, 7.9.0.61, 7.7.0.78, 7.5.0.73, 7.2.0.41 | 5 | 12 | yes (23 lines) | **no** |
+| [mediaset](#mediaset) | Proprietary native / JS ad engine | 8.1.13 | 1 | 1 | yes (2 lines) | **no** |
 | [mlbtv](#mlbtv) | Google IMA / DAI client SDK | 26.8.1.1 | 1 | 9 | yes (7 lines) | **no** |
 | [netflix](#netflix) | Proprietary native / JS ad engine | 13.0.1 build 25028, 13.2.1 build 27207, 13.2.2 build 27250 | 7 | 2 | **no** | **no** |
 | [paramount](#paramount) | Google IMA / DAI client SDK | 17.3.0, 16.19.0, 16.17.0, 16.12.0, 16.8.0 | 1 | 3 | **no** | **no** |
@@ -39,6 +40,7 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 | [twitchatv](#twitchatv) | Proprietary native / JS ad engine | 13.0.0.2 | 2 | 2 | yes (22 lines) | **no** |
 | [vix](#vix) | Google IMA / DAI client SDK | 4.46.0_tv, 4.47.2_tv, 4.50.1_tv, 4.51.0_tv, 4.52.0_tv | 3 | 3 | yes (1 lines) | **no** |
 | [xumo](#xumo) | ? | 4.9.147 | 1 | 2 | **no** | **no** |
+| [youtubetv](#youtubetv) | ? | 7.31.300, 7.05.301 | 4 | 7 | yes (4 lines) | **no** |
 
 ## disney
 
@@ -234,18 +236,47 @@ Runtime evidence (tags `MORPHE-ESPN-SLATE`; first 12 of 50):
 
 Runtime evidence (tags `HboManifestFilter`, `HboStreamSelector`, `HboSpeed`; first 12 of 23):
 
-- W `fallback prefetch failed: ` — HboManifestFilter.java:98
-- I `decision for ` — HboManifestFilter.java:113
-- I `session ` — HboManifestFilter.java:184
-- I `playable has no fallback stream - nothing is filtered for it` — HboManifestFilter.java:190
-- W `captureStreams failed: ` — HboManifestFilter.java:192
-- I `timeline: no fallback bound to ` — HboManifestFilter.java:240
-- I `hook order: timeline hook runs ` — HboManifestFilter.java:246
-- I `timeline: using FALLBACK timeline (len=` — HboManifestFilter.java:282
-- W `timelineStreamInfo failed: ` — HboManifestFilter.java:286
-- W `read failed: ` — HboManifestFilter.java:315
-- W `filter failed, passing manifest through: ` — HboManifestFilter.java:323
-- I `manifest ` — HboManifestFilter.java:335
+- W `fallback prefetch failed: ` — HboManifestFilter.java:100
+- I `decision for ` — HboManifestFilter.java:115
+- I `session ` — HboManifestFilter.java:186
+- I `playable has no fallback stream - nothing is filtered for it` — HboManifestFilter.java:192
+- W `captureStreams failed: ` — HboManifestFilter.java:194
+- I `timeline: no fallback bound to ` — HboManifestFilter.java:242
+- I `hook order: timeline hook runs ` — HboManifestFilter.java:248
+- I `timeline: using FALLBACK timeline (len=` — HboManifestFilter.java:284
+- W `timelineStreamInfo failed: ` — HboManifestFilter.java:288
+- W `read failed: ` — HboManifestFilter.java:317
+- W `filter failed, passing manifest through: ` — HboManifestFilter.java:325
+- I `manifest ` — HboManifestFilter.java:337
+
+</details>
+
+## mediaset
+
+**Package** `it.mediaset.infinitytv` · **Targets** `8.1.13` · **Engine** Proprietary native / JS ad engine
+
+| Layer | |
+|---|---|
+| Runtime | Thin native shell: WebView runs Mediaset's remote React TV app (static1.mediasetplay.mediaset.it/app/ctv-lng/androidtv/), media3 ExoPlayer driven over Media3JavascriptBridge. No ad SDK in Java. |
+| Delivery | Client-side: per play request the web app gets advData (engine FREEWHEEL or IMA) and calls FreeWheel (*.fwmrm.net) or a Google VMAP tag (pubads.g.doubleclick.net, optionally via SpringServe); pause/welcome display ads from gampad/adx. Ad media then goes to the native player. |
+| Code seam | Shell WebViewClient `shouldInterceptRequest` (BaseActivity$getClient$1) — every web-app request passes through it. |
+| Patch action | Answer ad-decision hosts (fwmrm.net, doubleclick.net, springserve.com, 2mdn.net) with an empty 204 + CORS, so no ad is ever chosen. |
+| Patch evidence | logcat tag MediasetAds: `blocked ad call: <host><path>`. |
+| Device signature | _unknown_ |
+| Drift history | Seam is the shell's own Java (unobfuscated); ad logic is remote JS and can change without an APK update. Fallback seam: remote config keys freewheel.skipAdsVod / freewheel.skipAdsLive. |
+
+**Gaps:** Not yet verified on-device in Italy (content is geo-restricted). · Live channels may carry FreeWheel server-stitched ads (config serverSideSpaceId mplay) that host blocking cannot remove. · Device signature not captured.
+
+<details><summary>Patches and fingerprints (generated)</summary>
+
+| Patch | Fingerprint | Class / method | Returns | Strings | Action |
+|---|---|---|---|---|---|
+| Skip ads | `ShouldInterceptRequestFingerprint` | `(custom matcher)`.`shouldInterceptRequest` | `Landroid/webkit/WebResourceResponse;` |  | apply |
+
+Runtime evidence (tags `MediasetAds`; first 12 of 2):
+
+- I `blocked ad call: ` — MediasetAdBlocker.java:55
+- E `intercept failed; letting the request through` — MediasetAdBlocker.java:58
 
 </details>
 
@@ -682,5 +713,40 @@ Runtime evidence (tags `VixAdFilter`; first 12 of 1):
 |---|---|---|---|---|---|
 | Skip ads | `ExoPlayerPlayAmsOrImaAdFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `Could not find ExoPlayerManager.playAmsOrImaAd(PlayAms). This patch ` |
 | Skip ads | `TifPlayAmsOrImaAdFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions |
+
+</details>
+
+## youtubetv
+
+**Package** `com.google.android.youtube.tv` · **Targets** `7.31.300`, `7.05.301` · **Engine** unclassified
+
+| Layer | |
+|---|---|
+| Runtime | _unknown_ |
+| Delivery | _unknown_ |
+| Code seam | _unknown_ |
+| Patch action | _unknown_ |
+| Patch evidence | _unknown_ |
+| Device signature | _unknown_ |
+| Drift history | _unknown_ |
+
+<details><summary>Patches and fingerprints (generated)</summary>
+
+| Patch | Fingerprint | Class / method | Returns | Strings | Action |
+|---|---|---|---|---|---|
+| Skip ads | — | — | — |  |  |
+| Clone YouTube (Android TV) | — | — | — |  |  |
+| Client context hook | `automotiveCheckFingerprint` | — | — |  | addInstructions `                 const/4 v0, 0x1                 return v0             ` |
+| GmsCore support | `GooglePlayUtilityFingerprint` | `(custom matcher)`.— | `I` | `MetadataValueReader` `This should never happen.` `com.google.android.gms` |  `GMS availability method (Context, int) not found — the bundled Play services ` |
+| GmsCore support | `ServiceCheckFingerprint` | `(custom matcher)`.— | `V` | `Google Play Services not available` |  `GooglePlayServicesNotAvailable throw not found — re-verify the fingerprint` |
+| GmsCore support | `PrimeMethodFingerprint` | `(custom matcher)`.— | `Z` | `com.android.vending` `com.google.android.GoogleCamera` |  `Primes package allowlist method not found — re-verify the fingerprint` |
+| GmsCore support | `CobaltActivityOnCreateFingerprint` | `coat/CobaltActivity`.`onCreate` | `V` |  |  `CobaltActivity.onCreate(Bundle) not found — re-verify the fingerprint` |
+
+Runtime evidence (tags `MorpheYTTV`; first 12 of 4):
+
+- D `scripts injected (` — TvScripts.java:42
+- W `native pointer field not found` — TvScripts.java:65
+- W `evaluateJavaScript native not found` — TvScripts.java:73
+- W `script injection failed` — TvScripts.java:80
 
 </details>

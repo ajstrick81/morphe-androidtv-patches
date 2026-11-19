@@ -234,3 +234,10 @@
     public static void onPageEvent(java.lang.String);
     public static void onTitle(java.lang.String);
 }
+
+# Mediaset Infinity Android TV — "Skip ads". MediasetAdBlocker.intercept is called
+# only from smali injected at the top of the shell's WebViewClient
+# .shouldInterceptRequest (see mediaset/ads/SkipAdsPatch.kt), so R8 would strip it.
+-keep class ajstrick81.morphe.extension.mediaset.ads.MediasetAdBlocker {
+    public static android.webkit.WebResourceResponse intercept(android.webkit.WebResourceRequest);
+}
