@@ -1,3 +1,10 @@
+# [1.56.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.55.0...v1.56.0) (2026-11-19)
+
+
+### Features
+
+* **mediaset:** skip ads in Mediaset Infinity Android TV 8.1.13 ([#217](https://github.com/ajstrick81/morphe-androidtv-patches/issues/217)) ([a14c667](https://github.com/ajstrick81/morphe-androidtv-patches/commit/a14c667baf7ad110432a8718f1be205f1896c5e5))
+
 # [1.55.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.54.0...v1.55.0) (2026-11-16)
 
 
