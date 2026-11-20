@@ -1,3 +1,10 @@
+# [1.58.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.57.0...v1.58.0) (2026-11-20)
+
+
+### Features
+
+* **discoveryplus:** add experimental discovery+ Android TV ad patches ([88b8b3b](https://github.com/ajstrick81/morphe-androidtv-patches/commit/88b8b3b0fbe940d9c62b7667a35c8116db8ce567))
+
 # [1.57.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.56.0...v1.57.0) (2026-11-19)
 
 
