@@ -1640,6 +1640,62 @@
         "runtimeMessages": 23
       }
     },
+    "joyn": {
+      "app": "joyn",
+      "sourceRoots": [
+        "patches/src/main/kotlin/ajstrick81/morphe/patches/joyn"
+      ],
+      "fingerprints": [
+        {
+          "id": "AdsDisabledLogFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/joyn/ads/Fingerprints.kt",
+          "line": 33,
+          "strings": [
+            "Ads are disabled; skipping Ad SDK setup on the player"
+          ],
+          "hasCustomMatcher": false,
+          "usedBy": [
+            "Skip ads"
+          ]
+        }
+      ],
+      "patches": [
+        {
+          "id": "skipAdsPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/joyn/ads/SkipAdsPatch.kt",
+          "line": 12,
+          "name": "Skip ads",
+          "description": "Removes ads before and during videos in the Joyn Android TV app. It turns off the app's own \\\"ads enabled\\\" flag, so the player is built without Joyn's Ad SDK. Joyn is geo-restricted, so playback still needs Germany, Austria or Switzerland.",
+          "uses": [
+            {
+              "fingerprint": "AdsDisabledLogFingerprint",
+              "call": "instructions"
+            },
+            {
+              "fingerprint": "adSdkSetupFingerprint",
+              "call": "passed to helper/list"
+            }
+          ]
+        }
+      ],
+      "runtime": {
+        "tags": [],
+        "messages": []
+      },
+      "packages": [
+        "de.prosiebensat1digital.seventv"
+      ],
+      "targets": [
+        "6.5.2-ATV-605282491"
+      ],
+      "summary": {
+        "patches": 1,
+        "fingerprints": 1,
+        "unusedFingerprints": [],
+        "runtimeMessages": 0
+      }
+    },
     "mediaset": {
       "app": "mediaset",
       "sourceRoots": [
