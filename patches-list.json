@@ -1,5 +1,5 @@
 {
-  "version": "1.59.0",
+  "version": "1.60.0",
   "appNames": {
     "com.discovery.dplay": "discovery+ Android TV",
     "com.disney.disneyplus": "Disney+ Android TV",
@@ -2017,6 +2017,44 @@
         }
       ],
       "options": []
+    },
+    {
+      "name": "discovery+ - Store Country Override",
+      "description": "Reports a fixed Google Play store country to discovery+ (default IT). With an Italian IP address this brings back the free 'Naviga gratis' (browse for free) tier, which otherwise depends on your Play account's country. Off by default: it also changes the subscription offers shown in the app.",
+      "use": false,
+      "dependencies": [],
+      "compatiblePackages": {
+        "com.discovery.dplay": [
+          "22.1.0.71"
+        ]
+      },
+      "compatibility": [
+        {
+          "name": "discovery+ Android TV",
+          "packageName": "com.discovery.dplay",
+          "description": null,
+          "appIconColor": 663132,
+          "targets": [
+            {
+              "version": "22.1.0.71",
+              "experimental": true
+            }
+          ]
+        }
+      ],
+      "options": [
+        {
+          "key": "country",
+          "title": "Store country",
+          "description": "Two-letter country code to report as the Google Play store country.",
+          "required": true,
+          "type": "kotlin.String",
+          "default": "IT",
+          "values": {
+            "Italy": "IT"
+          }
+        }
+      ]
     }
   ]
 }

@@ -1,3 +1,10 @@
+# [1.60.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.59.0...v1.60.0) (2026-11-20)
+
+
+### Features
+
+* **discoveryplus:** add opt-in Store Country Override for the Italian free tier ([a516c53](https://github.com/ajstrick81/morphe-androidtv-patches/commit/a516c5351295727be4369523b073946c37b74692))
+
 # [1.59.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.58.0...v1.59.0) (2026-11-20)
 
 
