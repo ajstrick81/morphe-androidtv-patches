@@ -21,7 +21,7 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 
 | App | Engine | Targets | Patches | Fingerprints | Patch evidence logged | Device signature known |
 |---|---|---|---:|---:|---|---|
-| [discoveryplus](#discoveryplus) | Server-side stitching (SSAI) via manifest | 22.1.0.71 | 3 | 5 | yes (3 lines) | **no** |
+| [discoveryplus](#discoveryplus) | Server-side stitching (SSAI) via manifest | 22.1.0.71 | 4 | 6 | yes (3 lines) | yes |
 | [disney](#disney) | Proprietary native / JS ad engine | 26.20.0+rc3-2026.11.02, 26.16.0+rc2-2026.09.08, 26.12.1+rc1-2026.07.15 | 2 | 6 | **no** | yes |
 | [espn](#espn) | Server-side stitching (SSAI) via manifest | 6.11.1 | 4 | 7 | yes (50 lines) | **no** |
 | [f1tv](#f1tv) | ? | 3.0.49.4-SP166.4.1-release-R54.2-tv | 1 | 5 | **no** | **no** |
@@ -52,13 +52,13 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 |---|---|
 | Runtime | WBD Bolt/Beam player shared with HBO Max (`com.discovery.player.*`, `com.wbd.beam.player.*`, `com.wbd.adtech.bolt.*`); UI is You.i Engine (`CYI*` native logs). |
 | Delivery | SSAI: ads stitched server-side into the DASH stream; ad-break timeline built from the GMSS/AdSparx payload. Nonlinear (overlay/pause) ads fetched by BoltDynamicAdFetcher. |
-| Code seam | `PlayableKt.getStreamInfo` (PRIMARY → FALLBACK remap), `TimelineStateKt.isAdBreakAlreadyWatched` (Beam GMSS seek mediator watched-state check), Bolt nonlinear request/fetch, live preroll entry builder. |
-| Patch action | Prefer the FALLBACK stream when present; otherwise mark every ad break watched so GmssSeekMediator.onRangeEnded skips it (SKIP_ALREADY_WATCHED_AD_BREAK) and forward seeks are not redirected into breaks. |
-| Patch evidence | _unknown_ |
-| Device signature | _unknown_ |
-| Drift history | 22.1.0.71 is the first target. SsaiInfoTimelineBuilder is deliberately NOT suppressed (without a manifest filter the stitched ads would play as content). |
+| Code seam | `PlayableKt.getStreamInfo` (PRIMARY → FALLBACK remap), `TimelineStateKt.isAdBreakAlreadyWatched` (Beam GMSS seek mediator watched-state check), Bolt nonlinear request/fetch, live preroll entry builder. Free-tier gate: `IapManager.onStoreMarketplaceRetrievalCompleted` (Play storefront country → native PlatformIAPBroker → server-side welcome CTAs). |
+| Patch action | Prefer the ad-free FALLBACK stream (verified present on the Italian free tier); otherwise mark every ad break watched so GmssSeekMediator.onRangeEnded skips it. Opt-in Store Country Override reports IT so the "Naviga gratis" free tier is offered. |
+| Patch evidence | `I/DplayStreamSelector: remapping PRIMARY -> FALLBACK stream` on every stream lookup; `W/PlatformIAPBroker: Country code available: IT` with Store Country Override. |
+| Device signature | Clean start: `c2.amlogic.avc.decoder.secure` from the first frame, BUFFERING → PLAYING at position 0 within ~1 s (onn 4K Plus, 2026-11-20). |
+| Drift history | 22.1.0.71 is the first target. SsaiInfoTimelineBuilder is deliberately NOT suppressed (without a manifest filter the stitched ads would play as content). The welcome-screen options depend on the Google Play storefront country, not the IP: a US Play account or a re-signed app hides "Naviga gratis" even on an Italian IP (#334). |
 
-**Gaps:** Not device-verified: the TV app has no free tier in the US or Italy, so playback needs an account. · Unknown whether discovery+ serves an ad-free FALLBACK stream like HBO Max. · First ad of a pre-roll likely still plays when only Skip Ad Breaks applies.
+**Gaps:** Mid-roll breaks not reached in device testing (three ~30 s plays). · Non-DRM titles not tested. · Store Country Override effect on subscribers outside Italy unknown (kept opt-in).
 
 <details><summary>Patches and fingerprints (generated)</summary>
 
@@ -69,6 +69,7 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 | discovery+ - Disable Ads | `DplayBoltNonLinearAdsRequestWriteSelfFingerprint` | `(custom matcher)`.— | — |  | addInstructions `return-void` |
 | discovery+ - Disable Ads | `DplayBoltDynamicAdFetcherInvokeSuspendFingerprint` | `(custom matcher)`.— | — |  | apply |
 | discovery+ - Disable Ads | `DplayGenerateLiveTimelineEntriesForAdBreakFingerprint` | `(custom matcher)`.— | — |  | addInstructions |
+| discovery+ - Store Country Override _(opt-in)_ | `DplayStoreMarketplaceFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `Store country set by Morphe patch` |
 
 Runtime evidence (tags `DplayStreamSelector`; first 12 of 3):
 

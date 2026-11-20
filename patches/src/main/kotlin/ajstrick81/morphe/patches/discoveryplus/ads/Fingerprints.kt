@@ -54,6 +54,21 @@ internal object DplayGenerateLiveTimelineEntriesForAdBreakFingerprint : Fingerpr
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
+// IapManager.onStoreMarketplaceRetrievalCompleted(Result, String) — receives the
+// Google Play storefront country (BillingClient.getBillingConfig) from GoogleIapHelper
+// and forwards it to the native You.i layer (PlatformIAPBroker "Country code available").
+// discovery+'s servers use it to pick the welcome-screen options: the Italian free tier
+// ("Naviga gratis") is only offered when the storefront country is IT. classes6.dex.
+// ─────────────────────────────────────────────────────────────────────────────
+internal object DplayStoreMarketplaceFingerprint : Fingerprint(
+    returnType = "V",
+    custom = { method, _ ->
+        method.definingClass == "Ltv/youi/InAppPurchase/IapManager;" &&
+            method.name == "onStoreMarketplaceRetrievalCompleted"
+    },
+)
+
+// ─────────────────────────────────────────────────────────────────────────────
 // TimelineStateKt.isAdBreakAlreadyWatched(TimelineState, I)Z — the single "has this ad
 // break been watched?" check of the Beam GMSS (VOD) seek mediator. classes4.dex.
 //
