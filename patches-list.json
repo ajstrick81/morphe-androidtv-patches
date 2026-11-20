@@ -1,5 +1,5 @@
 {
-  "version": "1.58.0",
+  "version": "1.59.0",
   "appNames": {
     "com.discovery.dplay": "discovery+ Android TV",
     "com.disney.disneyplus": "Disney+ Android TV",
@@ -8,6 +8,7 @@
     "com.fox.foxone": "Fox One Android TV",
     "com.future.moviesByFawesomeAndroidTV": "Fawesome Movies & TV (Android TV)",
     "com.wbd.hbomax": "HBO Max Android TV",
+    "de.prosiebensat1digital.seventv": "Joyn Android TV",
     "it.mediaset.infinitytv": "Mediaset Infinity Android TV",
     "com.bamnetworks.mobile.android.gameday.atbat": "MLB.tv Android TV",
     "com.netflix.ninja": "Netflix Android TV",
@@ -1469,6 +1470,32 @@
           "targets": [
             {
               "version": "19.7",
+              "experimental": false
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "Skip ads",
+      "description": "Removes ads before and during videos in the Joyn Android TV app. It turns off the app's own \"ads enabled\" flag, so the player is built without Joyn's Ad SDK. Joyn is geo-restricted, so playback still needs Germany, Austria or Switzerland.",
+      "use": true,
+      "dependencies": [],
+      "compatiblePackages": {
+        "de.prosiebensat1digital.seventv": [
+          "6.5.2-ATV-605282491"
+        ]
+      },
+      "compatibility": [
+        {
+          "name": "Joyn Android TV",
+          "packageName": "de.prosiebensat1digital.seventv",
+          "description": null,
+          "appIconColor": 0,
+          "targets": [
+            {
+              "version": "6.5.2-ATV-605282491",
               "experimental": false
             }
           ]
