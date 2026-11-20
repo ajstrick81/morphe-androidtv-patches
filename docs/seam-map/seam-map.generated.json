@@ -48,9 +48,20 @@
           ]
         },
         {
+          "id": "DplayStoreMarketplaceFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/Fingerprints.kt",
+          "line": 63,
+          "returnType": "V",
+          "hasCustomMatcher": true,
+          "note": "───────────────────────────────────────────────────────────────────────────── IapManager.onStoreMarketplaceRetrievalCompleted(Result, String) — receives the Google Play storefront country (BillingClient.getBillingConfig) from GoogleIapHelper and forwards it to the native You.i layer (PlatformIAPBroker \"Country code available\"). discovery+'s servers use it to pick the welcome-screen options: the Italian free tier (\"Naviga gratis\") is only offered when the storefront country is IT. classes6.dex. ─────────────────────────────────────────────────────────────────────────────",
+          "usedBy": [
+            "discovery+ - Store Country Override"
+          ]
+        },
+        {
           "id": "DplayIsAdBreakAlreadyWatchedFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/Fingerprints.kt",
-          "line": 67,
+          "line": 82,
           "returnType": "Z",
           "hasCustomMatcher": true,
           "note": "───────────────────────────────────────────────────────────────────────────── TimelineStateKt.isAdBreakAlreadyWatched(TimelineState, I)Z — the single \"has this ad break been watched?\" check of the Beam GMSS (VOD) seek mediator. classes4.dex. Every watched-state decision routes through it: • DefaultAdSkipManager.isAdBreakAlreadyWatched(I) → GmssSeekMediator.onRangeEnded: when the next leaf range is a LinearAdRange of a WATCHED break, the app issues a ProgrammaticSeek(SKIP_ALREADY_WATCHED_AD_BREAK) to getNextContentStartPosition. • DefaultAdSkipManager.getFirstUnwatchedMidrollAdBreak / redirectSeekIntoAdBreak: forward seeks over an UNWATCHED break are redirected into it (seek lock). ─────────────────────────────────────────────────────────────────────────────",
@@ -111,6 +122,22 @@
               "call": "addInstructions"
             }
           ]
+        },
+        {
+          "id": "discoveryPlusStoreCountryPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/StoreCountryPatch.kt",
+          "line": 25,
+          "name": "discovery+ - Store Country Override",
+          "description": "Reports a fixed Google Play store country to discovery+ (default IT). With an Italian IP address this brings back the free 'Naviga gratis' (browse for free) tier, which otherwise depends on your Play account's country. Off by default: it also changes the subscription offers shown in the app.",
+          "default": false,
+          "uses": [
+            {
+              "fingerprint": "DplayStoreMarketplaceFingerprint",
+              "call": "addInstructions",
+              "smali": "Store country set by Morphe patch"
+            }
+          ]
         }
       ],
       "runtime": {
@@ -145,8 +172,8 @@
         "22.1.0.71"
       ],
       "summary": {
-        "patches": 3,
-        "fingerprints": 5,
+        "patches": 4,
+        "fingerprints": 6,
         "unusedFingerprints": [],
         "runtimeMessages": 3
       }
