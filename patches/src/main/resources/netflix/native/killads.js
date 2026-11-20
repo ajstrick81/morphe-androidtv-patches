@@ -21,6 +21,64 @@ function L(m){ logw(6, TAG, Memory.allocUtf8String(m)); }
 function pat(s){ return s.split('').map(function(c){return ('0'+c.charCodeAt(0).toString(16)).slice(-2);}).join(' '); }
 function bytesOf(s){ var b=[]; for (var i=0;i<s.length;i++) b.push(s.charCodeAt(i)); return b; }
 
+// ---------- safe scanning (#317) ----------
+// Every patch below scans memory ranges listed by Process.enumerateRanges('rw-'), but a pass takes
+// seconds and the process keeps changing its mappings meanwhile. On a Fire TV Stick 3rd Gen (Fire OS 7 /
+// Android 9 / ARM32) sqzr2k caught Memory.scanSync over a 20 KB range whose first page had become
+// PROT_NONE ('---') after it was listed; the read faults and Frida's fault recovery itself crashes there
+// (SIGSEGV in libgadget on gum-js-loop, crash registers holding that scan's base). So, right before each
+// scan, re-read the CURRENT mapping and scan only the sub-spans that are still mapped and readable.
+// This shrinks the window from seconds to microseconds; matches that straddle a mapping boundary are lost
+// (the anchors live inside multi-MB JS source allocations, never across two mappings).
+var _ssSkipped=0, _ssLogged=0;
+// One map snapshot is reused for at most SS_SNAP_MS: re-reading /proc/self/maps for every one of the
+// hundreds of scans in a pass made each pass several times slower and the first-title MASTER landing
+// late (on-device: +59 s instead of ~+25 s). A <=100 ms-old view still closes the multi-second window.
+var SS_SNAP_MS=1000, _ssSnap=null, _ssSnapT=0, _ssSnapN=0, _ssSnapMs=0;
+function mapSnapshot(){
+  var now=Date.now();
+  if(_ssSnap===null || now-_ssSnapT>SS_SNAP_MS){
+    var all=[]; try{ all=Process.enumerateRanges('---'); }catch(e){}
+    all.sort(function(a,b){ return a.base.compare(b.base); });
+    _ssSnap=all; _ssSnapT=Date.now(); _ssSnapN++; _ssSnapMs+=_ssSnapT-now;
+    if(_ssSnapN===1||_ssSnapN%25===0) L('safe-scan: map snapshot #'+_ssSnapN+' ('+all.length+' ranges, '+(_ssSnapT-now)+' ms; total '+_ssSnapMs+' ms)');
+  }
+  return _ssSnap;
+}
+function rangeAt(snap,addr){                        // binary search: the mapping containing addr, or null
+  var lo=0, hi=snap.length-1;
+  while(lo<=hi){ var mid=(lo+hi)>>1, r=snap[mid];
+    if(addr.compare(r.base)<0) hi=mid-1;
+    else if(addr.compare(r.base.add(r.size))>=0) lo=mid+1;
+    else return r; }
+  return null;
+}
+function readableSpans(base,size){
+  var snap=mapSnapshot(), out=[], cur=ptr(base), end=cur.add(size), holes=0;
+  while(cur.compare(end)<0){
+    var r=rangeAt(snap,cur);
+    if(r===null){                                   // unmapped: step to the next page, give up after a few
+      if(++holes>16) break;
+      cur=cur.add(4096).and(ptr(4095).not()); continue; }
+    var rEnd=r.base.add(r.size), segEnd=(rEnd.compare(end)<0)?rEnd:end;
+    if(r.protection.charAt(0)==='r') out.push({base:cur,size:segEnd.sub(cur).toInt32()});
+    cur=segEnd;
+  }
+  return out;
+}
+function noteSkip(base,size,spans){
+  var kept=0; for(var i=0;i<spans.length;i++) kept+=spans[i].size;
+  if(kept===size) return;
+  _ssSkipped++;
+  if(_ssLogged<20){ _ssLogged++; L('safe-scan: skipped '+(size-kept)+' unreadable/unmapped bytes of '+ptr(base)+'+'+size+' (total skips '+_ssSkipped+')'); }
+}
+function safeScanSync(base,size,patStr){
+  var spans=readableSpans(base,size), hits=[];
+  noteSkip(base,size,spans);
+  for(var i=0;i<spans.length;i++){ var h=Memory.scanSync(spans[i].base,spans[i].size,patStr); for(var j=0;j<h.length;j++) hits.push(h[j]); }
+  return hits;
+}
+
 // ---------- async scan scheduler (2026-10, household path only) ----------
 // CREDIT: async-scan scheduling engine contributed by phly95 (github.com/phly95/netflix_test_space),
 // a fork of this repo — see issue #237. WHY: Memory.scanSync holds Frida's single JS lock for the whole
@@ -57,7 +115,11 @@ function aScanRange(r,patStr,onMatch,done,prio){
   var pq=(prio===true?3:(prio==null||prio===false?1:prio));
   _asQ[pq].push(function(p){ var fin=false;
     function end(){ if(fin) return; fin=true; _asRun--; _asRunP[p]--; try{ done(); }catch(e){ L('aScan done ERR '+e); } aScanPump(); }
-    try{ Memory.scan(r.base,r.size,patStr,{ onMatch:function(a,sz){ try{ onMatch(a,sz); }catch(e){ L('aScan match ERR '+e); } }, onError:function(){ end(); }, onComplete:end }); }
+    var spans=readableSpans(r.base,r.size), k=0; noteSkip(r.base,r.size,spans);   // #317: scan only what is still readable
+    function nextSpan(){ if(k>=spans.length){ end(); return; } var sp=spans[k++];
+      try{ Memory.scan(sp.base,sp.size,patStr,{ onMatch:function(a,sz){ try{ onMatch(a,sz); }catch(e){ L('aScan match ERR '+e); } }, onError:function(){ nextSpan(); }, onComplete:nextSpan }); }
+      catch(e){ nextSpan(); } }
+    try{ nextSpan(); }
     catch(e){ end(); } });
   aScanPump(); }
 // Biggest ranges first: JS source strings are multi-MB allocations, so a first hit comes earlier.
@@ -102,7 +164,7 @@ var aDone=false;
 function patchA(rs){ if(aDone)return; if(A_NEW.length!==A_OLD.length){L('A length mismatch — ABORT');aDone=true;return;}
   var p=pat(A_OLD);
   for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
-    try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){Memory.protect(h[j].address,A_NEW.length,'rw-');h[j].address.writeByteArray(bytesOf(A_NEW));aDone=true;L('PATCH A: prepareAdBreakStates @'+h[j].address);}}catch(e){}}
+    try{var h=safeScanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){Memory.protect(h[j].address,A_NEW.length,'rw-');h[j].address.writeByteArray(bytesOf(A_NEW));aDone=true;L('PATCH A: prepareAdBreakStates @'+h[j].address);}}catch(e){}}
 }
 // ---------- (ADV) empty adverts.adBreaks at its single source — the master ad kill ----------
 // Netflix migrated clone ads to DYNAMIC server-side insertion — ad videos stitched as separate
@@ -121,7 +183,7 @@ var ADV_OFF=1, ADV_EXP='ba';
 var advDone=false;
 function patchADV(rs){ if(advDone)return; var p=pat(ADV_ANCHOR);
   for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
-    try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(ADV_OFF);var cur=null;try{cur=t.readCString(2);}catch(e){}if(cur!==ADV_EXP)continue;Memory.protect(t,2,'rw-');t.writeByteArray([0x5b,0x5d]);advDone=true;L('PATCH ADV: adverts.adBreaks source ba.map->[].map (empty all ad breaks) @'+t);}}catch(e){}}
+    try{var h=safeScanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(ADV_OFF);var cur=null;try{cur=t.readCString(2);}catch(e){}if(cur!==ADV_EXP)continue;Memory.protect(t,2,'rw-');t.writeByteArray([0x5b,0x5d]);advDone=true;L('PATCH ADV: adverts.adBreaks source ba.map->[].map (empty all ad breaks) @'+t);}}catch(e){}}
 }
 // ---------- (ADVw) wildcard-tolerant ADV fallback (2026-09-13, experimental — #166) ----------
 // The adverts.adBreaks normaliser re-minified alongside getAdMetadata, so the exact ADV anchor
@@ -143,7 +205,7 @@ function patchADVw(rs){ if(advDone||advwDone)return;
   // <var> = the 2 bytes immediately before `.map`.
   var mp=pat('.map(function(a,b){var ');
   for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
-    try{var h=Memory.scanSync(r.base,r.size,mp);
+    try{var h=safeScanSync(r.base,r.size,mp);
       for(var j=0;j<h.length;j++){ var mAddr=h[j].address, vAddr=mAddr.sub(2); // 2-char var before .map
         var v0=-1,v1=-1;try{v0=vAddr.readU8();v1=vAddr.add(1).readU8();}catch(e){continue;}
         if(!isAlpha(v0)||!isAlpha(v1))continue;
@@ -162,7 +224,7 @@ function patchADVw(rs){ if(advDone||advwDone)return;
   // not found -> dump the normaliser region once (anchored on the ad-only locationMs) for re-anchor.
   if(!advDumped){ var mk='locationMs',mkp=pat(mk),hit=0;
     for(var i2=0;i2<rs.length&&hit<2;i2++){var r2=rs[i2];if(r2.size>128*1024*1024)continue;
-      try{var h2=Memory.scanSync(r2.base,r2.size,mkp);for(var j2=0;j2<h2.length&&hit<2;j2++){var a2=h2[j2].address,ctx=null;try{ctx=a2.sub(180).readCString(260);}catch(e){}if(ctx==null||ctx.indexOf('.map(function')<0)continue;hit++;advDumped=true;L('ADVw DUMP@'+a2+' ctx='+JSON.stringify(ctx));}}catch(e){}}
+      try{var h2=safeScanSync(r2.base,r2.size,mkp);for(var j2=0;j2<h2.length&&hit<2;j2++){var a2=h2[j2].address,ctx=null;try{ctx=a2.sub(180).readCString(260);}catch(e){}if(ctx==null||ctx.indexOf('.map(function')<0)continue;hit++;advDumped=true;L('ADVw DUMP@'+a2+' ctx='+JSON.stringify(ctx));}}catch(e){}}
   }
 }
 // ---------- (DAI) dynamic ad-insertion bypass — belt-and-suspenders alongside ADV ----------
@@ -177,7 +239,7 @@ var DAI_OFF=11, DAI_EXP='!';
 var daiDone=false;
 function patchDAI(rs){ if(daiDone)return; var p=pat(DAI_ANCHOR);
   for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
-    try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(DAI_OFF);var cur=null;try{cur=t.readCString(1);}catch(e){}if(cur!==DAI_EXP)continue;Memory.protect(t,1,'rw-');t.writeByteArray([0x3d]);daiDone=true;L('PATCH DAI: applyDaiPrefetch 0!==->0=== (bypass DAI ad stitch) @'+t);}}catch(e){}}
+    try{var h=safeScanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(DAI_OFF);var cur=null;try{cur=t.readCString(1);}catch(e){}if(cur!==DAI_EXP)continue;Memory.protect(t,1,'rw-');t.writeByteArray([0x3d]);daiDone=true;L('PATCH DAI: applyDaiPrefetch 0!==->0=== (bypass DAI ad stitch) @'+t);}}catch(e){}}
 }
 // ---------- (A2) legacy metadata.ads presentation gate (2026-08-14 re-anchor) ----------
 // Netflix moved the legacy pre/mid-roll off the compiled-away prepareAdBreakStates hydration
@@ -196,7 +258,7 @@ var A2_OFF=11, A2_EXP='ads';   // 'ads' at index 11 of the anchor (e.metadata.[a
 var a2Done=false;
 function patchA2(rs){ if(a2Done)return; var p=pat(A2_ANCHOR);
   for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
-    try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(A2_OFF);var cur=null;try{cur=t.readCString(3);}catch(e){}if(cur!==A2_EXP)continue;Memory.protect(t,3,'rw-');t.writeByteArray([0x61,0x78,0x73]);a2Done=true;L('PATCH A2: _syncAdsLength metadata.ads->axs (empty legacy ad pods) @'+t);}}catch(e){}}
+    try{var h=safeScanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(A2_OFF);var cur=null;try{cur=t.readCString(3);}catch(e){}if(cur!==A2_EXP)continue;Memory.protect(t,3,'rw-');t.writeByteArray([0x61,0x78,0x73]);a2Done=true;L('PATCH A2: _syncAdsLength metadata.ads->axs (empty legacy ad pods) @'+t);}}catch(e){}}
 }
 // ---------- (MASTER) getAdMetadata source kill — 13.0.1+ re-anchor (2026-08-24, STABLE v2) ----------
 // On 13.0.1 build 25028 the ad path was REFACTORED: A2/ADV/DAI source strings drifted (their
@@ -220,11 +282,11 @@ var m1Done=false, m2Done=false, masterDone=false;
 function patchMASTER(rs){ if(masterDone)return;
   if(!m1Done){ var p1=pat(M1_ANCHOR);
     for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
-      try{var h=Memory.scanSync(r.base,r.size,p1);for(var j=0;j<h.length;j++){var t=h[j].address.add(M1_OFF);var cur=null;try{cur=t.readCString(1);}catch(e){}if(cur!==M1_EXP)continue;Memory.protect(t,1,'rw-');t.writeByteArray([0x30]);m1Done=true;L('PATCH M1: getAdMetadata if(d)->if(0) @'+t);}}catch(e){}}
+      try{var h=safeScanSync(r.base,r.size,p1);for(var j=0;j<h.length;j++){var t=h[j].address.add(M1_OFF);var cur=null;try{cur=t.readCString(1);}catch(e){}if(cur!==M1_EXP)continue;Memory.protect(t,1,'rw-');t.writeByteArray([0x30]);m1Done=true;L('PATCH M1: getAdMetadata if(d)->if(0) @'+t);}}catch(e){}}
   }
   if(!m2Done){ var p2=pat(M2_ANCHOR);
     for(var i2=0;i2<rs.length;i2++){var r2=rs[i2];if(r2.size>128*1024*1024)continue;
-      try{var h2=Memory.scanSync(r2.base,r2.size,p2);for(var j2=0;j2<h2.length;j2++){var t2=h2[j2].address;var cur2=null;try{cur2=t2.readCString(M2_OLD.length);}catch(e){}if(cur2!==M2_OLD)continue;Memory.protect(t2,M2_NEW.length,'rw-');t2.writeByteArray(bytesOf(M2_NEW));m2Done=true;L('PATCH M2: getAdMetadata else return;->else b=[] (valid empty, no crash) @'+t2);}}catch(e){}}
+      try{var h2=safeScanSync(r2.base,r2.size,p2);for(var j2=0;j2<h2.length;j2++){var t2=h2[j2].address;var cur2=null;try{cur2=t2.readCString(M2_OLD.length);}catch(e){}if(cur2!==M2_OLD)continue;Memory.protect(t2,M2_NEW.length,'rw-');t2.writeByteArray(bytesOf(M2_NEW));m2Done=true;L('PATCH M2: getAdMetadata else return;->else b=[] (valid empty, no crash) @'+t2);}}catch(e){}}
   }
   if(m1Done&&m2Done){ masterDone=true; L('PATCH MASTER: getAdMetadata neutralised (empty ad-break list) — stable v2'); }
 }
@@ -259,7 +321,7 @@ function patchMASTERw(rs){ if(masterDone||mwDone)return;
   var p1=pat('getAds(')+' ?? '+pat(');if(')+' ?? '+pat('){var '), m1off=13;
   var m1addr=null,m1cc=-1;
   for(var i=0;i<rs.length&&!m1addr;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
-    try{var h=Memory.scanSync(r.base,r.size,p1);for(var j=0;j<h.length;j++){var t=h[j].address.add(m1off);var cc=-1;try{cc=t.readU8();}catch(e){}if(!isAlpha(cc))continue;m1addr=t;m1cc=cc;break;}}catch(e){}}
+    try{var h=safeScanSync(r.base,r.size,p1);for(var j=0;j<h.length;j++){var t=h[j].address.add(m1off);var cc=-1;try{cc=t.readU8();}catch(e){}if(!isAlpha(cc))continue;m1addr=t;m1cc=cc;break;}}catch(e){}}
   if(!m1addr)return;   // getAdMetadata body not resident yet — try again next pass
   // M1-ONLY recovery (2026-09-27, #212 build 25028): if the EXACT patchMASTER already landed M2
   // (else return;->else b=[]) but its M1 missed because this build renamed the getAds local
@@ -286,7 +348,7 @@ function patchMASTERw(rs){ if(masterDone||mwDone)return;
     var p2=pat('else return;'); for(var gg=0;gg<gap;gg++) p2+=' ??'; p2+=' '+pat('=this.adBreakHydrator');
     var accOff=12+gap-1;   // the <acc> byte = last wildcard, immediately before '=this.'
     for(var i2=0;i2<rs.length&&!m2addr;i2++){var r2=rs[i2];if(r2.size>128*1024*1024)continue;
-      try{var h2=Memory.scanSync(r2.base,r2.size,p2);for(var j2=0;j2<h2.length;j2++){var vc=-1;try{vc=h2[j2].address.add(accOff).readU8();}catch(e){}if(!isAlpha(vc))continue;m2addr=h2[j2].address;m2vc=vc;break;}}catch(e){}}
+      try{var h2=safeScanSync(r2.base,r2.size,p2);for(var j2=0;j2<h2.length;j2++){var vc=-1;try{vc=h2[j2].address.add(accOff).readU8();}catch(e){}if(!isAlpha(vc))continue;m2addr=h2[j2].address;m2vc=vc;break;}}catch(e){}}
   }
   if(m2addr){
     var vch=String.fromCharCode(m2vc), neu='else '+vch+'=[]  ;';
@@ -329,7 +391,7 @@ var V3_ADV_RE=/^\.adverts\.adBreaks\)\?void 0:([A-Za-z_$])\.map\(function\([A-Za
 var V3_M2_RE=/^!([A-Za-z_$])\.adverts\|\|!\1\.adverts\.adBreaks\.length\)return;([A-Za-z_$])=\1\.adverts\.adBreaks\.map\(/;
 var V3_M1_RE=/^getAds\(([A-Za-z_$])\);if\(([A-Za-z_$])\)\{var /;   // [1]=getAds arg, [2]=if cond
 function rd(a,n){ try{ return a.readCString(n); }catch(e){ return null; } }
-function v3Find(rs, tok, test){ for(var i=0;i<rs.length;i++){ var h; try{ h=Memory.scanSync(rs[i].base, rs[i].size, tok); }catch(e){ continue; }
+function v3Find(rs, tok, test){ for(var i=0;i<rs.length;i++){ var h; try{ h=safeScanSync(rs[i].base, rs[i].size, tok); }catch(e){ continue; }
     for(var j=0;j<h.length;j++){ var a=test(h[j].address); if(a) return a; } } return null; }
 function chunked(r){ var out=[], CH=64*1024*1024, OV=4096; if(r.size<=CH+OV) return [r];
   for(var off=0; off<r.size; off+=CH) out.push({base:r.base.add(off), size:Math.min(CH+OV, r.size-off)}); return out; }
@@ -351,7 +413,7 @@ function patchV3(rs){ if(masterDone||(v3AdvDone&&v3MasterDone)) return;
     if(cand){ var m=V3_M2_RE.exec(rd(cand,90)||'');
       if(m){ v3FnArg=m[1]; v3AccVar=m[2];
         // M1 guard sits just before the else-block, same function (<=2KB back); REQUIRE getAds arg == fn arg
-        var win=cand.sub(2048), wh=[]; try{ wh=Memory.scanSync(win,2048,pat('getAds(')); }catch(e){}
+        var win=cand.sub(2048), wh=[]; try{ wh=safeScanSync(win,2048,pat('getAds(')); }catch(e){}
         for(var k=wh.length-1;k>=0&&!v3M1Site;k--){ var c=rd(wh[k].address,24), mm=c&&V3_M1_RE.exec(c);
           if(mm&&mm[1]===v3FnArg){ v3M1Site=wh[k].address.add(13); v3M1Cond=mm[2]; } }
         if(v3M1Site) v3M2Site=cand; else L('V3: M2 found @'+cand+' but no matching getAds('+v3FnArg+') guard near — waiting'); }
@@ -401,7 +463,7 @@ function dumpMASTER(){ if(masterDone||mdumpDone)return; _mdumpN++;
   if(_mdumpN<17){ setTimeout(dumpMASTER,2000); return; }   // wait ~34s for appboot JS to materialise
   var rs=rwRanges(), mk='getAdMetadata', mp=pat(mk), hits=0;
   for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
-    try{var h=Memory.scanSync(r.base,r.size,mp);for(var j=0;j<h.length&&hits<4;j++){var addr=h[j].address,ctx=null;try{ctx=addr.readCString(520);}catch(e){}if(ctx==null||ctx.indexOf(mk)<0)continue;hits++;L('MASTER-DUMP hit@'+addr+' ctx='+JSON.stringify(ctx));}}catch(e){}}
+    try{var h=safeScanSync(r.base,r.size,mp);for(var j=0;j<h.length&&hits<4;j++){var addr=h[j].address,ctx=null;try{ctx=addr.readCString(520);}catch(e){}if(ctx==null||ctx.indexOf(mk)<0)continue;hits++;L('MASTER-DUMP hit@'+addr+' ctx='+JSON.stringify(ctx));}}catch(e){}}
   mdumpDone=true; L('MASTER-DUMP: '+hits+' getAdMetadata source hit(s) — re-anchor from these bodies (or 0 = token itself renamed)');
 }
 // ---------- (B) pause patch ----------
@@ -409,7 +471,7 @@ var B_ANCHOR='void 0:e.displayAd',B_OLD='e.displayAd',B_NEW='void 0     ';
 var bDone=false;
 function patchB(rs){ if(bDone)return; var p=pat(B_ANCHOR);
   for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
-    try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(7);var cur=null;try{cur=t.readCString(B_OLD.length);}catch(e){}if(cur!==B_OLD)continue;Memory.protect(t,B_NEW.length,'rw-');t.writeByteArray(bytesOf(B_NEW));bDone=true;L('PATCH B: pause z() displayAd->void0 @'+t);}}catch(e){}}
+    try{var h=safeScanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(7);var cur=null;try{cur=t.readCString(B_OLD.length);}catch(e){}if(cur!==B_OLD)continue;Memory.protect(t,B_NEW.length,'rw-');t.writeByteArray(bytesOf(B_NEW));bDone=true;L('PATCH B: pause z() displayAd->void0 @'+t);}}catch(e){}}
 }
 // ---------- (FP) local network fingerprint minimization (OPT-IN; default OFF) ----------
 // Blanks ip/ipv6/mac/ssid in the c() interface map that feeds the nrdp device signal
@@ -424,7 +486,7 @@ var fpDone=false;
 function patchFP(rs){ if(fpDone||!FP_ENABLED)return; if(FP_NEW.length!==FP_ANCH.length){L('FP length mismatch — ABORT');fpDone=true;return;}
   var p=pat(FP_ANCH);
   for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
-    try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){Memory.protect(h[j].address,FP_NEW.length,'rw-');h[j].address.writeByteArray(bytesOf(FP_NEW));fpDone=true;L('PATCH FP: blank ip/ipv6/mac/ssid @'+h[j].address);}}catch(e){}}
+    try{var h=safeScanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){Memory.protect(h[j].address,FP_NEW.length,'rw-');h[j].address.writeByteArray(bytesOf(FP_NEW));fpDone=true;L('PATCH FP: blank ip/ipv6/mac/ssid @'+h[j].address);}}catch(e){}}
 }
 // ---------- (GAID) advertising-ID (GAID) minimization (OPT-IN; default OFF) ----------
 // nrdp.device.getSystemValue("advertisingIdDetails", function(e){
@@ -444,7 +506,7 @@ var gaidDone=false;
 function patchGAID(rs){ if(gaidDone||!GAID_ENABLED)return; if(GAID_NEW.length!==GAID_OLD.length){L('GAID length mismatch — ABORT');gaidDone=true;return;}
   var p=pat(GAID_ANCH);
   for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
-    try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(GAID_OFF);var cur=null;try{cur=t.readCString(GAID_OLD.length);}catch(e){}if(cur!==GAID_OLD)continue;Memory.protect(t,GAID_NEW.length,'rw-');t.writeByteArray(bytesOf(GAID_NEW));gaidDone=true;L('PATCH GAID: e.advertisingId->void0 @'+t);}}catch(e){}}
+    try{var h=safeScanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(GAID_OFF);var cur=null;try{cur=t.readCString(GAID_OLD.length);}catch(e){}if(cur!==GAID_OLD)continue;Memory.protect(t,GAID_NEW.length,'rw-');t.writeByteArray(bytesOf(GAID_NEW));gaidDone=true;L('PATCH GAID: e.advertisingId->void0 @'+t);}}catch(e){}}
 }
 // ---------- (HH) household / "traveling" misdetection + ownership prompt suppression (OPT-IN) ----------
 // Default OFF; the "Suppress Household Prompt" Morphe patch flips HH_ENABLED to true.
@@ -611,7 +673,7 @@ function patchCLCS(rs){ if(clcsDone||!HH_ENABLED)return; if(!CLCS_ANCHORS.length
   for(var ai=0;ai<CLCS_ANCHORS.length;ai++){ var AN=CLCS_ANCHORS[ai]; if(clcsFlipped[AN.lbl])continue; all=false;
     var p=pat(AN.a),off=(AN.off!=null?AN.off:AN.a.length-1),exp=(AN.chr||'0'),nb=(AN.to||'1').charCodeAt(0);
     for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
-      try{var h=Memory.scanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(off);var cur=null;try{cur=t.readCString(1);}catch(e){}if(cur!==exp)continue;Memory.protect(t,1,'rw-');t.writeByteArray([nb]);clcsFlipped[AN.lbl]=true;L('PATCH CLCS: '+AN.lbl+' '+exp+'->'+(AN.to||'1')+' @'+t);}}catch(e){}}
+      try{var h=safeScanSync(r.base,r.size,p);for(var j=0;j<h.length;j++){var t=h[j].address.add(off);var cur=null;try{cur=t.readCString(1);}catch(e){}if(cur!==exp)continue;Memory.protect(t,1,'rw-');t.writeByteArray([nb]);clcsFlipped[AN.lbl]=true;L('PATCH CLCS: '+AN.lbl+' '+exp+'->'+(AN.to||'1')+' @'+t);}}catch(e){}}
   }
   if(all)clcsDone=true;
 }
@@ -689,7 +751,7 @@ function clcsProbe(){ if(!CLCS_PROBE_ENABLED||clcsProbeDone)return; _clcsProbeN+
   var rs=rwRanges(), found=0;
   for(var mi=0;mi<CLCS_MARKERS.length;mi++){ var mk=CLCS_MARKERS[mi], mp=pat(mk), mhits=0;
     for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>128*1024*1024)continue;
-      try{var h=Memory.scanSync(r.base,r.size,mp);
+      try{var h=safeScanSync(r.base,r.size,mp);
         for(var j=0;j<h.length&&mhits<6;j++){
           var addr=h[j].address, ctx=null;
           try{ctx=addr.sub(CLCS_CTX_BEFORE).readCString(CLCS_CTX_BEFORE+mk.length+CLCS_CTX_AFTER);}catch(e){}
@@ -739,7 +801,7 @@ function patchGibbonBootstrap() {
   // Fallback scan if offset drifted
   if (!found) {
     try {
-      var hits = Memory.scanSync(mod.base, mod.size, pat(GIBBON_ANCHOR.slice(0, 36)));
+      var hits = safeScanSync(mod.base, mod.size, pat(GIBBON_ANCHOR.slice(0, 36)));
       for (var i = 0; i < hits.length; i++) {
         var hAddr = hits[i].address;
         if (hAddr.readCString(GIBBON_ANCHOR.length) === GIBBON_ANCHOR) {
@@ -779,7 +841,7 @@ var tries=0, gibbonUp=false, killAt=0;
 function apply(){ if(hhYield()||adkDefer()){ setTimeout(apply,500); return; } tries++; var pt0=Date.now(); var rs=rwRanges();
   // 'nrdp.gibbon' only has to be seen ONCE (was re-scanned on every pass).
   if(!gibbonUp){ var gp=pat('nrdp.gibbon');
-    for(var i=0;i<rs.length&&!gibbonUp;i++){if(rs[i].size>128*1024*1024)continue;try{if(Memory.scanSync(rs[i].base,rs[i].size,gp).length)gibbonUp=true;}catch(e){}} }
+    for(var i=0;i<rs.length&&!gibbonUp;i++){if(rs[i].size>128*1024*1024)continue;try{if(safeScanSync(rs[i].base,rs[i].size,gp).length)gibbonUp=true;}catch(e){}} }
   if(gibbonUp){
     // V3 re-anchor (#212/#232 re-minify): big-region aware, supersedes the legacy ad scans. Runs first;
     // once it lands (v3AdvDone && v3MasterDone) the legacy block below is skipped.
@@ -816,8 +878,8 @@ var cyc=0;
 function observe(){ if(hhYield()||adkDefer()){ setTimeout(observe,1000); return; } cyc++;
   var rs=rwRanges();var kill=0,real=0,disp=0;var bset={};
   for(var i=0;i<rs.length;i++){var r=rs[i];if(r.size>64*1024*1024||r.size<256)continue;
-    try{ kill+=Memory.scanSync(r.base,r.size,KILLMARK).length; real+=Memory.scanSync(r.base,r.size,REALPOD).length; disp+=Memory.scanSync(r.base,r.size,DISPAD).length;
-      var bh=Memory.scanSync(r.base,r.size,BM); for(var k=0;k<bh.length&&k<40;k++){var v=readNumAfter(bh[k].address,11);if(v>0)bset[v]=1;}
+    try{ kill+=safeScanSync(r.base,r.size,KILLMARK).length; real+=safeScanSync(r.base,r.size,REALPOD).length; disp+=safeScanSync(r.base,r.size,DISPAD).length;
+      var bh=safeScanSync(r.base,r.size,BM); for(var k=0;k<bh.length&&k<40;k++){var v=readNumAfter(bh[k].address,11);if(v>0)bset[v]=1;}
     }catch(e){}
   }
   var bks=Object.keys(bset).map(Number).sort(function(a,b){return b-a}).slice(0,6);
