@@ -14,13 +14,14 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 | Engine | Apps | How ads arrive | Seams that port within the family |
 |---|---|---|---|
 | **Google IMA / DAI client SDK** | paramount, mlbtv, tubi, foxone, rte, vix | The app's player asks Google's IMA SDK (client-side) or DAI (server-stitched pods) for ad breaks. The ad schedule surfaces in Java/Kotlin as cue points, ad-break lists or an AdsManager. | Empty the cue-point / ad-break accessor; neuter AdsManager.start; null the SSAI AdsLoader getter; redirect live pods to a slate. Seams found in one IMA app usually port to the next (Fox One = Tubi-class). |
-| **Server-side stitching (SSAI) via manifest** | hbomax, pluto, espn, peacock | The CDN stitches ads into the stream itself. The only client-visible trace is the manifest (ad periods, DateRanges, ID3/beacon tags) and the host names that serve it. | Force a clean manifest (origin block, CDN fallback, ad-free URL swap); strip ad periods; or, for live passthrough SSAI, detect the break and MASK it (slate + mute). |
+| **Server-side stitching (SSAI) via manifest** | hbomax, pluto, espn, peacock, discoveryplus | The CDN stitches ads into the stream itself. The only client-visible trace is the manifest (ad periods, DateRanges, ID3/beacon tags) and the host names that serve it. | Force a clean manifest (origin block, CDN fallback, ad-free URL swap); strip ad periods; or, for live passthrough SSAI, detect the break and MASK it (slate + mute). |
 | **Proprietary native / JS ad engine** | primevideo, netflix, disney, twitchatv, mediaset | The ad decision lives in the app's own runtime — a native library, a JS VM inside a .so, or a WebView — not in a standard SDK. | Find where the ad schedule crosses into the player (a response buffer, a JS function, an insertion-point accessor) and empty it there; native seams need re-pointing per version. |
 
 ## Coverage
 
 | App | Engine | Targets | Patches | Fingerprints | Patch evidence logged | Device signature known |
 |---|---|---|---:|---:|---|---|
+| [discoveryplus](#discoveryplus) | Server-side stitching (SSAI) via manifest | 22.1.0.71 | 3 | 5 | yes (3 lines) | **no** |
 | [disney](#disney) | Proprietary native / JS ad engine | 26.20.0+rc3-2026.11.02, 26.16.0+rc2-2026.09.08, 26.12.1+rc1-2026.07.15 | 2 | 6 | **no** | yes |
 | [espn](#espn) | Server-side stitching (SSAI) via manifest | 6.11.1 | 4 | 7 | yes (50 lines) | **no** |
 | [f1tv](#f1tv) | ? | 3.0.49.4-SP166.4.1-release-R54.2-tv | 1 | 5 | **no** | **no** |
@@ -41,6 +42,40 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 | [vix](#vix) | Google IMA / DAI client SDK | 4.46.0_tv, 4.47.2_tv, 4.50.1_tv, 4.51.0_tv, 4.52.0_tv | 3 | 3 | yes (1 lines) | **no** |
 | [xumo](#xumo) | ? | 4.9.147 | 1 | 2 | **no** | **no** |
 | [youtubetv](#youtubetv) | ? | 7.31.300, 7.05.301 | 4 | 7 | yes (4 lines) | **no** |
+
+## discoveryplus
+
+**Package** `com.discovery.dplay` · **Targets** `22.1.0.71` · **Engine** Server-side stitching (SSAI) via manifest
+
+| Layer | |
+|---|---|
+| Runtime | WBD Bolt/Beam player shared with HBO Max (`com.discovery.player.*`, `com.wbd.beam.player.*`, `com.wbd.adtech.bolt.*`); UI is You.i Engine (`CYI*` native logs). |
+| Delivery | SSAI: ads stitched server-side into the DASH stream; ad-break timeline built from the GMSS/AdSparx payload. Nonlinear (overlay/pause) ads fetched by BoltDynamicAdFetcher. |
+| Code seam | `PlayableKt.getStreamInfo` (PRIMARY → FALLBACK remap), `TimelineStateKt.isAdBreakAlreadyWatched` (Beam GMSS seek mediator watched-state check), Bolt nonlinear request/fetch, live preroll entry builder. |
+| Patch action | Prefer the FALLBACK stream when present; otherwise mark every ad break watched so GmssSeekMediator.onRangeEnded skips it (SKIP_ALREADY_WATCHED_AD_BREAK) and forward seeks are not redirected into breaks. |
+| Patch evidence | _unknown_ |
+| Device signature | _unknown_ |
+| Drift history | 22.1.0.71 is the first target. SsaiInfoTimelineBuilder is deliberately NOT suppressed (without a manifest filter the stitched ads would play as content). |
+
+**Gaps:** Not device-verified: the TV app has no free tier in the US or Italy, so playback needs an account. · Unknown whether discovery+ serves an ad-free FALLBACK stream like HBO Max. · First ad of a pre-roll likely still plays when only Skip Ad Breaks applies.
+
+<details><summary>Patches and fingerprints (generated)</summary>
+
+| Patch | Fingerprint | Class / method | Returns | Strings | Action |
+|---|---|---|---|---|---|
+| discovery+ - Prefer Ad-Free Stream | `DplayGetStreamInfoFingerprint` | `(custom matcher)`.— | — |  | addInstructions |
+| discovery+ - Skip Ad Breaks | `DplayIsAdBreakAlreadyWatchedFingerprint` | `(custom matcher)`.— | `Z` |  | addInstructions `                 const/4 p0, 0x1                 return p0             ` |
+| discovery+ - Disable Ads | `DplayBoltNonLinearAdsRequestWriteSelfFingerprint` | `(custom matcher)`.— | — |  | addInstructions `return-void` |
+| discovery+ - Disable Ads | `DplayBoltDynamicAdFetcherInvokeSuspendFingerprint` | `(custom matcher)`.— | — |  | apply |
+| discovery+ - Disable Ads | `DplayGenerateLiveTimelineEntriesForAdBreakFingerprint` | `(custom matcher)`.— | — |  | addInstructions |
+
+Runtime evidence (tags `DplayStreamSelector`; first 12 of 3):
+
+- I `remapping PRIMARY -> FALLBACK stream` — DplayStreamSelector.java:44
+- I `no FALLBACK stream (` — DplayStreamSelector.java:48
+- W `preferFallbackType failed; using requested type` — DplayStreamSelector.java:50
+
+</details>
 
 ## disney
 

@@ -143,6 +143,11 @@
     public static java.lang.Object preferFallbackType(java.lang.Object, java.lang.Object);
 }
 
+# discovery+ — same FALLBACK-stream remap, called only from injected smali.
+-keep class ajstrick81.morphe.extension.discoveryplus.ads.DplayStreamSelector {
+    public static java.lang.Object preferFallbackType(java.lang.Object, java.lang.Object);
+}
+
 # HBO Max — Remove Ad Periods. HboManifestFilter.captureStreams / filter are called
 # only from injected smali (at PlayableKt.getStreamInfo and
 # ExoPlayerDashManifestParser.parse, CreateTimelineUseCase.invoke), so R8 would strip the class.

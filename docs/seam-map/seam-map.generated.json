@@ -1,6 +1,156 @@
 {
   "generatedFrom": "scripts/seam-map/extract.mjs — do not edit by hand",
   "apps": {
+    "discoveryplus": {
+      "app": "discoveryplus",
+      "sourceRoots": [
+        "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus"
+      ],
+      "fingerprints": [
+        {
+          "id": "DplayGetStreamInfoFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/Fingerprints.kt",
+          "line": 13,
+          "hasCustomMatcher": true,
+          "note": "───────────────────────────────────────────────────────────────────────────── PlayableKt.getStreamInfo(Playable, StreamInfo$Type) — resolves a stream by type. Same method HBO Max's \"Prefer Ad-Free Stream\" hooks. classes2.dex. ─────────────────────────────────────────────────────────────────────────────",
+          "usedBy": [
+            "discovery+ - Prefer Ad-Free Stream"
+          ]
+        },
+        {
+          "id": "DplayBoltNonLinearAdsRequestWriteSelfFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/Fingerprints.kt",
+          "line": 24,
+          "hasCustomMatcher": true,
+          "note": "───────────────────────────────────────────────────────────────────────────── BoltNonLinearAdsRequest.write$Self$_libraries_adtech_bolt_ad_fetcher — serializer for the nonlinear (overlay / pause) ad request. classes3.dex. Prefix match, as on HBO. ─────────────────────────────────────────────────────────────────────────────",
+          "usedBy": [
+            "discovery+ - Disable Ads"
+          ]
+        },
+        {
+          "id": "DplayBoltDynamicAdFetcherInvokeSuspendFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/Fingerprints.kt",
+          "line": 36,
+          "hasCustomMatcher": true,
+          "note": "───────────────────────────────────────────────────────────────────────────── BoltDynamicAdFetcher$fetchNonLinearAds$1.invokeSuspend — coroutine that receives the nonlinear ad list. On 22.1.0.71: invoke-virtual/range {v0..v6} fetchNonLinearAds-hUnOzRk, then move-result-object p0. classes3.dex. ─────────────────────────────────────────────────────────────────────────────",
+          "usedBy": [
+            "discovery+ - Disable Ads"
+          ]
+        },
+        {
+          "id": "DplayGenerateLiveTimelineEntriesForAdBreakFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/Fingerprints.kt",
+          "line": 48,
+          "hasCustomMatcher": true,
+          "note": "───────────────────────────────────────────────────────────────────────────── GenerateLiveTimelineEntriesForAdBreakKt.generateLiveTimelineEntriesForAdBreak(List, I)List — live-stream preroll ad entry builder. classes.dex. ─────────────────────────────────────────────────────────────────────────────",
+          "usedBy": [
+            "discovery+ - Disable Ads"
+          ]
+        },
+        {
+          "id": "DplayIsAdBreakAlreadyWatchedFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/Fingerprints.kt",
+          "line": 67,
+          "returnType": "Z",
+          "hasCustomMatcher": true,
+          "note": "───────────────────────────────────────────────────────────────────────────── TimelineStateKt.isAdBreakAlreadyWatched(TimelineState, I)Z — the single \"has this ad break been watched?\" check of the Beam GMSS (VOD) seek mediator. classes4.dex. Every watched-state decision routes through it: • DefaultAdSkipManager.isAdBreakAlreadyWatched(I) → GmssSeekMediator.onRangeEnded: when the next leaf range is a LinearAdRange of a WATCHED break, the app issues a ProgrammaticSeek(SKIP_ALREADY_WATCHED_AD_BREAK) to getNextContentStartPosition. • DefaultAdSkipManager.getFirstUnwatchedMidrollAdBreak / redirectSeekIntoAdBreak: forward seeks over an UNWATCHED break are redirected into it (seek lock). ─────────────────────────────────────────────────────────────────────────────",
+          "usedBy": [
+            "discovery+ - Skip Ad Breaks"
+          ]
+        }
+      ],
+      "patches": [
+        {
+          "id": "discoveryPlusPreferFallbackStreamPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/DiscoveryPlusAdsPatches.kt",
+          "line": 33,
+          "name": "discovery+ - Prefer Ad-Free Stream",
+          "description": "Plays the FALLBACK stream instead of the ad-stitched PRIMARY stream when the title advertises one (same mechanism as HBO Max's ad-free stream). Does nothing for titles without a FALLBACK stream.",
+          "uses": [
+            {
+              "fingerprint": "DplayGetStreamInfoFingerprint",
+              "call": "addInstructions"
+            }
+          ]
+        },
+        {
+          "id": "discoveryPlusSkipAdBreaksPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/DiscoveryPlusAdsPatches.kt",
+          "line": 59,
+          "name": "discovery+ - Skip Ad Breaks",
+          "description": "Marks every server-stitched ad break as already watched, so the player jumps over mid-rolls and lets you seek past ad breaks. The first ad of a pre-roll may still play briefly.",
+          "uses": [
+            {
+              "fingerprint": "DplayIsAdBreakAlreadyWatchedFingerprint",
+              "call": "addInstructions",
+              "smali": "\n                const/4 p0, 0x1\n                return p0\n            "
+            }
+          ]
+        },
+        {
+          "id": "discoveryPlusDisableAdsPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/DiscoveryPlusAdsPatches.kt",
+          "line": 81,
+          "name": "discovery+ - Disable Ads",
+          "description": "Suppresses nonlinear (overlay / pause) ad requests and live-stream preroll ad timeline entries.",
+          "uses": [
+            {
+              "fingerprint": "DplayBoltNonLinearAdsRequestWriteSelfFingerprint",
+              "call": "addInstructions",
+              "smali": "return-void"
+            },
+            {
+              "fingerprint": "DplayBoltDynamicAdFetcherInvokeSuspendFingerprint",
+              "call": "apply"
+            },
+            {
+              "fingerprint": "DplayGenerateLiveTimelineEntriesForAdBreakFingerprint",
+              "call": "addInstructions"
+            }
+          ]
+        }
+      ],
+      "runtime": {
+        "tags": [
+          "DplayStreamSelector"
+        ],
+        "messages": [
+          {
+            "level": "I",
+            "text": "remapping PRIMARY -> FALLBACK stream",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/discoveryplus/ads/DplayStreamSelector.java",
+            "line": 44
+          },
+          {
+            "level": "I",
+            "text": "no FALLBACK stream (",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/discoveryplus/ads/DplayStreamSelector.java",
+            "line": 48
+          },
+          {
+            "level": "W",
+            "text": "preferFallbackType failed; using requested type",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/discoveryplus/ads/DplayStreamSelector.java",
+            "line": 50
+          }
+        ]
+      },
+      "packages": [
+        "com.discovery.dplay"
+      ],
+      "targets": [
+        "22.1.0.71"
+      ],
+      "summary": {
+        "patches": 3,
+        "fingerprints": 5,
+        "unusedFingerprints": [],
+        "runtimeMessages": 3
+      }
+    },
     "disney": {
       "app": "disney",
       "sourceRoots": [
