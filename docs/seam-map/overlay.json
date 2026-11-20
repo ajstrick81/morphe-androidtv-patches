@@ -238,6 +238,21 @@
         "Unknown whether discovery+ serves an ad-free FALLBACK stream like HBO Max.",
         "First ad of a pre-roll likely still plays when only Skip Ad Breaks applies."
       ]
+    },
+    "joyn": {
+      "engine": "proprietary",
+      "runtime": "Native Kotlin app (R8-obfuscated). Ads come from ProSiebenSat.1's own \"Ads Wrapper\" Ad SDK: a JS bundle in assets driven over a JS bridge (`AdSdkSender`/`AdSdkReceiver`). No Google IMA.",
+      "delivery": "Client-side: the Ad SDK instance is attached to the player when the player is built and drives the pre/mid-roll ad pods. The app has its own ad-free branch that logs \"Ads are disabled; skipping Ad SDK setup on the player\".",
+      "seam": "The player setup method (6.5.2-ATV: `Lv30/e;->c()`) reads an \"ads enabled\" Boolean and either attaches the Ad SDK or takes the ads-disabled branch. Anchored by reference: the class holding the ads-disabled log string (R8-merged log lambda, 6.5.2: `Lr30/y;`), then the method that constructs it and calls `Boolean.booleanValue()`, then the last booleanValue + move-result before the first lambda construction.",
+      "action": "Replace that move-result with `const/4 vX, 0x0`, so the player always takes the app's own ads-disabled branch and the Ad SDK is never attached. Same seam as hxreborn's phone \"Hide ads\" patch.",
+      "patch_evidence": null,
+      "device_signature": null,
+      "drift": "6.5.2-ATV-605282491 is the first target. hxreborn's phone patch fails on this TV build (#328): R8 merged the three log lambdas into one top-level switch class (no `$` suffix) and inlined the player factory into its caller.",
+      "gaps": [
+        "Not device-verified: playback needs a Joyn account, and NordVPN on the test TV could not get a German IP. The patched app installs and reaches the home screen on an onn 4K Plus.",
+        "Expected device signature (unconfirmed): the app's own log line \"Ads are disabled; skipping Ad SDK setup on the player\" at playback start.",
+        "Unknown whether live channels carry server-stitched ads that the Ad SDK only tracks."
+      ]
     }
   }
 }

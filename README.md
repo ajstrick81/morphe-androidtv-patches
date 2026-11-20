@@ -36,6 +36,7 @@
 | 🟢 [Mediaset Infinity](#mediaset-infinity) | VOD + live ads, pause + welcome ads · 🇮🇹 geo-locked | `8.1.20` · [`8.1.13`](https://apkpure.com/mediaset-infinity-tv/it.mediaset.infinitytv/download) | 11/19/26 |
 | 🟡 [Xumo Play](#xumo-play) | Client-inserted ads (VOD + live) · not yet device-verified | `4.9.147` | 10/29/26 |
 | 🟡 [discovery+](#discovery-plus) | Stitched ad breaks skipped, ad-free stream if offered, overlay ads · not yet device-verified | `22.1.0.71` ⚠️ experimental | 11/20/26 |
+| 🟡 [Joyn](#joyn) | Pre/mid-roll ads (Joyn's Ad SDK turned off) · 🇩🇪 geo-locked · not yet device-verified | [`6.5.2-ATV-605282491`](https://www.apkmirror.com/apk/sevenone-entertainment-group-gmbh/joyn-deine-streaming-app-android-tv/joyn-deine-streaming-app-android-tv-6-5-2-atv-605282491-release/) ⚠️ experimental | 11/20/26 |
 | 🟢 [Fawesome](#fawesome) | Pre/mid-roll, banner + pause ads · update prompt | `19.7` | 10/26/26 |
 | 🟢 [F1 TV](#f1-tv) | No ads involved: unlocks 4K (UHD) · needs F1 TV Premium | `3.0.49.4-SP166.4.1-release-R54.2-tv` | 10/16/26 |
 | 🟡 [YouTube (Android TV)](#youtube) | Video ads + sponsored feed items · needs MicroG RE | [`7.31.300`](https://www.apkmirror.com/apk/google-inc/youtube-for-android-tv/youtube-for-android-tv-7-31-300-release/) ⚠️ experimental · `7.05.301` static only | 11/16/26 |
@@ -258,6 +259,17 @@ Read more: [system design teardown](docs/PLUTO_TV_ATV_SYSTEM_DESIGN.md)
 - **Disable Ads:** blocks overlay and pause-ad requests and live pre-roll entries.
 - **Limits:** when no ad-free stream is offered, the first ad of a pre-roll may still play for a few seconds before the skip.
 - **Status:** the patched app installs and starts cleanly on an onn 4K Plus, but playback hasn't been tested: the TV app needs a subscription (no free tier in the US or Italy). If you have an account, please report results in an issue.
+
+</details>
+
+<a id="joyn"></a>
+<details>
+<summary><b>📺 Joyn</b> · client-side ads (Joyn's own Ad SDK) · not yet verified on a device</summary>
+
+- **Version:** `6.5.2-ATV-605282491` (experimental). Use the Android TV build. The phone app shares the package name but is a different build.
+- **Skip ads:** switches off the app's own "ads enabled" setting, so the player starts without Joyn's Ad SDK and plays the title with no pre-roll or mid-roll breaks. This is the same switch [hxreborn's phone patch](https://github.com/hxreborn/morphe-patches) uses, found again in the TV build, where that patch fails ([#328](https://github.com/ajstrick81/morphe-androidtv-patches/issues/328)).
+- **Region:** Joyn only plays in Germany, Austria and Switzerland. The patch doesn't change that.
+- **Status:** the patched app installs and opens on an onn 4K Plus, but playback hasn't been tested: it needs a Joyn account and a German IP, and we had neither. If you can test it, please report results in an issue.
 
 </details>
 

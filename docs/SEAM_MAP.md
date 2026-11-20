@@ -15,7 +15,7 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 |---|---|---|---|
 | **Google IMA / DAI client SDK** | paramount, mlbtv, tubi, foxone, rte, vix | The app's player asks Google's IMA SDK (client-side) or DAI (server-stitched pods) for ad breaks. The ad schedule surfaces in Java/Kotlin as cue points, ad-break lists or an AdsManager. | Empty the cue-point / ad-break accessor; neuter AdsManager.start; null the SSAI AdsLoader getter; redirect live pods to a slate. Seams found in one IMA app usually port to the next (Fox One = Tubi-class). |
 | **Server-side stitching (SSAI) via manifest** | hbomax, pluto, espn, peacock, discoveryplus | The CDN stitches ads into the stream itself. The only client-visible trace is the manifest (ad periods, DateRanges, ID3/beacon tags) and the host names that serve it. | Force a clean manifest (origin block, CDN fallback, ad-free URL swap); strip ad periods; or, for live passthrough SSAI, detect the break and MASK it (slate + mute). |
-| **Proprietary native / JS ad engine** | primevideo, netflix, disney, twitchatv, mediaset | The ad decision lives in the app's own runtime — a native library, a JS VM inside a .so, or a WebView — not in a standard SDK. | Find where the ad schedule crosses into the player (a response buffer, a JS function, an insertion-point accessor) and empty it there; native seams need re-pointing per version. |
+| **Proprietary native / JS ad engine** | primevideo, netflix, disney, twitchatv, mediaset, joyn | The ad decision lives in the app's own runtime — a native library, a JS VM inside a .so, or a WebView — not in a standard SDK. | Find where the ad schedule crosses into the player (a response buffer, a JS function, an insertion-point accessor) and empty it there; native seams need re-pointing per version. |
 
 ## Coverage
 
@@ -28,6 +28,7 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 | [foxone](#foxone) | Google IMA / DAI client SDK | 1.9.2 | 1 | 8 | **no** | **no** |
 | [future](#future) | ? | 19.7, 20.1 | 2 | 5 | **no** | **no** |
 | [hbomax](#hbomax) | Server-side stitching (SSAI) via manifest | 7.14.0.69, 7.9.0.61, 7.7.0.78, 7.5.0.73, 7.2.0.41 | 5 | 12 | yes (23 lines) | **no** |
+| [joyn](#joyn) | Proprietary native / JS ad engine | 6.5.2-ATV-605282491 | 1 | 1 | **no** | **no** |
 | [mediaset](#mediaset) | Proprietary native / JS ad engine | 8.1.20, 8.1.13 | 1 | 1 | yes (2 lines) | **no** |
 | [mlbtv](#mlbtv) | Google IMA / DAI client SDK | 26.8.1.1 | 1 | 9 | yes (7 lines) | **no** |
 | [netflix](#netflix) | Proprietary native / JS ad engine | 13.0.1 build 25028, 13.2.1 build 27207, 13.2.2 build 27250 | 7 | 2 | **no** | **no** |
@@ -283,6 +284,31 @@ Runtime evidence (tags `HboManifestFilter`, `HboStreamSelector`, `HboSpeed`; fir
 - W `read failed: ` — HboManifestFilter.java:317
 - W `filter failed, passing manifest through: ` — HboManifestFilter.java:325
 - I `manifest ` — HboManifestFilter.java:337
+
+</details>
+
+## joyn
+
+**Package** `de.prosiebensat1digital.seventv` · **Targets** `6.5.2-ATV-605282491` · **Engine** Proprietary native / JS ad engine
+
+| Layer | |
+|---|---|
+| Runtime | Native Kotlin app (R8-obfuscated). Ads come from ProSiebenSat.1's own "Ads Wrapper" Ad SDK: a JS bundle in assets driven over a JS bridge (`AdSdkSender`/`AdSdkReceiver`). No Google IMA. |
+| Delivery | Client-side: the Ad SDK instance is attached to the player when the player is built and drives the pre/mid-roll ad pods. The app has its own ad-free branch that logs "Ads are disabled; skipping Ad SDK setup on the player". |
+| Code seam | The player setup method (6.5.2-ATV: `Lv30/e;->c()`) reads an "ads enabled" Boolean and either attaches the Ad SDK or takes the ads-disabled branch. Anchored by reference: the class holding the ads-disabled log string (R8-merged log lambda, 6.5.2: `Lr30/y;`), then the method that constructs it and calls `Boolean.booleanValue()`, then the last booleanValue + move-result before the first lambda construction. |
+| Patch action | Replace that move-result with `const/4 vX, 0x0`, so the player always takes the app's own ads-disabled branch and the Ad SDK is never attached. Same seam as hxreborn's phone "Hide ads" patch. |
+| Patch evidence | _unknown_ |
+| Device signature | _unknown_ |
+| Drift history | 6.5.2-ATV-605282491 is the first target. hxreborn's phone patch fails on this TV build (#328): R8 merged the three log lambdas into one top-level switch class (no `$` suffix) and inlined the player factory into its caller. |
+
+**Gaps:** Not device-verified: playback needs a Joyn account, and NordVPN on the test TV could not get a German IP. The patched app installs and reaches the home screen on an onn 4K Plus. · Expected device signature (unconfirmed): the app's own log line "Ads are disabled; skipping Ad SDK setup on the player" at playback start. · Unknown whether live channels carry server-stitched ads that the Ad SDK only tracks.
+
+<details><summary>Patches and fingerprints (generated)</summary>
+
+| Patch | Fingerprint | Class / method | Returns | Strings | Action |
+|---|---|---|---|---|---|
+| Skip ads | `AdsDisabledLogFingerprint` | `(custom matcher)`.— | — | `Ads are disabled; skipping Ad SDK setup on the player` | instructions |
+| Skip ads | `adSdkSetupFingerprint` | — | — |  | passed to helper/list |
 
 </details>
 
