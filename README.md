@@ -35,6 +35,7 @@
 | 🟢 [RaiPlay](#raiplay) | VOD ads · live-channel 404 fix | `5.0.1` · `5.0.0` | 9/27/26 |
 | 🟢 [Mediaset Infinity](#mediaset-infinity) | VOD + live ads, pause + welcome ads · 🇮🇹 geo-locked | `8.1.20` · [`8.1.13`](https://apkpure.com/mediaset-infinity-tv/it.mediaset.infinitytv/download) | 11/19/26 |
 | 🟡 [Xumo Play](#xumo-play) | Client-inserted ads (VOD + live) · not yet device-verified | `4.9.147` | 10/29/26 |
+| 🟡 [discovery+](#discovery-plus) | Stitched ad breaks skipped, ad-free stream if offered, overlay ads · not yet device-verified | `22.1.0.71` ⚠️ experimental | 11/20/26 |
 | 🟢 [Fawesome](#fawesome) | Pre/mid-roll, banner + pause ads · update prompt | `19.7` | 10/26/26 |
 | 🟢 [F1 TV](#f1-tv) | No ads involved: unlocks 4K (UHD) · needs F1 TV Premium | `3.0.49.4-SP166.4.1-release-R54.2-tv` | 10/16/26 |
 | 🟡 [YouTube (Android TV)](#youtube) | Video ads + sponsored feed items · needs MicroG RE | [`7.31.300`](https://www.apkmirror.com/apk/google-inc/youtube-for-android-tv/youtube-for-android-tv-7-31-300-release/) ⚠️ experimental · `7.05.301` static only | 11/16/26 |
@@ -244,6 +245,19 @@ Read more: [system design teardown](docs/PLUTO_TV_ATV_SYSTEM_DESIGN.md)
 - **Skip ads:** removes Xumo's client-inserted ads in both the VOD and Live TV players, so content continues where an ad would play.
 - **Limits:** ads that are server-stitched into the stream (FreeWheel SSAI) can't be removed client-side and may remain. Xumo is moving toward SSAI, so coverage can vary by title and region.
 - **Status:** not yet device-verified on `4.9.147`. Please report results in an issue.
+
+</details>
+
+<a id="discovery-plus"></a>
+<details>
+<summary><b>🔎 discovery+</b> · server-stitched ads · not yet verified on a device</summary>
+
+- **Version:** `22.1.0.71` (experimental). discovery+ runs on the same Warner Bros. Discovery player as HBO Max, so these patches reuse the HBO Max approach.
+- **Prefer Ad-Free Stream:** plays the title's FALLBACK stream instead of the ad-stitched one when the app offers it (on HBO Max that stream has no ads). Titles without one are left alone.
+- **Skip Ad Breaks:** treats every ad break as already watched, so the player jumps over mid-rolls and lets you seek past breaks.
+- **Disable Ads:** blocks overlay and pause-ad requests and live pre-roll entries.
+- **Limits:** when no ad-free stream is offered, the first ad of a pre-roll may still play for a few seconds before the skip.
+- **Status:** the patched app installs and starts cleanly on an onn 4K Plus, but playback hasn't been tested: the TV app needs a subscription (no free tier in the US or Italy). If you have an account, please report results in an issue.
 
 </details>
 
