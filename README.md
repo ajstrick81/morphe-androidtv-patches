@@ -39,6 +39,7 @@
 | 🟡 [Joyn](#joyn) | Pre/mid-roll ads (Joyn's Ad SDK turned off) · 🇩🇪 geo-locked · not yet device-verified | [`6.5.2-ATV-605282491`](https://www.apkmirror.com/apk/sevenone-entertainment-group-gmbh/joyn-deine-streaming-app-android-tv/joyn-deine-streaming-app-android-tv-6-5-2-atv-605282491-release/) ⚠️ experimental | 11/20/26 |
 | 🟢 [Fawesome](#fawesome) | Pre/mid-roll, banner + pause ads · update prompt | `19.7` | 10/26/26 |
 | 🟢 [F1 TV](#f1-tv) | No ads involved: unlocks 4K (UHD) · needs F1 TV Premium | `3.0.49.4-SP166.4.1-release-R54.2-tv` | 10/16/26 |
+| 🟡 [BBC iPlayer](#bbc-iplayer) | TV app compatibility and playback | `0.4.7-dev` (47), legacy Android TV APK | 11/21/26 |
 | 🟡 [YouTube (Android TV)](#youtube) | Video ads + sponsored feed items · needs MicroG RE | [`7.31.300`](https://www.apkmirror.com/apk/google-inc/youtube-for-android-tv/youtube-for-android-tv-7-31-300-release/) ⚠️ experimental · `7.05.301` static only | 11/16/26 |
 
 <sub>🟢 Working &nbsp;·&nbsp; 🟡 Partial / testing &nbsp;·&nbsp; 🔴 Under development / broken &nbsp;·&nbsp; Version links go to the exact Android TV release on APKMirror.</sub>
@@ -280,6 +281,27 @@ Read more: [system design teardown](docs/PLUTO_TV_ATV_SYSTEM_DESIGN.md)
 - **Version:** `19.7`. The ad patch does not work on `20.1`.
 - **Skip ads:** removes the pre-roll and mid-roll video ads, the in-player banner and the pause-screen ad. Ads are requested client-side, so this is a full removal.
 - **Disable update prompt** (on by default): stops the "New version Available" dialog on every launch. This one also works on `20.1`.
+
+</details>
+
+<a id="bbc-iplayer"></a>
+<details>
+<summary><b>BBC iPlayer</b> · legacy Android TV compatibility and playback</summary>
+
+- **Version** `0.4.7-dev` (47), package `bbc.iplayer.android`, legacy Android TV APK. The phone app shares the package name and uses a different build. The tested APK has SHA-256 `4e511908dd874ed32cf4978f60785a42d7e8ca7b3f9ace3604649abc7e87387d`. Bring your own APK and select it as a local file in Morphe.
+- **Change the TV model iPlayer sees** changes the device profile sent by the app's WebView to resolve the unsupported-device message after installation. The Android device name and firmware are unaffected.
+- **TV model** defaults to the recommended `P1` preset. To try another code, tap the field and type it in.
+- **Fix iPlayer playback** fixes the loading spinner by letting the WebView handle video directly. Enable both patches for playback.
+- **UK use only.** These patches are for UK residents using BBC iPlayer in the UK. They do not bypass geographic checks or DRM. BBC sign-in and the normal iPlayer requirements still apply. This is an unofficial patch.
+
+**TV model codes**
+
+| Code | iPlayer profile | What was tested |
+| --- | --- | --- |
+| `P1` | Chromecast with Google TV (4K, 2020) | The default profile worked for playback on the Thomson Streaming Box Plus 270. |
+| `X2` | Chromecast with Google TV (HD, 2022) | iPlayer recognised the full profile in a diagnostic test. Playback using the manual code in this patch is unverified. |
+
+Manual entry changes the model code within the patch's browser identification. The [BBC's list of certified Google devices](https://www.bbc.co.uk/iplayer/help/questions/supported-devices/google) lists retail models. Google's [Android device catalogue](https://storage.googleapis.com/play_public/supported_devices.csv) lists Android model names.
 
 </details>
 
