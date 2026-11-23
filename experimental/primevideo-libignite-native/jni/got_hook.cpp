@@ -1,9 +1,20 @@
 // got_hook.cpp — see got_hook.h for the rationale.
 //
-// ELF32 / ARM. Locates a library by name via dl_iterate_phdr, walks its
-// PT_DYNAMIC to find the symbol/string tables and the PLT relocation table
-// (.rel.plt), matches a JUMP_SLOT reloc by symbol name, then rewrites that GOT
-// slot to point at our proxy.
+// Locates a library by name via dl_iterate_phdr, walks its PT_DYNAMIC to find
+// the symbol/string tables and the PLT relocation table, matches a JUMP_SLOT
+// reloc by symbol name, then rewrites that GOT slot to point at our proxy.
+//
+// Supports both ABIs Prime Video ships, which differ in how PLT relocs are
+// encoded — everything else about the walk is identical:
+//
+//   armeabi-v7a  ELF32  .rel.plt   Elf32_Rel   DT_REL   R_ARM_JUMP_SLOT     22
+//   arm64-v8a    ELF64  .rela.plt  Elf64_Rela  DT_RELA  R_AARCH64_JUMP_SLOT 1026
+//
+// ElfW() already picks the right width per build, so the only real dispatch is
+// the reloc record type (Rel vs Rela), the DT_PLTREL value to expect, and the
+// JUMP_SLOT type number. Note DT_RELR / Android packed relocations do not
+// affect this: packing applies to .rel(a).dyn, never to the PLT table reached
+// through DT_JMPREL.
 
 #include "got_hook.h"
 
@@ -23,8 +34,29 @@
 namespace pvgot {
 namespace {
 
-// R_ARM_JUMP_SLOT is the relocation type for PLT/GOT entries on ARM32.
-constexpr unsigned kRArmJumpSlot = 22;
+// Per-ABI PLT reloc encoding. Keep this the ONLY arch-conditional block here.
+#if defined(__aarch64__)
+using PltReloc = ElfW(Rela);                   // arm64: RELA, with addend
+constexpr unsigned kJumpSlot = 1026;           // R_AARCH64_JUMP_SLOT
+constexpr ElfW(Sword) kExpectedPltRel = DT_RELA;
+constexpr const char* kAbiName = "arm64-v8a";
+#elif defined(__arm__)
+using PltReloc = ElfW(Rel);                    // arm32: REL, no addend
+constexpr unsigned kJumpSlot = 22;             // R_ARM_JUMP_SLOT
+constexpr ElfW(Sword) kExpectedPltRel = DT_REL;
+constexpr const char* kAbiName = "armeabi-v7a";
+#else
+#error "got_hook: unsupported ABI — add its PLT reloc encoding above"
+#endif
+
+// ELF32_R_* / ELF64_R_* are width-specific; pick the pair matching ElfW().
+#if defined(__LP64__)
+#define PV_R_TYPE(x) ELF64_R_TYPE(x)
+#define PV_R_SYM(x)  ELF64_R_SYM(x)
+#else
+#define PV_R_TYPE(x) ELF32_R_TYPE(x)
+#define PV_R_SYM(x)  ELF32_R_SYM(x)
+#endif
 
 struct FindCtx {
     const char* lib_substr;
@@ -83,17 +115,19 @@ int iter_cb(struct dl_phdr_info* info, size_t /*size*/, void* data) {
              info->dlpi_name, (void*)symtab, (void*)strtab, (void*)jmprel, pltrelsz);
         return 1;
     }
-    if (pltrel != DT_REL) {
-        // ARM32 uses REL (no addend) for PLT relocs. Guard against surprises.
-        LOGE("got: %s PLT reloc type is not DT_REL (%ld)", info->dlpi_name, (long)pltrel);
+    if (pltrel != kExpectedPltRel) {
+        // Each ABI pins one encoding (see kExpectedPltRel). A mismatch means the
+        // table is not what PltReloc describes, so bail rather than misparse it.
+        LOGE("got: %s PLT reloc type %ld, expected %ld for %s",
+             info->dlpi_name, (long)pltrel, (long)kExpectedPltRel, kAbiName);
         return 1;
     }
 
-    const size_t count = pltrelsz / sizeof(ElfW(Rel));
-    const auto* rel = reinterpret_cast<const ElfW(Rel)*>(jmprel);
+    const size_t count = pltrelsz / sizeof(PltReloc);
+    const auto* rel = reinterpret_cast<const PltReloc*>(jmprel);
     for (size_t i = 0; i < count; i++) {
-        if (ELF32_R_TYPE(rel[i].r_info) != kRArmJumpSlot) continue;
-        uint32_t symidx = ELF32_R_SYM(rel[i].r_info);
+        if (PV_R_TYPE(rel[i].r_info) != kJumpSlot) continue;
+        const uintptr_t symidx = (uintptr_t)PV_R_SYM(rel[i].r_info);
         const char* name = strtab + symtab[symidx].st_name;
         if (strcmp(name, ctx->sym) != 0) continue;
         ctx->got_slot = reinterpret_cast<void**>(bias + rel[i].r_offset);

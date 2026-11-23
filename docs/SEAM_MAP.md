@@ -14,46 +14,86 @@ How each app delivers ads, where our patches cut in, and what proves it worked. 
 | Engine | Apps | How ads arrive | Seams that port within the family |
 |---|---|---|---|
 | **Google IMA / DAI client SDK** | paramount, mlbtv, tubi, foxone, rte, vix | The app's player asks Google's IMA SDK (client-side) or DAI (server-stitched pods) for ad breaks. The ad schedule surfaces in Java/Kotlin as cue points, ad-break lists or an AdsManager. | Empty the cue-point / ad-break accessor; neuter AdsManager.start; null the SSAI AdsLoader getter; redirect live pods to a slate. Seams found in one IMA app usually port to the next (Fox One = Tubi-class). |
-| **Server-side stitching (SSAI) via manifest** | hbomax, pluto, espn, peacock | The CDN stitches ads into the stream itself. The only client-visible trace is the manifest (ad periods, DateRanges, ID3/beacon tags) and the host names that serve it. | Force a clean manifest (origin block, CDN fallback, ad-free URL swap); strip ad periods; or, for live passthrough SSAI, detect the break and MASK it (slate + mute). |
-| **Proprietary native / JS ad engine** | primevideo, netflix, disney, twitchatv | The ad decision lives in the app's own runtime — a native library, a JS VM inside a .so, or a WebView — not in a standard SDK. | Find where the ad schedule crosses into the player (a response buffer, a JS function, an insertion-point accessor) and empty it there; native seams need re-pointing per version. |
+| **Server-side stitching (SSAI) via manifest** | hbomax, pluto, espn, peacock, discoveryplus | The CDN stitches ads into the stream itself. The only client-visible trace is the manifest (ad periods, DateRanges, ID3/beacon tags) and the host names that serve it. | Force a clean manifest (origin block, CDN fallback, ad-free URL swap); strip ad periods; or, for live passthrough SSAI, detect the break and MASK it (slate + mute). |
+| **Proprietary native / JS ad engine** | primevideo, netflix, disney, twitchatv, mediaset, joyn | The ad decision lives in the app's own runtime — a native library, a JS VM inside a .so, or a WebView — not in a standard SDK. | Find where the ad schedule crosses into the player (a response buffer, a JS function, an insertion-point accessor) and empty it there; native seams need re-pointing per version. |
 
 ## Coverage
 
 | App | Engine | Targets | Patches | Fingerprints | Patch evidence logged | Device signature known |
 |---|---|---|---:|---:|---|---|
-| [disney](#disney) | Proprietary native / JS ad engine | 26.6.0+rc5-2026.04.21, 26.8.0+rc6-2026.05.20, 26.9.2+rc1-2026.06.12, 26.12.1+rc1-2026.07.15, 26.16.0+rc2-2026.09.08 | 2 | 6 | **no** | **no** |
+| [discoveryplus](#discoveryplus) | Server-side stitching (SSAI) via manifest | 22.1.0.71 | 4 | 6 | yes (3 lines) | yes |
+| [disney](#disney) | Proprietary native / JS ad engine | 26.20.0+rc3-2026.11.02, 26.16.0+rc2-2026.09.08, 26.12.1+rc1-2026.07.15 | 2 | 6 | **no** | yes |
 | [espn](#espn) | Server-side stitching (SSAI) via manifest | 6.11.1 | 4 | 7 | yes (50 lines) | **no** |
 | [f1tv](#f1tv) | ? | 3.0.49.4-SP166.4.1-release-R54.2-tv | 1 | 5 | **no** | **no** |
 | [foxone](#foxone) | Google IMA / DAI client SDK | 1.9.2 | 1 | 8 | **no** | **no** |
 | [future](#future) | ? | 19.7, 20.1 | 2 | 5 | **no** | **no** |
-| [hbomax](#hbomax) | Server-side stitching (SSAI) via manifest | 7.9.0.61, 7.7.0.78, 7.5.0.73, 7.2.0.41 | 3 | 8 | yes (2 lines) | **no** |
+| [hbomax](#hbomax) | Server-side stitching (SSAI) via manifest | 7.14.0.69, 7.9.0.61, 7.7.0.78, 7.5.0.73, 7.2.0.41 | 5 | 12 | yes (23 lines) | **no** |
+| [joyn](#joyn) | Proprietary native / JS ad engine | 6.5.2-ATV-605282491 | 1 | 1 | **no** | **no** |
+| [mediaset](#mediaset) | Proprietary native / JS ad engine | 8.1.20, 8.1.13 | 1 | 1 | yes (2 lines) | **no** |
 | [mlbtv](#mlbtv) | Google IMA / DAI client SDK | 26.8.1.1 | 1 | 9 | yes (7 lines) | **no** |
-| [netflix](#netflix) | Proprietary native / JS ad engine | 13.0.1 build 25028, 13.2.1 build 27207 | 6 | 2 | **no** | **no** |
-| [paramount](#paramount) | Google IMA / DAI client SDK | 16.19.0, 16.17.0, 16.12.0, 16.8.0 | 1 | 3 | **no** | **no** |
+| [netflix](#netflix) | Proprietary native / JS ad engine | 13.0.1 build 25028, 13.2.1 build 27207, 13.2.2 build 27250 | 7 | 2 | **no** | **no** |
+| [paramount](#paramount) | Google IMA / DAI client SDK | 17.3.0, 16.19.0, 16.17.0, 16.12.0, 16.8.0 | 1 | 3 | **no** | **no** |
 | [peacock](#peacock) | Server-side stitching (SSAI) via manifest | 7.8.100, 7.10.102 | 3 | 10 | yes (6 lines) | **no** |
-| [pluto](#pluto) | Server-side stitching (SSAI) via manifest | 5.66.0-leanback | 5 | 10 | yes (26 lines) | yes |
-| [primevideo](#primevideo) | Proprietary native / JS ad engine | 6.23.23+v15.5.0.70-armv7a | 7 | 5 | yes (37 lines) | yes |
+| [pluto](#pluto) | Server-side stitching (SSAI) via manifest | 5.66.0-leanback, 17.2.0 | 6 | 20 | yes (48 lines) | yes |
+| [primevideo](#primevideo) | Proprietary native / JS ad engine | 6.23.23+v15.5.0.70-armv7a, 6.24.7+v16.0.0.332-allAbis, 6.24.13+v16.0.1.93-allAbis | 7 | 5 | yes (64 lines) | yes |
 | [raiplay](#raiplay) | ? | 5.0.1, 5.0.0 | 3 | 3 | **no** | **no** |
 | [rte](#rte) | Google IMA / DAI client SDK | 3.160.3 | 1 | 3 | **no** | **no** |
 | [tubi](#tubi) | Google IMA / DAI client SDK | 10.40.5000 | 2 | 13 | yes (2 lines) | **no** |
-| [twitchatv](#twitchatv) | Proprietary native / JS ad engine | 13.0.0.2 | 1 | 1 | yes (5 lines) | **no** |
-| [vix](#vix) | Google IMA / DAI client SDK | 4.46.0_tv, 4.47.2_tv, 4.50.1_tv, 4.51.0_tv | 2 | 2 | **no** | **no** |
+| [twitchatv](#twitchatv) | Proprietary native / JS ad engine | 13.0.0.2 | 2 | 2 | yes (22 lines) | **no** |
+| [vix](#vix) | Google IMA / DAI client SDK | 4.46.0_tv, 4.47.2_tv, 4.50.1_tv, 4.51.0_tv, 4.52.0_tv | 3 | 3 | yes (1 lines) | **no** |
+| [xumo](#xumo) | ? | 4.9.147 | 1 | 2 | **no** | **no** |
+| [youtubetv](#youtubetv) | ? | 7.31.300, 7.05.301 | 4 | 7 | yes (4 lines) | **no** |
+
+## discoveryplus
+
+**Package** `com.discovery.dplay` · **Targets** `22.1.0.71` · **Engine** Server-side stitching (SSAI) via manifest
+
+| Layer | |
+|---|---|
+| Runtime | WBD Bolt/Beam player shared with HBO Max (`com.discovery.player.*`, `com.wbd.beam.player.*`, `com.wbd.adtech.bolt.*`); UI is You.i Engine (`CYI*` native logs). |
+| Delivery | SSAI: ads stitched server-side into the DASH stream; ad-break timeline built from the GMSS/AdSparx payload. Nonlinear (overlay/pause) ads fetched by BoltDynamicAdFetcher. |
+| Code seam | `PlayableKt.getStreamInfo` (PRIMARY → FALLBACK remap), `TimelineStateKt.isAdBreakAlreadyWatched` (Beam GMSS seek mediator watched-state check), Bolt nonlinear request/fetch, live preroll entry builder. Free-tier gate: `IapManager.onStoreMarketplaceRetrievalCompleted` (Play storefront country → native PlatformIAPBroker → server-side welcome CTAs). |
+| Patch action | Prefer the ad-free FALLBACK stream (verified present on the Italian free tier); otherwise mark every ad break watched so GmssSeekMediator.onRangeEnded skips it. Opt-in Store Country Override reports IT so the "Naviga gratis" free tier is offered. |
+| Patch evidence | `I/DplayStreamSelector: remapping PRIMARY -> FALLBACK stream` on every stream lookup; `W/PlatformIAPBroker: Country code available: IT` with Store Country Override. |
+| Device signature | Clean start: `c2.amlogic.avc.decoder.secure` from the first frame, BUFFERING → PLAYING at position 0 within ~1 s (onn 4K Plus, 2026-11-20). |
+| Drift history | 22.1.0.71 is the first target. SsaiInfoTimelineBuilder is deliberately NOT suppressed (without a manifest filter the stitched ads would play as content). The welcome-screen options depend on the Google Play storefront country, not the IP: a US Play account or a re-signed app hides "Naviga gratis" even on an Italian IP (#334). |
+
+**Gaps:** Mid-roll breaks not reached in device testing (three ~30 s plays). · Non-DRM titles not tested. · Store Country Override effect on subscribers outside Italy unknown (kept opt-in).
+
+<details><summary>Patches and fingerprints (generated)</summary>
+
+| Patch | Fingerprint | Class / method | Returns | Strings | Action |
+|---|---|---|---|---|---|
+| discovery+ - Prefer Ad-Free Stream | `DplayGetStreamInfoFingerprint` | `(custom matcher)`.— | — |  | addInstructions |
+| discovery+ - Skip Ad Breaks | `DplayIsAdBreakAlreadyWatchedFingerprint` | `(custom matcher)`.— | `Z` |  | addInstructions `                 const/4 p0, 0x1                 return p0             ` |
+| discovery+ - Disable Ads | `DplayBoltNonLinearAdsRequestWriteSelfFingerprint` | `(custom matcher)`.— | — |  | addInstructions `return-void` |
+| discovery+ - Disable Ads | `DplayBoltDynamicAdFetcherInvokeSuspendFingerprint` | `(custom matcher)`.— | — |  | apply |
+| discovery+ - Disable Ads | `DplayGenerateLiveTimelineEntriesForAdBreakFingerprint` | `(custom matcher)`.— | — |  | addInstructions |
+| discovery+ - Store Country Override _(opt-in)_ | `DplayStoreMarketplaceFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `Store country set by Morphe patch` |
+
+Runtime evidence (tags `DplayStreamSelector`; first 12 of 3):
+
+- I `remapping PRIMARY -> FALLBACK stream` — DplayStreamSelector.java:44
+- I `no FALLBACK stream (` — DplayStreamSelector.java:48
+- W `preferFallbackType failed; using requested type` — DplayStreamSelector.java:50
+
+</details>
 
 ## disney
 
-**Package** `com.disney.disneyplus` · **Targets** `26.6.0+rc5-2026.04.21`, `26.8.0+rc6-2026.05.20`, `26.9.2+rc1-2026.06.12`, `26.12.1+rc1-2026.07.15`, `26.16.0+rc2-2026.09.08` · **Engine** Proprietary native / JS ad engine
+**Package** `com.disney.disneyplus` · **Targets** `26.20.0+rc3-2026.11.02`, `26.16.0+rc2-2026.09.08`, `26.12.1+rc1-2026.07.15` · **Engine** Proprietary native / JS ad engine
 
 | Layer | |
 |---|---|
 | Runtime | Disney media player (legacy DSS SDK and new com.disney.dmp). |
-| Delivery | SGAI (server-guided ad insertion): the player receives insertion points / ranges that say where ads go. |
-| Code seam | Insertion accessors `getPoints()` / `getRanges()` (legacy + DMP variants). |
-| Patch action | Return empty insertion points/ranges → no breaks scheduled. 26.16: obfuscated MEL pause layer → pause ad made optional. |
+| Delivery | VOD: SGAI/SSAI insertion points + ranges via `com.disney.dmp.internal.pbo.Insertion` (and the legacy DSS-SDK `Insertion`). LIVE is a SEPARATE channel: breaks arrive as HLS `#EXT-X-DATERANGE` interstitial tags (`CLASS=com.disney.media.break.v1` or `com.apple.hls.interstitial`) carrying START-DATE / END-DATE / PLANNED-DURATION / X-ASSET-LIST / X-COM-DISNEY-PAYLOAD, delivered to the player as `playlistRetrieved(DateTime, List<DateRange>)`. Live never travels through `Insertion`. |
+| Code seam | VOD: `Insertion` accessors `getPoints()` / `getRanges()` (legacy + DMP variants). LIVE: `playlistRetrieved(DateTime, List<DateRange>)` — R8-minified to `Lssc;->g(Lorg/joda/time/DateTime;Ljava/util/List;)V` on 26.20 (interface `Lnmh;`, logging decorator `Ljcl;->g`); parsed entirely in Java, so bytecode-reachable. Not patched: see docs/DISNEY_LIVE_AD_DELIVERY.md. |
+| Patch action | VOD: return empty insertion points/ranges -> no breaks scheduled. 26.16: obfuscated MEL pause layer -> pause ad made optional. LIVE: nothing shipped. Two gates (`cub.p:Li08`, `cub.j:Z`) choose client-side `scheduleLiveInterstitials` (removable by filtering the DateRange list) vs passthrough (nothing scheduled -> mask only, as ESPN does). The measured ESPN-in-Disney+ stream takes the passthrough branch. |
 | Patch evidence | _unknown_ |
-| Device signature | _unknown_ |
-| Drift history | Verified through 26.12.1; 26.16 pause-ad needed an optional patch (#167). |
+| Device signature | LIVE passthrough: one continuous decoder session over ~25 min — 0 `C2VdecComponent`/`CCodec` lines, 0 decoder `onStopDone`, 1 `WVCdm` op, `PLAYING(3)` throughout, strictly monotonic position. VOD baseline over a comparable span: 1,744 codec lines, 12 stops, 421 `WVCdm` ops. The app emits none of its own `p97.w` logging in release, so logcat shows zero ad vocabulary either way. |
+| Drift history | Verified through 26.20.0+rc3-2026.11.02; 26.16 pause-ad needed an optional patch (#167). Live seam names `Lssc;`/`g` are R8 and drift every version — re-anchor on the in-method strings `com.disney.media.break.v1`, `X-COM-DISNEY-PAYLOAD`, `X-ASSET-LIST`. |
 
-**Gaps:** Re-anchor the 26.16 pause-ad seam. · No runtime log line. · Device signature not captured.
+**Gaps:** Re-anchor the 26.16+ pause-ad seam. · No runtime log line. · LIVE: no user-flagged commercial-break timestamp yet, so passthrough is consistent-with, not proven. · LIVE: pcap a break to see whether an X-ASSET-LIST URI is fetched (decides client-side vs passthrough). · LIVE: resolve what sets the gates cub.p / cub.j.
 
 <details><summary>Patches and fingerprints (generated)</summary>
 
@@ -192,14 +232,14 @@ Runtime evidence (tags `MORPHE-ESPN-SLATE`; first 12 of 50):
 | Skip ads | `PlayAdFingerprint` | `(custom matcher)`.— | `V` |  | addInstructionsWithLabels |
 | Skip ads | `ShowBannerVastAdShowBannerAdFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `return-void` |
 | Skip ads | `PlaybarShowPauseBugAdFingerprint` | `(custom matcher)`.— | `V` |  | apply `pauseBanneradbannerVastDto` |
-| Disable update prompt | `CheckCurrentAppVersionFingerprint` | `(custom matcher)`.— | `V` |  | apply `Lcom/future/util/Utilities;->updateAlert(` |
+| Disable update prompt | `CheckCurrentAppVersionFingerprint` | `(custom matcher)`.— | `V` |  | apply |
 | Disable update prompt | `SplashUpdateStateMethodFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `const/4 p1, 0x0` |
 
 </details>
 
 ## hbomax
 
-**Package** `com.wbd.hbomax` · **Targets** `7.9.0.61`, `7.7.0.78`, `7.5.0.73`, `7.2.0.41` · **Engine** Server-side stitching (SSAI) via manifest
+**Package** `com.wbd.hbomax` · **Targets** `7.14.0.69`, `7.9.0.61`, `7.7.0.78`, `7.5.0.73`, `7.2.0.41` · **Engine** Server-side stitching (SSAI) via manifest
 
 | Layer | |
 |---|---|
@@ -224,12 +264,81 @@ Runtime evidence (tags `MORPHE-ESPN-SLATE`; first 12 of 50):
 | HBO Max - Disable Ads | `GenerateLiveTimelineEntriesForAdBreakFingerprint` | `(custom matcher)`.— | — |  | addInstructions |
 | HBO Max - Disable Ads | `NowtilusEnabledFingerprint` | `(custom matcher)`.— | — |  | addInstructions `                 const/4 v0, 0x0                 return v0             ` |
 | HBO Max - Block SSAI Ad Origins _(opt-in)_ | `DefaultHttpDataSourceOpenFingerprint` | `(custom matcher)`.— | `J` |  | addInstructions |
+| HBO Max - Playback Speed _(opt-in)_ | `BeamApplicationOnCreateFingerprint` | `beam/BeamApplication`.`onCreate` | `V` |  | addInstructions `Could not find com.wbd.beam.BeamApplication.onCreate(). This patch ` |
+| HBO Max - Playback Speed _(opt-in)_ | `ExoPlayerConstructorFingerprint` | `(custom matcher)`.`<init>` | `V` |  | instructions `No androidx.media3 ExoPlayer implementation found — HBO has ` |
 | HBO Max - Prefer Ad-Free Stream | `GetStreamInfoFingerprint` | `(custom matcher)`.— | — |  | addInstructions |
+| HBO Max - Remove Ad Periods (keep 5.1) _(opt-in)_ | `GetStreamInfoFingerprint` | `(custom matcher)`.— | — |  | addInstructions |
+| HBO Max - Remove Ad Periods (keep 5.1) _(opt-in)_ | `ExoPlayerDashManifestParserParseFingerprint` | `(custom matcher)`.— | — |  | addInstructions |
+| HBO Max - Remove Ad Periods (keep 5.1) _(opt-in)_ | `CreateTimelineUseCaseInvokeFingerprint` | `(custom matcher)`.— | — |  | addInstructions |
 
-Runtime evidence (tags `HboStreamSelector`; first 12 of 2):
+Runtime evidence (tags `HboManifestFilter`, `HboStreamSelector`, `HboSpeed`; first 12 of 23):
 
-- I `remapping PRIMARY -> FALLBACK stream (ad-free manifest)` — HboStreamSelector.java:65
-- W `preferFallbackType failed; using requested type` — HboStreamSelector.java:70
+- W `fallback prefetch failed: ` — HboManifestFilter.java:100
+- I `decision for ` — HboManifestFilter.java:115
+- I `session ` — HboManifestFilter.java:186
+- I `playable has no fallback stream - nothing is filtered for it` — HboManifestFilter.java:192
+- W `captureStreams failed: ` — HboManifestFilter.java:194
+- I `timeline: no fallback bound to ` — HboManifestFilter.java:242
+- I `hook order: timeline hook runs ` — HboManifestFilter.java:248
+- I `timeline: using FALLBACK timeline (len=` — HboManifestFilter.java:284
+- W `timelineStreamInfo failed: ` — HboManifestFilter.java:288
+- W `read failed: ` — HboManifestFilter.java:317
+- W `filter failed, passing manifest through: ` — HboManifestFilter.java:325
+- I `manifest ` — HboManifestFilter.java:337
+
+</details>
+
+## joyn
+
+**Package** `de.prosiebensat1digital.seventv` · **Targets** `6.5.2-ATV-605282491` · **Engine** Proprietary native / JS ad engine
+
+| Layer | |
+|---|---|
+| Runtime | Native Kotlin app (R8-obfuscated). Ads come from ProSiebenSat.1's own "Ads Wrapper" Ad SDK: a JS bundle in assets driven over a JS bridge (`AdSdkSender`/`AdSdkReceiver`). No Google IMA. |
+| Delivery | Client-side: the Ad SDK instance is attached to the player when the player is built and drives the pre/mid-roll ad pods. The app has its own ad-free branch that logs "Ads are disabled; skipping Ad SDK setup on the player". |
+| Code seam | The player setup method (6.5.2-ATV: `Lv30/e;->c()`) reads an "ads enabled" Boolean and either attaches the Ad SDK or takes the ads-disabled branch. Anchored by reference: the class holding the ads-disabled log string (R8-merged log lambda, 6.5.2: `Lr30/y;`), then the method that constructs it and calls `Boolean.booleanValue()`, then the last booleanValue + move-result before the first lambda construction. |
+| Patch action | Replace that move-result with `const/4 vX, 0x0`, so the player always takes the app's own ads-disabled branch and the Ad SDK is never attached. Same seam as hxreborn's phone "Hide ads" patch. |
+| Patch evidence | _unknown_ |
+| Device signature | _unknown_ |
+| Drift history | 6.5.2-ATV-605282491 is the first target. hxreborn's phone patch fails on this TV build (#328): R8 merged the three log lambdas into one top-level switch class (no `$` suffix) and inlined the player factory into its caller. |
+
+**Gaps:** Not device-verified: playback needs a Joyn account, and NordVPN on the test TV could not get a German IP. The patched app installs and reaches the home screen on an onn 4K Plus. · Expected device signature (unconfirmed): the app's own log line "Ads are disabled; skipping Ad SDK setup on the player" at playback start. · Unknown whether live channels carry server-stitched ads that the Ad SDK only tracks.
+
+<details><summary>Patches and fingerprints (generated)</summary>
+
+| Patch | Fingerprint | Class / method | Returns | Strings | Action |
+|---|---|---|---|---|---|
+| Skip ads | `AdsDisabledLogFingerprint` | `(custom matcher)`.— | — | `Ads are disabled; skipping Ad SDK setup on the player` | instructions |
+| Skip ads | `adSdkSetupFingerprint` | — | — |  | passed to helper/list |
+
+</details>
+
+## mediaset
+
+**Package** `it.mediaset.infinitytv` · **Targets** `8.1.20`, `8.1.13` · **Engine** Proprietary native / JS ad engine
+
+| Layer | |
+|---|---|
+| Runtime | Thin native shell: WebView runs Mediaset's remote React TV app (static1.mediasetplay.mediaset.it/app/ctv-lng/androidtv/), media3 ExoPlayer driven over Media3JavascriptBridge. No ad SDK in Java. |
+| Delivery | Client-side: per play request the web app gets advData (engine FREEWHEEL or IMA) and calls FreeWheel (*.fwmrm.net) or a Google VMAP tag (pubads.g.doubleclick.net, optionally via SpringServe); pause/welcome display ads from gampad/adx. Ad media then goes to the native player. |
+| Code seam | Shell WebViewClient `shouldInterceptRequest` (BaseActivity$getClient$1) — every web-app request passes through it. |
+| Patch action | Answer ad-decision hosts (fwmrm.net, doubleclick.net, springserve.com, 2mdn.net) with an empty 204 + CORS, so no ad is ever chosen. |
+| Patch evidence | logcat tag MediasetAds: `blocked ad call: <host><path>`. |
+| Device signature | _unknown_ |
+| Drift history | Seam is the shell's own Java (unobfuscated); ad logic is remote JS and can change without an APK update. Fallback seam: remote config keys freewheel.skipAdsVod / freewheel.skipAdsLive. Field-verified on 8.1.13 and 8.1.20 (#217): VOD and live ad-free on a free account. |
+
+**Gaps:** Device signature not captured (field test in Italy had no logcat).
+
+<details><summary>Patches and fingerprints (generated)</summary>
+
+| Patch | Fingerprint | Class / method | Returns | Strings | Action |
+|---|---|---|---|---|---|
+| Skip ads | `ShouldInterceptRequestFingerprint` | `(custom matcher)`.`shouldInterceptRequest` | `Landroid/webkit/WebResourceResponse;` |  | apply |
+
+Runtime evidence (tags `MediasetAds`; first 12 of 2):
+
+- I `blocked ad call: ` — MediasetAdBlocker.java:55
+- E `intercept failed; letting the request through` — MediasetAdBlocker.java:58
 
 </details>
 
@@ -277,7 +386,7 @@ Runtime evidence (tags `MORPHE-MLB-ADBREAK`, `MORPHE-MLB-MANIFEST`; first 12 of 
 
 ## netflix
 
-**Package** `com.netflix.ninja` · **Targets** `13.0.1 build 25028`, `13.2.1 build 27207` · **Engine** Proprietary native / JS ad engine
+**Package** `com.netflix.ninja` · **Targets** `13.0.1 build 25028`, `13.2.1 build 27207`, `13.2.2 build 27250` · **Engine** Proprietary native / JS ad engine
 
 | Layer | |
 |---|---|
@@ -300,13 +409,14 @@ Runtime evidence (tags `MORPHE-MLB-ADBREAK`, `MORPHE-MLB-MANIFEST`; first 12 of 
 | Minimize Network Fingerprint _(opt-in)_ | — | — | — |  |  |
 | Disable Netflix CertCheck | `DexGuardCertCheckFingerprint` | `(custom matcher)`.— | `V` | `CertCheck failed, crash!!!` | addInstructions `return-void` |
 | Remove Netflix ads (bundle engine) | — | — | — |  |  |
+| Remove Netflix ads (legacy engine) _(opt-in)_ | — | — | — |  |  |
 | Remove Netflix ads (loader) | `NetflixApplicationOnCreateFingerprint` | `ninja/NetflixApplication`.`onCreate` | `V` |  | addInstructions `                 const-string v0, ` |
 
 </details>
 
 ## paramount
 
-**Package** `com.cbs.ott` · **Targets** `16.19.0`, `16.17.0`, `16.12.0`, `16.8.0` · **Engine** Google IMA / DAI client SDK
+**Package** `com.cbs.ott` · **Targets** `17.3.0`, `16.19.0`, `16.17.0`, `16.12.0`, `16.8.0` · **Engine** Google IMA / DAI client SDK
 
 | Layer | |
 |---|---|
@@ -316,7 +426,7 @@ Runtime evidence (tags `MORPHE-MLB-ADBREAK`, `MORPHE-MLB-MANIFEST`; first 12 of 
 | Patch action | VOD: shouldPlayAd → false. Live: pure slate-redirect (accepted ceiling — in-interceptor PTS alignment crashed weak hardware). |
 | Patch evidence | _unknown_ |
 | Device signature | _unknown_ |
-| Drift history | 16.17 ANR fixed in v1.19.0; fingerprints hardened for 16.19. |
+| Drift history | 16.17 ANR fixed in v1.19.0; fingerprints hardened for 16.19. 17.3.0 (experimental): all three seams unchanged; VOD device-verified 2026-11-12, pause/mid-roll/live not yet re-verified. |
 
 **Gaps:** Device signature not captured.
 
@@ -378,7 +488,7 @@ Runtime evidence (tags `MORPHE-PCK-WV`; first 12 of 6):
 
 ## pluto
 
-**Package** `tv.pluto.android` · **Targets** `5.66.0-leanback` · **Engine** Server-side stitching (SSAI) via manifest
+**Package** `tv.pluto.android` · **Targets** `5.66.0-leanback`, `17.2.0` · **Engine** Server-side stitching (SSAI) via manifest
 
 | Layer | |
 |---|---|
@@ -394,7 +504,7 @@ Runtime evidence (tags `MORPHE-PCK-WV`; first 12 of 6):
 
 | Patch | Fingerprint | Class / method | Returns | Strings | Action |
 |---|---|---|---|---|---|
-| Mask live ad breaks (black screen + mute) | `Id3ConsumeFingerprint` | `adsbeacontracker/ID3AdsBeaconTracker`.`consumeID3` | `V` |  | addInstructions `invoke-static { p1 }, Lajstrick81/morphe/extension/pluto/ads/PlutoLiveSlateHelper;` |
+| Mask live ad breaks (black screen + mute) | `Id3ConsumeFingerprint` | `adsbeacontracker/ID3AdsBeaconTracker`.`consumeID3` | `V` |  |  |
 | Mask live ad breaks (black screen + mute) | `LeanbackHostOnCreateFingerprint` | `main/LeanbackMainHostActivity`.`onCreate` | `V` |  | addInstructions `invoke-static { p0 }, Lajstrick81/morphe/extension/pluto/ads/PlutoLiveSlateHelper;` |
 | Mask live ad breaks (black screen + mute) | `LeanbackHostOnDestroyFingerprint` | `main/LeanbackMainHostActivity`.`onDestroy` | `V` |  | addInstructions `invoke-static { p0 }, Lajstrick81/morphe/extension/pluto/ads/PlutoLiveSlateHelper;` |
 | Mask live ad breaks (black screen + mute) | `AviaControllerInitFingerprint` | `avia/AviaPlaybackController`.`<init>` | `V` |  | addInstructions `invoke-static { p1 }, Lajstrick81/morphe/extension/pluto/ads/PlutoLiveSlateHelper;` |
@@ -404,19 +514,26 @@ Runtime evidence (tags `MORPHE-PCK-WV`; first 12 of 6):
 | Skip ads | `StitcherSessionGetAdBreaksFingerprint` | `data/StitcherSession`.`getAdBreaks` | `Ljava/util/List;` |  | addInstructions |
 | Skip ads | `DashManifestParserParseFingerprint` | `manifest/DashManifestParser`.`parse` | `Landroidx/media3/exoplayer/dash/manifest/DashManifest;` |  | apply `skipAdsPatch Hook 5: no return-object in parse()` |
 | Skip ads | `AviaStartExoplayerFingerprint` | `core/AviaPlayer`.`startExoplayer` | `V` |  | apply |
+| Skip ads (v17) | `AviaDaiShouldPlayAdFingerprint` | `(custom matcher)`.— | `Z` |  | addInstructions `                 const/4 v0, 0x0                 return v0             ` |
+| Skip ads (v17) | `AviaImaShouldPlayAdFingerprint` | `(custom matcher)`.— | `Z` |  | addInstructions `                 const/4 v0, 0x0                 return v0             ` |
+| Skip ads (v17) | `AviaDashParserParseFingerprint` | `(custom matcher)`.— | — |  | apply |
+| Skip ads (v17) | `Clid3ProcessAdPodStartFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions |
+| Skip ads (v17) | `ImaPauseAdDisplayFingerprint` | — | — |  | addInstructions `return-void` |
+| Skip ads (v17) | `CbsPauseOverlayRenderFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `return-void` |
+| Skip ads (v17) | `BeaconConsumeAdsFingerprint` | `(custom matcher)`.— | `V` | `Feature is disabled, can't consume the adsData` | addInstructions `return-void` |
 | Clone Pluto TV _(opt-in)_ | — | — | — |  |  |
 | Override certificate pinning _(opt-in)_ | — | — | — |  |  |
 | Disable auto-updates | — | — | — |  |  |
 
-Runtime evidence (tags `MORPHE-DASH-MF`, `MORPHE-PLUTO-SLATE`; first 12 of 26):
+Runtime evidence (tags `MORPHE-DASH-MF`, `MORPHE-PLUTO-SLATE`; first 12 of 48):
 
 - I `dynamic (live) manifest -> untouched, periods=` — PlutoDashManifestProbe.java:144
 - W `no content periods kept (of ` — PlutoDashManifestProbe.java:170
 - W `GUARD tripped: kept ` — PlutoDashManifestProbe.java:180
 - I `STRIPPED ` — PlutoDashManifestProbe.java:210
 - E `strip failed -> original manifest (playback unaffected): ` — PlutoDashManifestProbe.java:214
-- I `resume remap (#147): original=` — PlutoDashManifestProbe.java:275
-- E `resume remap failed -> original position (resume unaffected): ` — PlutoDashManifestProbe.java:279
+- I `resume remap (#147): original=` — PlutoDashManifestProbe.java:287
+- E `resume remap failed -> original position (resume unaffected): ` — PlutoDashManifestProbe.java:291
 - D `setAviaPlayer(…)` — PlutoLiveSlateHelper.kt:97
 - D `registerActivity(…)` — PlutoLiveSlateHelper.kt:108
 - D `live ad break -> mask ON (mode=…)` — PlutoLiveSlateHelper.kt:171
@@ -427,17 +544,17 @@ Runtime evidence (tags `MORPHE-DASH-MF`, `MORPHE-PLUTO-SLATE`; first 12 of 26):
 
 ## primevideo
 
-**Package** `com.amazon.amazonvideo.livingroom` · **Targets** `6.23.23+v15.5.0.70-armv7a` · **Engine** Proprietary native / JS ad engine
+**Package** `com.amazon.amazonvideo.livingroom` · **Targets** `6.23.23+v15.5.0.70-armv7a`, `6.24.7+v16.0.0.332-allAbis`, `6.24.13+v16.0.1.93-allAbis` · **Engine** Proprietary native / JS ad engine
 
 | Layer | |
 |---|---|
-| Runtime | libignite = WAMR AoT WASM runtime; player/timeline in QuickJS. v16 (6.24.x) moved the whole ad pipeline native (Java ad surface gone); the Megablast Rust ad client is a DOWNLOADED .so.br blob, updatable server-side. |
+| Runtime | libignite = WAMR AoT WASM runtime; player/timeline in QuickJS. v16 (6.24.x) removed the Java ad surface but left libignite's memcpy/memmove import slots unchanged, so the native GOT strip is still reachable there; it had never loaded on v16 because the loader fingerprint pinned accessFlags=[PUBLIC] against a `public final` onCreate (fixed 2026-11-07, device verification still pending). The Megablast Rust ad client is a DOWNLOADED .so.br blob, updatable server-side. |
 | Delivery | Client-stitched: the app fetches an ad schedule (regolith / SGAI `getVideoAds` response, intraTitlePlaylist) and stitches ad pods into playback itself. |
 | Code seam | The regolith ad-playlist response inside libignite — intercepted by a native GOT/PLT hook (memcpy) and emptied; intraTitlePlaylist PATH1 skipped. |
 | Patch action | Empty the ad playlist before the player sees it → the break is never scheduled. |
 | Patch evidence | `[rego] emptied playlist (~N ad(s), interior X bytes blanked)` + `PVKILL path=tv ads=N` at the moment each pod is fetched (2026-09-24 live: 1 pre-roll, 4 + 3 mid-roll ads emptied). |
 | Device signature | When an ad DOES play (6.24.7 capture): decoder reconfigure (`Discard frames from previous generation`, `VideoResolutionChange`) + crop switch (title-specific, e.g. letterbox 960 → ad 1080) + ~27 `I/f Successfully uploaded metrics` in ~2 s from the app process. With the patch working: none of these at the marker, 0 metrics uploads. |
-| Drift history | v16 loader never fired because onCreate became `public final` vs an exact accessFlags match (fix: drop accessFlags). 6.24.7 = minor bump, seam re-pointed (declared target still in progress). High-ad-region mid-roll truncation (#120) fixed in v1.37.4. |
+| Drift history | v16 loader never fired because onCreate became `public final` vs an exact accessFlags match; the recorded fix (drop accessFlags) sat unapplied for weeks while docs blamed the v16 native move instead, so APPLY recorded drift fixes, don't just record them. Applied 2026-11-07; 6.24.7 and 6.24.13 declared as experimental targets, device verification pending. High-ad-region mid-roll truncation (#120) fixed in v1.37.4. |
 
 **Gaps:** Timeline-action native symbols unresolved (Native_StartTimelineAction not in NativeSymbol table).
 
@@ -456,7 +573,7 @@ Runtime evidence (tags `MORPHE-DASH-MF`, `MORPHE-PLUTO-SLATE`; first 12 of 26):
 | Bundle native ad-strip hook | — | — | — |  |  |
 | Load native ad-strip hook | `ApplicationOnCreateFingerprint` | `primevideo/PrimeVideoApplication`.`onCreate` | `V` |  | addInstructions |
 
-Runtime evidence (tags `SkipAdsPatch`, `PVNativeHook`; first 12 of 37):
+Runtime evidence (tags `SkipAdsPatch`, `PVNativeHook`; first 12 of 64):
 
 - I `skipAllMedia3AdGroups: entries=` — SkipAdsPatch.java:99
 - E `skipAllMedia3AdGroups failed` — SkipAdsPatch.java:103
@@ -467,9 +584,9 @@ Runtime evidence (tags `SkipAdsPatch`, `PVNativeHook`; first 12 of 37):
 - I `NativeHookLoader: loaded lib` — NativeHookLoader.java:43
 - E `NativeHookLoader: could not load lib` — NativeHookLoader.java:49
 - E `NativeHookLoader: unexpected failure loading lib` — NativeHookLoader.java:51
-- N `got: … has no PT_DYNAMIC` — got_hook.cpp:60
-- N `got: … missing dynamic entries (symtab=… strtab=… jmprel=… sz=…)` — got_hook.cpp:82
-- N `got: … PLT reloc type is not DT_REL (…)` — got_hook.cpp:88
+- N `got: … has no PT_DYNAMIC` — got_hook.cpp:92
+- N `got: … missing dynamic entries (symtab=… strtab=… jmprel=… sz=…)` — got_hook.cpp:114
+- N `got: … PLT reloc type …, expected … for …` — got_hook.cpp:121
 
 </details>
 
@@ -586,20 +703,29 @@ Runtime evidence (tags `MORPHE-TUBI-PRIVACY`; first 12 of 2):
 | Patch | Fingerprint | Class / method | Returns | Strings | Action |
 |---|---|---|---|---|---|
 | Block TV ads | `SetWebViewClientFingerprint` | `app/StarshotActivity`.— | — |  | apply `->setWebViewClient(` |
+| Playback speed controls _(opt-in)_ | `SetWebViewClientFingerprint` | `app/StarshotActivity`.— | — |  | addInstructions `invoke-static {}, $EXTENSION_CLASS->setSpeedEnabled()V` |
+| Playback speed controls _(opt-in)_ | `StarshotKeyFingerprint` | `app/StarshotActivity`.— | — |  |  |
 
-Runtime evidence (tags `MORPHE-TW-ATV-WV`; first 12 of 5):
+Runtime evidence (tags `MORPHE-TW-ATV-WV`; first 12 of 22):
 
-- D `wrapClient — Twitch ATV HLS scrubber active` — TwitchAtvWebViewHelper.java:109
-- E `playback-fix injection failed` — TwitchAtvWebViewHelper.java:128
-- E `shouldInterceptRequest error` — TwitchAtvWebViewHelper.java:173
-- I `blanked stitched-ad segments in weaver playlist` — TwitchAtvWebViewHelper.java:223
-- E `httpGet failed: ` — TwitchAtvWebViewHelper.java:346
+- D `wrapClient — Twitch ATV HLS scrubber active` — TwitchAtvWebViewHelper.java:123
+- E `playback-fix injection failed` — TwitchAtvWebViewHelper.java:142
+- I `playback speed controls enabled` — TwitchAtvWebViewHelper.java:232
+- I `WebView debugging enabled via morphe_webview_debug` — TwitchAtvWebViewHelper.java:249
+- W `could not read morphe_webview_debug` — TwitchAtvWebViewHelper.java:252
+- E `speed toggle injection failed` — TwitchAtvWebViewHelper.java:259
+- W `no activity for key interceptor; WebView listener only` — TwitchAtvWebViewHelper.java:278
+- I `window key interceptor installed on ` — TwitchAtvWebViewHelper.java:286
+- E `window key interceptor failed` — TwitchAtvWebViewHelper.java:288
+- E `speed key handling failed` — TwitchAtvWebViewHelper.java:511
+- I `blue key: swallowing key-up` — TwitchAtvWebViewHelper.java:529
+- I `blue key: closing speed menu` — TwitchAtvWebViewHelper.java:537
 
 </details>
 
 ## vix
 
-**Package** `com.univision.prendetv` · **Targets** `4.46.0_tv`, `4.47.2_tv`, `4.50.1_tv`, `4.51.0_tv` · **Engine** Google IMA / DAI client SDK
+**Package** `com.univision.prendetv` · **Targets** `4.46.0_tv`, `4.47.2_tv`, `4.50.1_tv`, `4.51.0_tv`, `4.52.0_tv` · **Engine** Google IMA / DAI client SDK
 
 | Layer | |
 |---|---|
@@ -618,7 +744,71 @@ Runtime evidence (tags `MORPHE-TW-ATV-WV`; first 12 of 5):
 | Patch | Fingerprint | Class / method | Returns | Strings | Action |
 |---|---|---|---|---|---|
 | Skip ads | `InterstitialsDataGetBreaksFingerprint` | `(custom matcher)`.— | `Ljava/util/List;` |  | addInstructions |
+| Skip ads | `DashManifestParseFingerprint` | `(custom matcher)`.— | — |  | addInstructions |
 | Skip ads | `InnovidStartAdFingerprint` | `innovid/InnovidHelper`.— | `V` | `innovidAd` | addInstructions `                 return-void             ` |
+| Log player URLs (debug) _(opt-in)_ | — | — | — |  |  |
 | Override certificate pinning | — | — | — |  |  |
+
+Runtime evidence (tags `VixAdFilter`; first 12 of 1):
+
+- W `manifest left unchanged: ` — AdPeriodFilter.java:76
+
+</details>
+
+## xumo
+
+**Package** `com.xumo.xumo.tv` · **Targets** `4.9.147` · **Engine** unclassified
+
+| Layer | |
+|---|---|
+| Runtime | _unknown_ |
+| Delivery | _unknown_ |
+| Code seam | _unknown_ |
+| Patch action | _unknown_ |
+| Patch evidence | _unknown_ |
+| Device signature | _unknown_ |
+| Drift history | _unknown_ |
+
+<details><summary>Patches and fingerprints (generated)</summary>
+
+| Patch | Fingerprint | Class / method | Returns | Strings | Action |
+|---|---|---|---|---|---|
+| Skip ads | `ExoPlayerPlayAmsOrImaAdFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions `Could not find ExoPlayerManager.playAmsOrImaAd(PlayAms). This patch ` |
+| Skip ads | `TifPlayAmsOrImaAdFingerprint` | `(custom matcher)`.— | `V` |  | addInstructions |
+
+</details>
+
+## youtubetv
+
+**Package** `com.google.android.youtube.tv` · **Targets** `7.31.300`, `7.05.301` · **Engine** unclassified
+
+| Layer | |
+|---|---|
+| Runtime | _unknown_ |
+| Delivery | _unknown_ |
+| Code seam | _unknown_ |
+| Patch action | _unknown_ |
+| Patch evidence | _unknown_ |
+| Device signature | _unknown_ |
+| Drift history | _unknown_ |
+
+<details><summary>Patches and fingerprints (generated)</summary>
+
+| Patch | Fingerprint | Class / method | Returns | Strings | Action |
+|---|---|---|---|---|---|
+| Skip ads | — | — | — |  |  |
+| Clone YouTube (Android TV) | — | — | — |  |  |
+| Client context hook | `automotiveCheckFingerprint` | — | — |  | addInstructions `                 const/4 v0, 0x1                 return v0             ` |
+| GmsCore support | `GooglePlayUtilityFingerprint` | `(custom matcher)`.— | `I` | `MetadataValueReader` `This should never happen.` `com.google.android.gms` |  `GMS availability method (Context, int) not found — the bundled Play services ` |
+| GmsCore support | `ServiceCheckFingerprint` | `(custom matcher)`.— | `V` | `Google Play Services not available` |  `GooglePlayServicesNotAvailable throw not found — re-verify the fingerprint` |
+| GmsCore support | `PrimeMethodFingerprint` | `(custom matcher)`.— | `Z` | `com.android.vending` `com.google.android.GoogleCamera` |  `Primes package allowlist method not found — re-verify the fingerprint` |
+| GmsCore support | `CobaltActivityOnCreateFingerprint` | `coat/CobaltActivity`.`onCreate` | `V` |  |  `CobaltActivity.onCreate(Bundle) not found — re-verify the fingerprint` |
+
+Runtime evidence (tags `MorpheYTTV`; first 12 of 4):
+
+- D `scripts injected (` — TvScripts.java:42
+- W `native pointer field not found` — TvScripts.java:65
+- W `evaluateJavaScript native not found` — TvScripts.java:73
+- W `script injection failed` — TvScripts.java:80
 
 </details>

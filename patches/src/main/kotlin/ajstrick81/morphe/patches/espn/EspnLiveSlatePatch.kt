@@ -25,7 +25,7 @@ import ajstrick81.morphe.patches.shared.compat.AppCompatibilities
 // Slate media is user-supplied local files in the app's external files dir —
 // NOTHING is bundled. Runtime opt-out: a `slate_off` marker disables it without
 // re-patching; `slate_mode` picks the layout; the animated overlay lives under
-// files/espn_overlay/. See slates/espn_overlay/README.md.
+// files/espn_overlay/. See docs/slates/espn_overlay/README.md.
 //
 // Verified on Onn 4K, ESPN 6.11.1: live breaks masked with correct rotation,
 // clean lifts, player muted.

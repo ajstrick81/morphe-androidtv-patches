@@ -33,11 +33,29 @@ val disneyPatch = bytecodePatch(
         // positions) for a media item. Returning an empty list causes the
         // player to see zero ad cues and skip all break scheduling.
         //
-        // Insertion.getRanges() returns ad range windows used by:
-        //   - Media3ExtensionsKt.allowedLiveInterstitials()  (live ad gating)
-        //   - InsertionJsonAdapters                          (serialisation)
-        // Emptying it prevents live interstitial gating from admitting any
-        // ad range and stops serialisation from writing range data.
+        // Insertion.getRanges() returns the ad range windows. It is consumed by
+        // the InsertionJsonAdapters (serialisation) and by the DMP playback-
+        // orchestration builder, which maps each RangeReplacementOption.getId()
+        // onto the Recipe's `allowedLiveInterstitials` list. Emptying it stops
+        // serialisation from writing range data and leaves that list empty.
+        //
+        // CORRECTED (26.20.0+rc3, PR #306): an earlier version of this comment
+        // claimed getRanges() feeds "Media3ExtensionsKt.allowedLiveInterstitials()
+        // (live ad gating)" and that emptying it stops live interstitials from
+        // being admitted. That is NOT true. `allowedLiveInterstitials` is a FIELD
+        // of the Recipe data class, not a method, and the name only ever appeared
+        // in that class's toString() literal. On 26.20 every read of the field is
+        // equals() / hashCode() / toString() -- nothing functional consumes it.
+        //
+        // LIVE ads do not travel through Insertion at all: they arrive as HLS
+        // #EXT-X-DATERANGE interstitial tags and are parsed in Java by
+        // playlistRetrieved(DateTime, List<DateRange>), a completely separate
+        // channel. So Patches 1 & 2 remove VOD pre-/mid-roll only and have NO
+        // effect on live, which is why live ads appear even though getPoints()
+        // and getRanges() already return empty here. Keep emptying getRanges()
+        // regardless -- it is the correct VOD range channel -- but do not expect
+        // it to touch live. Full mechanism, seam and evidence:
+        // docs/DISNEY_LIVE_AD_DELIVERY.md.
         //
         // Two parallel insertion containers must be emptied:
         //   - com.dss.sdk.internal.media.Insertion       (legacy BAM-SDK)

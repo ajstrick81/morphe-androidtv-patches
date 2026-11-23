@@ -20,9 +20,13 @@
   Java-bytecode hooks. (Details below.)
 - **What you need:** just the patched APK. **No DNS list, no VPN, no proxy, no
   root.**
-- ⚠️ **Stay on `6.23.23` (engine `v15.5`). Do NOT update to `6.24.x` / engine
-  v16** — Amazon moved the ad pipeline into the native engine there and ads come
-  back. Keep **Disable auto-updates** on.
+- ✅ **Recommended build: `6.23.23` (engine `v15.5`).** It's the one validated end
+  to end. Keep **Disable auto-updates** on so the Play Store can't move you off it.
+- 🧪 **v16 (`6.24.x`) is now worth testing, not yet worth trusting.** The reason
+  v16 never suppressed ads turned out to be a bug in our own patch, not a wall in
+  the app — it's fixed, and `6.24.7+v16.0.0.332-allAbis` and
+  `6.24.13+v16.0.1.93-allAbis` ship as *experimental* targets. **Unconfirmed on a
+  real device so far.** See [v16 (`6.24.x`)](#v16-624x--experimental).
 - **Where it's tested:** Onn 4K Android TV, US account, ad-supported tier.
   Other devices — see [Device compatibility](#device-compatibility).
 - 🔬 **Want the deep dive?** A full reverse-engineering teardown with an
@@ -100,9 +104,9 @@ enforced one layer lower and more completely.
 2. **Get the right APK.** On APKMirror, open the
    **[Prime Video (Android TV) listing](https://www.apkmirror.com/apk/amazon-mobile-llc/prime-video-android-tv-android-tv/)**
    and download version **`6.23.23+v15.5.0.70-armv7a`** as the **`.apkm`** bundle.
-   - ⚠️ **Do NOT get `6.24.x` (engine v16).** On v16 Amazon moved the whole ad
-     pipeline into the native engine, so the patch installs cleanly but ads come
-     back. Match `6.23.23` exactly and keep **Disable auto-updates** on.
+   - `6.23.23` is the recommended build. If you want to run v16 instead, see
+     [v16 (`6.24.x`) — experimental](#v16-624x--experimental) first; it works, but
+     with caveats you should read before relying on it.
    - ⚠️ Get the **Android TV** build, not the phone build and **not** the Fire TV
      build. Fire TV is a different app (`com.amazon.firebat`) — this patch targets
      `com.amazon.amazonvideo.livingroom`.
@@ -128,8 +132,36 @@ enforced one layer lower and more completely.
   package (a second Prime Video icon with its own login). Leave it off if you were
   able to fully uninstall the stock app first — an in-place install is cleaner.
 - **Keep the patch from being overwritten:** **Disable auto-updates** is available
-  so the Play Store won't silently replace the patched build (and can't push you to
-  v16).
+  so the Play Store won't silently replace the patched build with an unpatched one.
+
+### v16 (`6.24.x`) — experimental
+
+Two v16 builds are supported targets, flagged **experimental** in Morphe Manager:
+`6.24.7+v16.0.0.332-allAbis` and `6.24.13+v16.0.1.93-allAbis`.
+
+**What changed.** For months the answer here was "v16 moved the ad pipeline into
+the native engine, so ads come back." That was the wrong diagnosis. The native
+strip (`libpvhook.so`) hooks libignite's own memory-copy calls — a layer v16 left
+untouched — but it was never getting loaded on v16: the patch looked for an
+`onCreate` method marked exactly `public`, and in v16 it's `public final`, so the
+match silently failed and the library was never injected. One pinned flag, not an
+architectural wall.
+
+**Be honest about where this stands:** that fix means the strip can now run on
+v16. It does **not** mean anyone has watched it work there. Neither build has a
+confirmed device pass yet, so treat v16 as a test, not an upgrade.
+
+- 🧱 **Both ABIs are covered now.** The v16 bundles carry arm64-v8a and
+  armeabi-v7a, and the hook is built for both, so a 64-bit install gets its own
+  hook instead of silently running unstripped. This is new and unverified on
+  hardware — if you run v16 and still see ads, this is still the first thing to
+  check, and a `logcat` line containing `PVNativeHook` tells us whether the hook
+  loaded at all.
+- ✅ **`6.23.23` is still the validated path.** Nothing about v16 changes that.
+- 🙏 **Reports are what move this forward.** If you try either v16 build, please
+  open an issue with the build, your device, and whether ads were suppressed. A
+  `logcat` line containing `PVNativeHook` tells us the hook loaded at all, which
+  is the single most useful detail.
 
 > ℹ️ **Historical note:** the archived post told users to *disable* a "Morphe
 > patches" package-rename option to avoid `INSTALL_FAILED_UPDATE_INCOMPATIBLE`.
@@ -169,10 +201,11 @@ Anything else, please file an issue.
 ## Recommendations at a glance
 
 - ✅ **Do** install only the patched APK. It's self-contained.
-- ✅ **Do** enable **Disable auto-updates** so the store doesn't replace it — or
-  push you to v16.
+- ✅ **Do** enable **Disable auto-updates** so the store doesn't replace your
+  patched build with an unpatched one.
 - ✅ **Do** use **Clone Prime Video** only if you can't uninstall a system build.
-- 🚫 **Don't** update to `6.24.x` / engine v16 — ads return there.
+- ✅ **Do** prefer `6.23.23` / v15.5. v16 works but is experimental — see
+  [v16 (`6.24.x`)](#v16-624x--experimental).
 - 🚫 **Don't** add DNS filter lists, a VPN, or AdGuard alongside it — the native
   hook doesn't need them, and added DNS latency / a local VPN can interfere with
   Ignite session init.

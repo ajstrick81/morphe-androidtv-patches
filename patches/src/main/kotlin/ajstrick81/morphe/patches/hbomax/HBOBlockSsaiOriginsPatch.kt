@@ -73,7 +73,10 @@ val hboBlockSsaiOriginsPatch = bytecodePatch(
         "it is default-off pending the upstream connection-layer fix.",
     default = false,
 ) {
-    compatibleWith(AppCompatibilities.HBO_TV)
+    // Excludes 7.14.0.69: this patch hangs playback on that build (ad becomes unskippable,
+    // then black screen / endless spinner — device-confirmed by @Joker4Life12). Every other
+    // HBO patch uses HBO_TV (which includes 7.14.0.69); only this one is held off 7.14.x.
+    compatibleWith(AppCompatibilities.HBO_TV_ORIGIN_BLOCK_SAFE)
 
     // Merges HboAdOriginFilter into the patched dex.
     extendWith("extensions/extension.mpe")

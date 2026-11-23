@@ -64,6 +64,26 @@ We are grateful to the many communities and individual contributors — includin
   * **Repository:** [HighwindBR / PrimeVideoTB](https://github.com/HighwindBR/PrimeVideoTB)
   * **Summary:** TizenBrew module for Amazon Prime Video on Samsung Tizen OS, implementing enhanced playback features and ad-blocking capabilities.
 
+* **onn 4K Pro TrueHD / Atmos Passthrough**
+  * **Repository:** [Spark-NV / ONN4k-TrueHD](https://github.com/Spark-NV/ONN4k-TrueHD)
+  * **Summary:** Magisk module for the onn 4K Pro (2026, `jarvis2`, Amlogic S905X5M, Android TV 14) that re-enables lossless Dolby TrueHD / TrueHD Atmos bitstreaming over HDMI, plus onn's hidden Passthrough, Dolby/DTS DRC, and Dolby preferred-output settings. Firmware-locked to `URO3.260203.035.A1.15640252`; no license file at time of writing.
+  * **Techniques worth noting:** everything is applied at boot and in memory only — a small kernel module (`t9015rate.ko`) lifts the HDMI multichannel rate cap from 96 kHz to 192 kHz, existing firmware TrueHD flags are toggled on, a copy of the audio config is bind-mounted with hidden flags enabled, and a product overlay APK adds a Settings entry into onn's otherwise unreachable sound menu. A good model for non-persistent, firmware-gated device mods on rooted onn hardware (see also [ONN_WAYNE_RTD1325_ROOT_GUIDE.md](ONN_WAYNE_RTD1325_ROOT_GUIDE.md) — different device/SoC).
+
+* **onn 4K Streaming Box (YOC) — direct AVB unlock**
+  * **Repository:** [firejackson1 / yoc-14-root-unlock](https://github.com/firejackson1/yoc-14-root-unlock)
+  * **Summary:** Port of a tested jarvis2 (onn 4K Pro 2026) bootloader-unlock workflow to the onn 4K Streaming Box (`YOC`, Android 14, Amlogic). Unlocks by talking to the AVB trusted app in the TEE (read state, then a single one-shot write) rather than via fastboot, with strict identity pinning (serial prefix, fingerprint, bootloader version, slot), hash-verified native binaries, no retries and no automatic reboot. No license file at time of writing.
+  * **Why it's pinned:** the shared-core-plus-swapped-identity-constants structure shows how the jarvis2 method can be carried to other onn/Amlogic boxes — a candidate path for unlocking the onn 4K Plus (2023), pending confirmation that its TEE exposes the same AVB TA.
+
+* **jarvis2-recovery**
+  * **Repository:** [firejackson1 / jarvis2-recovery](https://github.com/firejackson1/jarvis2-recovery) (MIT)
+  * **Summary:** Patches the stock recovery on the onn 4K Pro (`jarvis2`, S905X5M, Android 14) to give a root ADB shell with `busybox` and `magiskboot`. Requires an already unlocked and Magisk-rooted device; backs up stock `vendor_boot` and supports restore. Note the trade-off it states: recovery ADB accepts unauthorized USB hosts, so anyone with USB access in recovery gets root.
+  * **Why it's pinned:** documents that on this generation recovery is a ramdisk fragment inside `vendor_boot` (boot header v4, lz4-legacy), not a partition, and the exact prop/init/sepolicy edits needed — a useful map when inspecting the onn 4K Plus (2023) boot layout.
+
+* **OnnDemand-4kplus**
+  * **Repository:** [ShaneBreazeale / OnnDemand-4kplus](https://github.com/ShaneBreazeale/OnnDemand-4kplus) (Apache-2.0 for original code; inherited jarvis2 material carries no license grant — see its `LICENSE_SCOPE.md`)
+  * **Summary:** On-demand **temporary** root plus a root SSH server for the onn 4K Plus (`coffey`, Android 14), tested on firmware 15051976 (`URO4.260304.011.B1`). Uses a memory-only kernel exploit (GhostLock, CVE-2026-43499) — no bootloader unlock, no flashing, no factory reset; a reboot clears root and stops SSH. Retargets [openensemble/onn-4k-pro-2026-unlock-root](https://github.com/openensemble/onn-4k-pro-2026-unlock-root) from jarvis2 to coffey. Also includes device backup, stock-image archiving, slot reporting and reversible debloat tooling.
+  * **Why it's pinned:** the first project in this list that targets the onn 4K Plus directly. Root without touching verified boot keeps the stock boot chain (and Widevine/streaming behavior) intact, which makes it the lowest-risk way to inspect the Plus's audio HAL/config, boot layout and installed apps from a root shell. Caveats it states: root lowers runtime protections until reboot, only one unit/firmware is validated, and a firmware update that patches the CVE will close the path — hold OTAs if relying on it.
+
 ---
 
 ### 5. Reverse Engineering & Protocol Analysis

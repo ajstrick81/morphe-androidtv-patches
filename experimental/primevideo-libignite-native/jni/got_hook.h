@@ -1,4 +1,9 @@
-// got_hook.h — minimal, self-contained PLT/GOT import hook (ARM32 / ELF32).
+// got_hook.h — minimal, self-contained PLT/GOT import hook.
+//
+// Builds for both ABIs Prime Video ships: armeabi-v7a (ELF32, .rel.plt,
+// R_ARM_JUMP_SLOT) and arm64-v8a (ELF64, .rela.plt, R_AARCH64_JUMP_SLOT).
+// got_hook.cpp keeps that difference in one conditional block; nothing else in
+// the strip is arch-dependent.
 //
 // Why this exists instead of ShadowHook or ByteHook:
 //   * The ad-data copy inside libignite goes through libc's `memcpy`, which is

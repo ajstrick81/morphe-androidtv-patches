@@ -43,7 +43,7 @@ testing/
 
 ## ✅ Prerequisites (on your computer, one time)
 
-- **JDK 17+** — the patch build and Morphe CLI both need it (`java -version`).
+- **JDK 21** (the CLI jar is Java 21) — the patch build and Morphe CLI both need it (`java -version`).
 - **Android platform-tools** (`adb`) on your `PATH`.
 - **`curl`** — used by `setup.sh` to fetch the jars.
 

@@ -102,6 +102,33 @@ object InnovidStartAdFingerprint : Fingerprint(
 // Anchored on returnType + method name + enclosing class suffix (smallest unique
 // set). The `$` in the nested class name is escaped for the Kotlin string.
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// media3 DashManifestParser.parse(Uri, InputStream) — server-stitched VOD ads
+//
+// On-demand ads are stitched by the Lura platform into a multi-period DASH
+// manifest (clear ad periods around the Widevine content periods), so the
+// manifest itself is the ad source. The injected AdPeriodFilter rewrites the
+// manifest text before this method parses it (see Hook 1b in SkipAdsPatch).
+//
+// Device-proven dead end this replaces: emptying
+// LuraGenericConfiguration.getBreaks() (the app-supplied "preroll" GAM tag)
+// changed nothing — the pre-roll is not requested by the client at all.
+//
+// The parser class is R8-renamed (dash/manifest/d on 4.52.0) but keeps its
+// overridable method names, so: the public non-synthetic parse(Uri, InputStream)
+// on the class in media3's dash.manifest package. The bridge overload returning
+// Object is excluded by the synthetic flag check.
+// ─────────────────────────────────────────────────────────────────────────────
+object DashManifestParseFingerprint : Fingerprint(
+    custom = { method, classDef ->
+        method.name == "parse" &&
+            classDef.type.startsWith("Landroidx/media3/exoplayer/dash/manifest/") &&
+            method.parameterTypes.map { it.toString() } ==
+            listOf("Landroid/net/Uri;", "Ljava/io/InputStream;") &&
+            method.returnType != "Ljava/lang/Object;"
+    }
+)
+
 object InterstitialsDataGetBreaksFingerprint : Fingerprint(
     returnType = "Ljava/util/List;",
     custom = { method, classDef ->

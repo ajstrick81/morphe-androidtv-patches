@@ -1,12 +1,15 @@
 {
-  "version": "1.46.0",
+  "version": "1.60.0",
   "appNames": {
+    "com.discovery.dplay": "discovery+ Android TV",
     "com.disney.disneyplus": "Disney+ Android TV",
     "com.espn.score_center": "ESPN Android TV",
     "com.formulaone.production": "F1 TV Android TV",
     "com.fox.foxone": "Fox One Android TV",
     "com.future.moviesByFawesomeAndroidTV": "Fawesome Movies & TV (Android TV)",
     "com.wbd.hbomax": "HBO Max Android TV",
+    "de.prosiebensat1digital.seventv": "Joyn Android TV",
+    "it.mediaset.infinitytv": "Mediaset Infinity Android TV",
     "com.bamnetworks.mobile.android.gameday.atbat": "MLB.tv Android TV",
     "com.netflix.ninja": "Netflix Android TV",
     "com.cbs.ott": "Paramount+ Android TV",
@@ -18,7 +21,8 @@
     "com.tubitv": "Tubi Android TV",
     "tv.twitch.android.app": "Twitch",
     "com.univision.prendetv": "ViX Android TV",
-    "com.xumo.xumo.tv": "Xumo Play Android TV"
+    "com.xumo.xumo.tv": "Xumo Play Android TV",
+    "com.google.android.youtube.tv": "YouTube (Android TV)"
   },
   "patches": [
     {
@@ -95,6 +99,45 @@
             {
               "version": "6.23.23+v15.5.0.70-armv7a",
               "experimental": false
+            },
+            {
+              "version": "6.24.7+v16.0.0.332-allAbis",
+              "experimental": true
+            },
+            {
+              "version": "6.24.13+v16.0.1.93-allAbis",
+              "experimental": true
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "Client context hook",
+      "description": "Spoofs the OS name to Android Automotive to suppress video ads.",
+      "use": true,
+      "dependencies": [],
+      "compatiblePackages": {
+        "com.google.android.youtube.tv": [
+          "7.31.300",
+          "7.05.301"
+        ]
+      },
+      "compatibility": [
+        {
+          "name": "YouTube (Android TV)",
+          "packageName": "com.google.android.youtube.tv",
+          "description": null,
+          "appIconColor": 16711680,
+          "targets": [
+            {
+              "version": "7.31.300",
+              "experimental": false
+            },
+            {
+              "version": "7.05.301",
+              "experimental": false
             }
           ]
         }
@@ -150,6 +193,10 @@
             },
             {
               "version": "13.2.1 build 27207",
+              "experimental": true
+            },
+            {
+              "version": "13.2.2 build 27250",
               "experimental": true
             }
           ]
@@ -244,6 +291,45 @@
             {
               "version": "6.23.23+v15.5.0.70-armv7a",
               "experimental": false
+            },
+            {
+              "version": "6.24.7+v16.0.0.332-allAbis",
+              "experimental": true
+            },
+            {
+              "version": "6.24.13+v16.0.1.93-allAbis",
+              "experimental": true
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "Clone YouTube (Android TV)",
+      "description": "Installs the patched YouTube Android TV as a separate app alongside the stock one, instead of replacing it. Enable this when YouTube is a preinstalled system app that can't be uninstalled — most Android TV boxes ship it in /product, and a patched build cannot be installed over it (signature mismatch). The clone gets its own package (suffix .morphe) and its own settings. Leave OFF if the original was uninstalled first, or if the app is not a system app. Makes no changes when \"GmsCore support\" is applied, because that patch already renames the app. Opt-in.",
+      "use": true,
+      "dependencies": [],
+      "compatiblePackages": {
+        "com.google.android.youtube.tv": [
+          "7.31.300",
+          "7.05.301"
+        ]
+      },
+      "compatibility": [
+        {
+          "name": "YouTube (Android TV)",
+          "packageName": "com.google.android.youtube.tv",
+          "description": null,
+          "appIconColor": 16711680,
+          "targets": [
+            {
+              "version": "7.31.300",
+              "experimental": false
+            },
+            {
+              "version": "7.05.301",
+              "experimental": false
             }
           ]
         }
@@ -273,6 +359,10 @@
             },
             {
               "version": "13.2.1 build 27207",
+              "experimental": true
+            },
+            {
+              "version": "13.2.2 build 27250",
               "experimental": true
             }
           ]
@@ -393,6 +483,14 @@
             {
               "version": "6.23.23+v15.5.0.70-armv7a",
               "experimental": false
+            },
+            {
+              "version": "6.24.7+v16.0.0.332-allAbis",
+              "experimental": true
+            },
+            {
+              "version": "6.24.13+v16.0.1.93-allAbis",
+              "experimental": true
             }
           ]
         }
@@ -437,11 +535,8 @@
       "dependencies": [],
       "compatiblePackages": {
         "com.disney.disneyplus": [
-          "26.6.0+rc5-2026.04.21",
-          "26.8.0+rc6-2026.05.20",
-          "26.9.2+rc1-2026.06.12",
-          "26.12.1+rc1-2026.07.15",
-          "26.16.0+rc2-2026.09.08"
+          "26.16.0+rc2-2026.09.08",
+          "26.12.1+rc1-2026.07.15"
         ]
       },
       "compatibility": [
@@ -452,23 +547,15 @@
           "appIconColor": 1129679,
           "targets": [
             {
-              "version": "26.6.0+rc5-2026.04.21",
-              "experimental": false
+              "version": "26.20.0+rc3-2026.11.02",
+              "experimental": true
             },
             {
-              "version": "26.8.0+rc6-2026.05.20",
-              "experimental": false
-            },
-            {
-              "version": "26.9.2+rc1-2026.06.12",
+              "version": "26.16.0+rc2-2026.09.08",
               "experimental": false
             },
             {
               "version": "26.12.1+rc1-2026.07.15",
-              "experimental": false
-            },
-            {
-              "version": "26.16.0+rc2-2026.09.08",
               "experimental": false
             }
           ]
@@ -593,6 +680,39 @@
       "options": []
     },
     {
+      "name": "GmsCore support",
+      "description": "Signs in to Google through MicroG-RE (GmsCore) instead of Google Play services. Points every Play services package name, permission, intent action and content provider at app.revanced.android.gms, telling MicroG-RE to present the stock package name and signing certificate. Required for resigned builds: Google Play services rejects them with \"PackageVerificationRslt: not allowed\". MicroG-RE must be installed; without it the app cannot sign in.",
+      "use": true,
+      "dependencies": [
+        "ResourcePatch"
+      ],
+      "compatiblePackages": {
+        "com.google.android.youtube.tv": [
+          "7.31.300",
+          "7.05.301"
+        ]
+      },
+      "compatibility": [
+        {
+          "name": "YouTube (Android TV)",
+          "packageName": "com.google.android.youtube.tv",
+          "description": null,
+          "appIconColor": 16711680,
+          "targets": [
+            {
+              "version": "7.31.300",
+              "experimental": false
+            },
+            {
+              "version": "7.05.301",
+              "experimental": false
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
       "name": "HBO Max - Block SSAI Ad Origins",
       "description": "Reproduces the AdGuard DNS ad-block inside the app: fails media3 segment requests to HBO's SSAI ad origins (amer-free/emea-free.prd.media.max.com, gmss, FreeWheel) so the player's resiliency layer falls back to the clean, ad-free manifest — removing the stitched ad VIDEO the default Disable Ads patch leaves behind. OPT-IN: works on a fresh start, but a RESUMED session that reaches a mid-roll throws a fatal 'Couldn't Play Content' (39999) error, so it is default-off pending the upstream connection-layer fix.",
       "use": false,
@@ -635,7 +755,7 @@
     },
     {
       "name": "HBO Max - Disable Ads",
-      "description": "Suppresses nonlinear overlay ads (Bolt), SSAI linear ad timeline registration (GMSS/AdSparx), and live stream preroll ad timeline entry generation for all content types.",
+      "description": "Suppresses nonlinear overlay ads (Bolt), SSAI linear ad timeline registration (GMSS/AdSparx), and live stream preroll ad timeline entry generation for all content types. Best paired with 'Remove Ad Periods (keep 5.1)': on its own, suppressing the ad-break registration can shift the skip-intro / next-episode markers earlier (the app maps those content-time chapters through the ad breaks).",
       "use": true,
       "dependencies": [],
       "compatiblePackages": {
@@ -653,6 +773,10 @@
           "description": null,
           "appIconColor": 16777215,
           "targets": [
+            {
+              "version": "7.14.0.69",
+              "experimental": true
+            },
             {
               "version": "7.9.0.61",
               "experimental": false
@@ -695,6 +819,10 @@
           "appIconColor": 16777215,
           "targets": [
             {
+              "version": "7.14.0.69",
+              "experimental": true
+            },
+            {
               "version": "7.9.0.61",
               "experimental": false
             },
@@ -735,6 +863,57 @@
           "description": null,
           "appIconColor": 16777215,
           "targets": [
+            {
+              "version": "7.14.0.69",
+              "experimental": true
+            },
+            {
+              "version": "7.9.0.61",
+              "experimental": false
+            },
+            {
+              "version": "7.7.0.78",
+              "experimental": false
+            },
+            {
+              "version": "7.5.0.73",
+              "experimental": false
+            },
+            {
+              "version": "7.2.0.41",
+              "experimental": false
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "HBO Max - Remove Ad Periods (keep 5.1)",
+      "description": "Keeps the normal PRIMARY stream (with 5.1 / E-AC-3 audio) but removes the stitched ad periods from its DASH manifest before playback. Overrides 'Prefer Ad-Free Stream' (its stereo-only fallback remap is switched off automatically). Fail-open: if the manifest cannot be matched, it is left unchanged.",
+      "use": false,
+      "dependencies": [
+        "BytecodePatch"
+      ],
+      "compatiblePackages": {
+        "com.wbd.hbomax": [
+          "7.9.0.61",
+          "7.7.0.78",
+          "7.5.0.73",
+          "7.2.0.41"
+        ]
+      },
+      "compatibility": [
+        {
+          "name": "HBO Max Android TV",
+          "packageName": "com.wbd.hbomax",
+          "description": null,
+          "appIconColor": 16777215,
+          "targets": [
+            {
+              "version": "7.14.0.69",
+              "experimental": true
+            },
             {
               "version": "7.9.0.61",
               "experimental": false
@@ -778,6 +957,60 @@
           "targets": [
             {
               "version": "6.23.23+v15.5.0.70-armv7a",
+              "experimental": false
+            },
+            {
+              "version": "6.24.7+v16.0.0.332-allAbis",
+              "experimental": true
+            },
+            {
+              "version": "6.24.13+v16.0.1.93-allAbis",
+              "experimental": true
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "Log player URLs (debug)",
+      "description": "Research aid, off by default: writes every URL the media player and the LuraPlayer SDK open to the device's local logcat (tag VIXURL). Nothing is sent anywhere.",
+      "use": false,
+      "dependencies": [],
+      "compatiblePackages": {
+        "com.univision.prendetv": [
+          "4.46.0_tv",
+          "4.47.2_tv",
+          "4.50.1_tv",
+          "4.51.0_tv",
+          "4.52.0_tv"
+        ]
+      },
+      "compatibility": [
+        {
+          "name": "ViX Android TV",
+          "packageName": "com.univision.prendetv",
+          "description": null,
+          "appIconColor": 41193,
+          "targets": [
+            {
+              "version": "4.46.0_tv",
+              "experimental": false
+            },
+            {
+              "version": "4.47.2_tv",
+              "experimental": false
+            },
+            {
+              "version": "4.50.1_tv",
+              "experimental": false
+            },
+            {
+              "version": "4.51.0_tv",
+              "experimental": false
+            },
+            {
+              "version": "4.52.0_tv",
               "experimental": false
             }
           ]
@@ -863,6 +1096,10 @@
             {
               "version": "13.2.1 build 27207",
               "experimental": true
+            },
+            {
+              "version": "13.2.2 build 27250",
+              "experimental": true
             }
           ]
         }
@@ -915,6 +1152,14 @@
             {
               "version": "6.23.23+v15.5.0.70-armv7a",
               "experimental": false
+            },
+            {
+              "version": "6.24.7+v16.0.0.332-allAbis",
+              "experimental": true
+            },
+            {
+              "version": "6.24.13+v16.0.1.93-allAbis",
+              "experimental": true
             }
           ]
         }
@@ -931,7 +1176,8 @@
           "4.46.0_tv",
           "4.47.2_tv",
           "4.50.1_tv",
-          "4.51.0_tv"
+          "4.51.0_tv",
+          "4.52.0_tv"
         ]
       },
       "compatibility": [
@@ -955,6 +1201,10 @@
             },
             {
               "version": "4.51.0_tv",
+              "experimental": false
+            },
+            {
+              "version": "4.52.0_tv",
               "experimental": false
             }
           ]
@@ -982,6 +1232,10 @@
           "description": null,
           "appIconColor": 25855,
           "targets": [
+            {
+              "version": "17.3.0",
+              "experimental": true
+            },
             {
               "version": "16.19.0",
               "experimental": false
@@ -1051,6 +1305,14 @@
             {
               "version": "6.23.23+v15.5.0.70-armv7a",
               "experimental": false
+            },
+            {
+              "version": "6.24.7+v16.0.0.332-allAbis",
+              "experimental": true
+            },
+            {
+              "version": "6.24.13+v16.0.1.93-allAbis",
+              "experimental": true
             }
           ]
         }
@@ -1080,6 +1342,46 @@
             },
             {
               "version": "13.2.1 build 27207",
+              "experimental": true
+            },
+            {
+              "version": "13.2.2 build 27250",
+              "experimental": true
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "Remove Netflix ads (legacy engine)",
+      "description": "Only for TVs where the patched Netflix clone crashes right at launch with the default ad remover (seen on some Android 12 devices, e.g. TiVo Stream 4K and some Philips TVs). Swaps the in-process ad-kill engine for an older build (frida-gadget 16.2.1) that those devices tolerate; the ad-kill script itself is unchanged. Select it IN ADDITION to the two default \"Remove Netflix ads\" patches. Leave it off if the default patch works for you. Opt-in / experimental.",
+      "use": false,
+      "dependencies": [
+        "BytecodePatch"
+      ],
+      "compatiblePackages": {
+        "com.netflix.ninja": [
+          "13.0.1 build 25028"
+        ]
+      },
+      "compatibility": [
+        {
+          "name": "Netflix Android TV",
+          "packageName": "com.netflix.ninja",
+          "description": null,
+          "appIconColor": 15010068,
+          "targets": [
+            {
+              "version": "13.0.1 build 25028",
+              "experimental": false
+            },
+            {
+              "version": "13.2.1 build 27207",
+              "experimental": true
+            },
+            {
+              "version": "13.2.2 build 27250",
               "experimental": true
             }
           ]
@@ -1112,6 +1414,10 @@
             },
             {
               "version": "13.2.1 build 27207",
+              "experimental": true
+            },
+            {
+              "version": "13.2.2 build 27250",
               "experimental": true
             }
           ]
@@ -1164,6 +1470,63 @@
           "targets": [
             {
               "version": "19.7",
+              "experimental": false
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "Skip ads",
+      "description": "Removes ads before and during videos in the Joyn Android TV app. It turns off the app's own \"ads enabled\" flag, so the player is built without Joyn's Ad SDK. Joyn is geo-restricted, so playback still needs Germany, Austria or Switzerland.",
+      "use": true,
+      "dependencies": [],
+      "compatiblePackages": {
+        "de.prosiebensat1digital.seventv": [
+          "6.5.2-ATV-605282491"
+        ]
+      },
+      "compatibility": [
+        {
+          "name": "Joyn Android TV",
+          "packageName": "de.prosiebensat1digital.seventv",
+          "description": null,
+          "appIconColor": 0,
+          "targets": [
+            {
+              "version": "6.5.2-ATV-605282491",
+              "experimental": false
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "Skip ads",
+      "description": "Blocks the FreeWheel and Google ad calls the Mediaset Infinity Android TV web app makes, so no pre-roll, mid-roll, pause or welcome ad is ever chosen. Ads stitched into a live channel's stream on the server (if any) are not affected.",
+      "use": true,
+      "dependencies": [],
+      "compatiblePackages": {
+        "it.mediaset.infinitytv": [
+          "8.1.20",
+          "8.1.13"
+        ]
+      },
+      "compatibility": [
+        {
+          "name": "Mediaset Infinity Android TV",
+          "packageName": "it.mediaset.infinitytv",
+          "description": null,
+          "appIconColor": 1731583,
+          "targets": [
+            {
+              "version": "8.1.20",
+              "experimental": false
+            },
+            {
+              "version": "8.1.13",
               "experimental": false
             }
           ]
@@ -1240,32 +1603,6 @@
     },
     {
       "name": "Skip ads",
-      "description": "Removes Pluto TV's on-demand (VOD) ads on the v17.x rebuild (the Paramount+/AVIA player stack). Four layers: (1+2) force AVIA's DAI and IMA shouldPlayAd() gates to false so the pre-roll ad pods are skipped natively; (3) drop the ad <Period>s from the stitched multi-period DASH manifest at AVIA's own DashParser and re-base the content periods into a contiguous timeline, so the mid-roll ad VIDEO is never played AND the seekbar tracks correctly; (4) suppress the ID3/CLID3-driven CSAI ad call on static VOD manifests. Fail-open: a manifest it can't rewrite is passed through unchanged (ads remain, playback never breaks). LIVE TV ads are real broadcast time in the linear feed and are not removable. Validated on-device, 17.2.0.",
-      "use": true,
-      "dependencies": [],
-      "compatiblePackages": {
-        "tv.pluto.android": [
-          "17.2.0"
-        ]
-      },
-      "compatibility": [
-        {
-          "name": "Pluto TV Android TV",
-          "packageName": "tv.pluto.android",
-          "description": null,
-          "appIconColor": 12103684,
-          "targets": [
-            {
-              "version": "17.2.0",
-              "experimental": false
-            }
-          ]
-        }
-      ],
-      "options": []
-    },
-    {
-      "name": "Skip ads",
       "description": "Multi-layer ad suppression targeting the SSAI schedule, impression reporting, and the Volley network chokepoint.",
       "use": true,
       "dependencies": [
@@ -1286,6 +1623,14 @@
             {
               "version": "6.23.23+v15.5.0.70-armv7a",
               "experimental": false
+            },
+            {
+              "version": "6.24.7+v16.0.0.332-allAbis",
+              "experimental": true
+            },
+            {
+              "version": "6.24.13+v16.0.1.93-allAbis",
+              "experimental": true
             }
           ]
         }
@@ -1377,7 +1722,7 @@
     },
     {
       "name": "Skip ads",
-      "description": "Suppresses ViX ad delivery by emptying the LuraPlayer ad-break schedule — both the client-side VMAP breaks (third-party ads) and the first-party house / cross-promo breaks — so no ad-periods are inserted into the timeline, and by preventing the Innovid SSAI ad overlay from mounting.",
+      "description": "Suppresses ViX ad delivery by emptying the LuraPlayer ad-break schedule — both the client-side VMAP breaks (third-party ads) and the first-party house / cross-promo breaks — so no ad-periods are inserted into the timeline, by removing the ad periods the server stitches into on-demand stream manifests, and by preventing the Innovid SSAI ad overlay from mounting.",
       "use": true,
       "dependencies": [],
       "compatiblePackages": {
@@ -1385,7 +1730,8 @@
           "4.46.0_tv",
           "4.47.2_tv",
           "4.50.1_tv",
-          "4.51.0_tv"
+          "4.51.0_tv",
+          "4.52.0_tv"
         ]
       },
       "compatibility": [
@@ -1409,6 +1755,10 @@
             },
             {
               "version": "4.51.0_tv",
+              "experimental": false
+            },
+            {
+              "version": "4.52.0_tv",
               "experimental": false
             }
           ]
@@ -1443,17 +1793,73 @@
       "options": []
     },
     {
+      "name": "Skip ads",
+      "description": "Removes the ad schedule (adPlacements, adSlots, playerAds, adBreakHeartbeatParams) from every InnerTube response before the YouTube leanback web app (youtube.com/tv) reads it, and removes sponsored tiles (adSlotRenderer and the promoted* renderers) from feeds. Also keeps the existing Android Automotive OS-name spoof that suppresses video ads client-side.",
+      "use": true,
+      "dependencies": [
+        "BytecodePatch",
+        "BytecodePatch"
+      ],
+      "compatiblePackages": {
+        "com.google.android.youtube.tv": [
+          "7.31.300",
+          "7.05.301"
+        ]
+      },
+      "compatibility": [
+        {
+          "name": "YouTube (Android TV)",
+          "packageName": "com.google.android.youtube.tv",
+          "description": null,
+          "appIconColor": 16711680,
+          "targets": [
+            {
+              "version": "7.31.300",
+              "experimental": false
+            },
+            {
+              "version": "7.05.301",
+              "experimental": false
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "Skip ads (v17)",
+      "description": "Removes Pluto TV's on-demand (VOD) ads on the v17.x rebuild (the Paramount+/AVIA player stack). Four layers: (1+2) force AVIA's DAI and IMA shouldPlayAd() gates to false so the pre-roll ad pods are skipped natively; (3) drop the ad <Period>s from the stitched multi-period DASH manifest at AVIA's own DashParser and re-base the content periods into a contiguous timeline, so the mid-roll ad VIDEO is never played AND the seekbar tracks correctly; (4) suppress the ID3/CLID3-driven CSAI ad call on static VOD manifests. Also hides pause ads and stops ad impression beacons for the removed breaks. Fail-open: a manifest it can't rewrite is passed through unchanged (ads remain, playback never breaks). LIVE TV ads are real broadcast time in the linear feed and are not removable. Validated on-device, 17.2.0.",
+      "use": true,
+      "dependencies": [],
+      "compatiblePackages": {
+        "tv.pluto.android": [
+          "17.2.0"
+        ]
+      },
+      "compatibility": [
+        {
+          "name": "Pluto TV Android TV",
+          "packageName": "tv.pluto.android",
+          "description": null,
+          "appIconColor": 12103684,
+          "targets": [
+            {
+              "version": "17.2.0",
+              "experimental": false
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
       "name": "Suppress Household Prompt",
-      "description": "Hides the Disney+ \"Verify Household Network\" / out-of-household prompt by forcing the client's out-of-household check to report in-household, so the app routes straight to home. Does NOT change what Disney's servers detect (that's driven by your public IP — use a VPN for that); it only suppresses the on-screen prompt/routing. Opt-in / experimental; only takes visible effect when the device would otherwise be prompted.",
+      "description": "Hides the Disney+ \"Verify Household Network\" / out-of-household prompt by forcing the client's out-of-household check to report in-household, so the app routes straight to home. Does NOT change what Disney's servers detect (that's driven by your public IP — use a VPN for that); it only suppresses the on-screen prompt/routing. Opt-in / experimental; only takes visible effect when the device would otherwise be prompted. Works on 26.12.1+rc1-2026.07.15 ONLY — it targets an obfuscated method whose name changes every release, so it cannot be applied to other builds.",
       "use": false,
       "dependencies": [],
       "compatiblePackages": {
         "com.disney.disneyplus": [
-          "26.6.0+rc5-2026.04.21",
-          "26.8.0+rc6-2026.05.20",
-          "26.9.2+rc1-2026.06.12",
-          "26.12.1+rc1-2026.07.15",
-          "26.16.0+rc2-2026.09.08"
+          "26.12.1+rc1-2026.07.15"
         ]
       },
       "compatibility": [
@@ -1464,24 +1870,8 @@
           "appIconColor": 1129679,
           "targets": [
             {
-              "version": "26.6.0+rc5-2026.04.21",
-              "experimental": false
-            },
-            {
-              "version": "26.8.0+rc6-2026.05.20",
-              "experimental": false
-            },
-            {
-              "version": "26.9.2+rc1-2026.06.12",
-              "experimental": false
-            },
-            {
               "version": "26.12.1+rc1-2026.07.15",
-              "experimental": false
-            },
-            {
-              "version": "26.16.0+rc2-2026.09.08",
-              "experimental": false
+              "experimental": true
             }
           ]
         }
@@ -1514,6 +1904,10 @@
             {
               "version": "13.2.1 build 27207",
               "experimental": true
+            },
+            {
+              "version": "13.2.2 build 27250",
+              "experimental": true
             }
           ]
         }
@@ -1545,6 +1939,122 @@
         }
       ],
       "options": []
+    },
+    {
+      "name": "discovery+ - Disable Ads",
+      "description": "Suppresses nonlinear (overlay / pause) ad requests and live-stream preroll ad timeline entries.",
+      "use": true,
+      "dependencies": [],
+      "compatiblePackages": {
+        "com.discovery.dplay": [
+          "22.1.0.71"
+        ]
+      },
+      "compatibility": [
+        {
+          "name": "discovery+ Android TV",
+          "packageName": "com.discovery.dplay",
+          "description": null,
+          "appIconColor": 663132,
+          "targets": [
+            {
+              "version": "22.1.0.71",
+              "experimental": true
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "discovery+ - Prefer Ad-Free Stream",
+      "description": "Plays the FALLBACK stream instead of the ad-stitched PRIMARY stream when the title advertises one (same mechanism as HBO Max's ad-free stream). Does nothing for titles without a FALLBACK stream.",
+      "use": true,
+      "dependencies": [],
+      "compatiblePackages": {
+        "com.discovery.dplay": [
+          "22.1.0.71"
+        ]
+      },
+      "compatibility": [
+        {
+          "name": "discovery+ Android TV",
+          "packageName": "com.discovery.dplay",
+          "description": null,
+          "appIconColor": 663132,
+          "targets": [
+            {
+              "version": "22.1.0.71",
+              "experimental": true
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "discovery+ - Skip Ad Breaks",
+      "description": "Marks every server-stitched ad break as already watched, so the player jumps over mid-rolls and lets you seek past ad breaks. The first ad of a pre-roll may still play briefly.",
+      "use": true,
+      "dependencies": [],
+      "compatiblePackages": {
+        "com.discovery.dplay": [
+          "22.1.0.71"
+        ]
+      },
+      "compatibility": [
+        {
+          "name": "discovery+ Android TV",
+          "packageName": "com.discovery.dplay",
+          "description": null,
+          "appIconColor": 663132,
+          "targets": [
+            {
+              "version": "22.1.0.71",
+              "experimental": true
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "discovery+ - Store Country Override",
+      "description": "Reports a fixed Google Play store country to discovery+ (default IT). With an Italian IP address this brings back the free 'Naviga gratis' (browse for free) tier, which otherwise depends on your Play account's country. Off by default: it also changes the subscription offers shown in the app.",
+      "use": false,
+      "dependencies": [],
+      "compatiblePackages": {
+        "com.discovery.dplay": [
+          "22.1.0.71"
+        ]
+      },
+      "compatibility": [
+        {
+          "name": "discovery+ Android TV",
+          "packageName": "com.discovery.dplay",
+          "description": null,
+          "appIconColor": 663132,
+          "targets": [
+            {
+              "version": "22.1.0.71",
+              "experimental": true
+            }
+          ]
+        }
+      ],
+      "options": [
+        {
+          "key": "country",
+          "title": "Store country",
+          "description": "Two-letter country code to report as the Google Play store country.",
+          "required": true,
+          "type": "kotlin.String",
+          "default": "IT",
+          "values": {
+            "Italy": "IT"
+          }
+        }
+      ]
     }
   ]
 }

@@ -18,10 +18,10 @@ Context: this is one of the "learn from inspiring devs" study subjects — see
 
 ```bash
 APP="appname"
-mkdir -p analysis/$APP/notes
+mkdir -p docs/analysis/$APP/notes
 # Move + rename APK: <app>_<version>.<ext>
-mv /path/to/downloaded.apk analysis/$APP/${APP}_<version>.<ext>
-cd analysis/$APP
+mv /path/to/downloaded.apk docs/analysis/$APP/${APP}_<version>.<ext>
+cd docs/analysis/$APP
 ```
 
 ## Step 2: Identify the APK
@@ -53,10 +53,10 @@ unzip -l ${APP}_*.apk* | rg "index.android.bundle|libflutter|libapp"
 
 ```bash
 # Remote decompile on Kaggle (4 cores, 28GB RAM) — his primary method for large APKs
-.kiro/jadx-decompile "<apk-download-url>" analysis/$APP/
+.kiro/jadx-decompile "<apk-download-url>" docs/analysis/$APP/
 
 # Unzip the output
-cd analysis/$APP && unzip *_decompiled.zip -d decompiled/
+cd docs/analysis/$APP && unzip *_decompiled.zip -d decompiled/
 ```
 
 For quick local decompile of small APKs only:
@@ -152,7 +152,7 @@ Other files: `ad-removal.md`, `signature-bypass.md`, `feature-gates.md`
 ## Final Folder Structure
 
 ```
-analysis/<app>/
+docs/analysis/<app>/
 ├── <app>_<version>.<ext>              # Original APK (renamed)
 ├── <app>_<version>_decompiled.zip     # JADX output zip
 ├── decompiled/                        # Extracted Java sources
