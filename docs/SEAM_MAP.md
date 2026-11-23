@@ -554,7 +554,7 @@ Runtime evidence (tags `MORPHE-DASH-MF`, `MORPHE-PLUTO-SLATE`; first 12 of 48):
 | Patch action | Empty the ad playlist before the player sees it → the break is never scheduled. |
 | Patch evidence | `[rego] emptied playlist (~N ad(s), interior X bytes blanked)` + `PVKILL path=tv ads=N` at the moment each pod is fetched (2026-09-24 live: 1 pre-roll, 4 + 3 mid-roll ads emptied). |
 | Device signature | When an ad DOES play (6.24.7 capture): decoder reconfigure (`Discard frames from previous generation`, `VideoResolutionChange`) + crop switch (title-specific, e.g. letterbox 960 → ad 1080) + ~27 `I/f Successfully uploaded metrics` in ~2 s from the app process. With the patch working: none of these at the marker, 0 metrics uploads. |
-| Drift history | v16 loader never fired because onCreate became `public final` vs an exact accessFlags match; the recorded fix (drop accessFlags) sat unapplied for weeks while docs blamed the v16 native move instead, so APPLY recorded drift fixes, don't just record them. Applied 2026-11-07; 6.24.7 and 6.24.13 declared as experimental targets, device verification pending. High-ad-region mid-roll truncation (#120) fixed in v1.37.4. |
+| Drift history | v16 loader never fired because onCreate became `public final` vs an exact accessFlags match; the recorded fix (drop accessFlags) sat unapplied for weeks while docs blamed the v16 native move instead, so APPLY recorded drift fixes, don't just record them. Applied 2026-11-07; 6.24.7 device-confirmed and promoted to stable 2026-11-23; 6.24.13 still experimental, device verification pending. High-ad-region mid-roll truncation (#120) fixed in v1.37.4. |
 
 **Gaps:** Timeline-action native symbols unresolved (Native_StartTimelineAction not in NativeSymbol table).
 
