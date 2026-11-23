@@ -1,6 +1,183 @@
 {
   "generatedFrom": "scripts/seam-map/extract.mjs — do not edit by hand",
   "apps": {
+    "discoveryplus": {
+      "app": "discoveryplus",
+      "sourceRoots": [
+        "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus"
+      ],
+      "fingerprints": [
+        {
+          "id": "DplayGetStreamInfoFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/Fingerprints.kt",
+          "line": 13,
+          "hasCustomMatcher": true,
+          "note": "───────────────────────────────────────────────────────────────────────────── PlayableKt.getStreamInfo(Playable, StreamInfo$Type) — resolves a stream by type. Same method HBO Max's \"Prefer Ad-Free Stream\" hooks. classes2.dex. ─────────────────────────────────────────────────────────────────────────────",
+          "usedBy": [
+            "discovery+ - Prefer Ad-Free Stream"
+          ]
+        },
+        {
+          "id": "DplayBoltNonLinearAdsRequestWriteSelfFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/Fingerprints.kt",
+          "line": 24,
+          "hasCustomMatcher": true,
+          "note": "───────────────────────────────────────────────────────────────────────────── BoltNonLinearAdsRequest.write$Self$_libraries_adtech_bolt_ad_fetcher — serializer for the nonlinear (overlay / pause) ad request. classes3.dex. Prefix match, as on HBO. ─────────────────────────────────────────────────────────────────────────────",
+          "usedBy": [
+            "discovery+ - Disable Ads"
+          ]
+        },
+        {
+          "id": "DplayBoltDynamicAdFetcherInvokeSuspendFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/Fingerprints.kt",
+          "line": 36,
+          "hasCustomMatcher": true,
+          "note": "───────────────────────────────────────────────────────────────────────────── BoltDynamicAdFetcher$fetchNonLinearAds$1.invokeSuspend — coroutine that receives the nonlinear ad list. On 22.1.0.71: invoke-virtual/range {v0..v6} fetchNonLinearAds-hUnOzRk, then move-result-object p0. classes3.dex. ─────────────────────────────────────────────────────────────────────────────",
+          "usedBy": [
+            "discovery+ - Disable Ads"
+          ]
+        },
+        {
+          "id": "DplayGenerateLiveTimelineEntriesForAdBreakFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/Fingerprints.kt",
+          "line": 48,
+          "hasCustomMatcher": true,
+          "note": "───────────────────────────────────────────────────────────────────────────── GenerateLiveTimelineEntriesForAdBreakKt.generateLiveTimelineEntriesForAdBreak(List, I)List — live-stream preroll ad entry builder. classes.dex. ─────────────────────────────────────────────────────────────────────────────",
+          "usedBy": [
+            "discovery+ - Disable Ads"
+          ]
+        },
+        {
+          "id": "DplayStoreMarketplaceFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/Fingerprints.kt",
+          "line": 63,
+          "returnType": "V",
+          "hasCustomMatcher": true,
+          "note": "───────────────────────────────────────────────────────────────────────────── IapManager.onStoreMarketplaceRetrievalCompleted(Result, String) — receives the Google Play storefront country (BillingClient.getBillingConfig) from GoogleIapHelper and forwards it to the native You.i layer (PlatformIAPBroker \"Country code available\"). discovery+'s servers use it to pick the welcome-screen options: the Italian free tier (\"Naviga gratis\") is only offered when the storefront country is IT. classes6.dex. ─────────────────────────────────────────────────────────────────────────────",
+          "usedBy": [
+            "discovery+ - Store Country Override"
+          ]
+        },
+        {
+          "id": "DplayIsAdBreakAlreadyWatchedFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/Fingerprints.kt",
+          "line": 82,
+          "returnType": "Z",
+          "hasCustomMatcher": true,
+          "note": "───────────────────────────────────────────────────────────────────────────── TimelineStateKt.isAdBreakAlreadyWatched(TimelineState, I)Z — the single \"has this ad break been watched?\" check of the Beam GMSS (VOD) seek mediator. classes4.dex. Every watched-state decision routes through it: • DefaultAdSkipManager.isAdBreakAlreadyWatched(I) → GmssSeekMediator.onRangeEnded: when the next leaf range is a LinearAdRange of a WATCHED break, the app issues a ProgrammaticSeek(SKIP_ALREADY_WATCHED_AD_BREAK) to getNextContentStartPosition. • DefaultAdSkipManager.getFirstUnwatchedMidrollAdBreak / redirectSeekIntoAdBreak: forward seeks over an UNWATCHED break are redirected into it (seek lock). ─────────────────────────────────────────────────────────────────────────────",
+          "usedBy": [
+            "discovery+ - Skip Ad Breaks"
+          ]
+        }
+      ],
+      "patches": [
+        {
+          "id": "discoveryPlusPreferFallbackStreamPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/DiscoveryPlusAdsPatches.kt",
+          "line": 33,
+          "name": "discovery+ - Prefer Ad-Free Stream",
+          "description": "Plays the FALLBACK stream instead of the ad-stitched PRIMARY stream when the title advertises one (same mechanism as HBO Max's ad-free stream). Does nothing for titles without a FALLBACK stream.",
+          "uses": [
+            {
+              "fingerprint": "DplayGetStreamInfoFingerprint",
+              "call": "addInstructions"
+            }
+          ]
+        },
+        {
+          "id": "discoveryPlusSkipAdBreaksPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/DiscoveryPlusAdsPatches.kt",
+          "line": 59,
+          "name": "discovery+ - Skip Ad Breaks",
+          "description": "Marks every server-stitched ad break as already watched, so the player jumps over mid-rolls and lets you seek past ad breaks. The first ad of a pre-roll may still play briefly.",
+          "uses": [
+            {
+              "fingerprint": "DplayIsAdBreakAlreadyWatchedFingerprint",
+              "call": "addInstructions",
+              "smali": "\n                const/4 p0, 0x1\n                return p0\n            "
+            }
+          ]
+        },
+        {
+          "id": "discoveryPlusDisableAdsPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/DiscoveryPlusAdsPatches.kt",
+          "line": 81,
+          "name": "discovery+ - Disable Ads",
+          "description": "Suppresses nonlinear (overlay / pause) ad requests and live-stream preroll ad timeline entries.",
+          "uses": [
+            {
+              "fingerprint": "DplayBoltNonLinearAdsRequestWriteSelfFingerprint",
+              "call": "addInstructions",
+              "smali": "return-void"
+            },
+            {
+              "fingerprint": "DplayBoltDynamicAdFetcherInvokeSuspendFingerprint",
+              "call": "apply"
+            },
+            {
+              "fingerprint": "DplayGenerateLiveTimelineEntriesForAdBreakFingerprint",
+              "call": "addInstructions"
+            }
+          ]
+        },
+        {
+          "id": "discoveryPlusStoreCountryPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/discoveryplus/ads/StoreCountryPatch.kt",
+          "line": 25,
+          "name": "discovery+ - Store Country Override",
+          "description": "Reports a fixed Google Play store country to discovery+ (default IT). With an Italian IP address this brings back the free 'Naviga gratis' (browse for free) tier, which otherwise depends on your Play account's country. Off by default: it also changes the subscription offers shown in the app.",
+          "default": false,
+          "uses": [
+            {
+              "fingerprint": "DplayStoreMarketplaceFingerprint",
+              "call": "addInstructions",
+              "smali": "Store country set by Morphe patch"
+            }
+          ]
+        }
+      ],
+      "runtime": {
+        "tags": [
+          "DplayStreamSelector"
+        ],
+        "messages": [
+          {
+            "level": "I",
+            "text": "remapping PRIMARY -> FALLBACK stream",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/discoveryplus/ads/DplayStreamSelector.java",
+            "line": 44
+          },
+          {
+            "level": "I",
+            "text": "no FALLBACK stream (",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/discoveryplus/ads/DplayStreamSelector.java",
+            "line": 48
+          },
+          {
+            "level": "W",
+            "text": "preferFallbackType failed; using requested type",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/discoveryplus/ads/DplayStreamSelector.java",
+            "line": 50
+          }
+        ]
+      },
+      "packages": [
+        "com.discovery.dplay"
+      ],
+      "targets": [
+        "22.1.0.71"
+      ],
+      "summary": {
+        "patches": 4,
+        "fingerprints": 6,
+        "unusedFingerprints": [],
+        "runtimeMessages": 3
+      }
+    },
     "disney": {
       "app": "disney",
       "sourceRoots": [
@@ -10,7 +187,7 @@
         {
           "id": "InsertionGetPointsFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/disney/Fingerprints.kt",
-          "line": 34,
+          "line": 37,
           "returnType": "Ljava/util/List",
           "hasCustomMatcher": true,
           "usedBy": [
@@ -20,7 +197,7 @@
         {
           "id": "InsertionGetRangesFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/disney/Fingerprints.kt",
-          "line": 42,
+          "line": 45,
           "returnType": "Ljava/util/List",
           "hasCustomMatcher": true,
           "usedBy": [
@@ -30,7 +207,7 @@
         {
           "id": "DmpInsertionGetPointsFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/disney/Fingerprints.kt",
-          "line": 62,
+          "line": 65,
           "returnType": "Ljava/util/List",
           "hasCustomMatcher": true,
           "usedBy": [
@@ -40,7 +217,7 @@
         {
           "id": "DmpInsertionGetRangesFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/disney/Fingerprints.kt",
-          "line": 70,
+          "line": 73,
           "returnType": "Ljava/util/List",
           "hasCustomMatcher": true,
           "usedBy": [
@@ -50,7 +227,7 @@
         {
           "id": "PauseAdStartedFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/disney/Fingerprints.kt",
-          "line": 106,
+          "line": 109,
           "returnType": "V",
           "strings": [
             "pauseData"
@@ -63,7 +240,7 @@
         {
           "id": "OutOfHouseholdCheckFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/disney/Fingerprints.kt",
-          "line": 156,
+          "line": 169,
           "returnType": "Ljava/lang/Object;",
           "hasCustomMatcher": true,
           "usedBy": [
@@ -109,7 +286,7 @@
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/disney/SuppressHouseholdPromptPatch.kt",
           "line": 41,
           "name": "Suppress Household Prompt",
-          "description": "Hides the Disney+ \\\"Verify Household Network\\\" / out-of-household prompt by forcing the client's out-of-household check to report in-household, so the app routes straight to home. Does NOT change what Disney's servers detect (that's driven by your public IP — use a VPN for that); it only suppresses the on-screen prompt/routing. Opt-in / experimental; only takes visible effect when the device would otherwise be prompted.",
+          "description": "Hides the Disney+ \\\"Verify Household Network\\\" / out-of-household prompt by forcing the client's out-of-household check to report in-household, so the app routes straight to home. Does NOT change what Disney's servers detect (that's driven by your public IP — use a VPN for that); it only suppresses the on-screen prompt/routing. Opt-in / experimental; only takes visible effect when the device would otherwise be prompted. Works on 26.12.1+rc1-2026.07.15 ONLY — it targets an obfuscated method whose name changes every release, so it cannot be applied to other builds.",
           "default": false,
           "uses": [
             {
@@ -127,11 +304,9 @@
         "com.disney.disneyplus"
       ],
       "targets": [
-        "26.6.0+rc5-2026.04.21",
-        "26.8.0+rc6-2026.05.20",
-        "26.9.2+rc1-2026.06.12",
-        "26.12.1+rc1-2026.07.15",
-        "26.16.0+rc2-2026.09.08"
+        "26.20.0+rc3-2026.11.02",
+        "26.16.0+rc2-2026.09.08",
+        "26.12.1+rc1-2026.07.15"
       ],
       "summary": {
         "patches": 2,
@@ -612,6 +787,122 @@
         "runtimeMessages": 50
       }
     },
+    "f1tv": {
+      "app": "f1tv",
+      "sourceRoots": [
+        "patches/src/main/kotlin/ajstrick81/morphe/patches/f1tv"
+      ],
+      "fingerprints": [
+        {
+          "id": "IsVideoQualityEnabledFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/f1tv/uhd/Fingerprints.kt",
+          "line": 29,
+          "returnType": "Z",
+          "hasCustomMatcher": true,
+          "note": "com/avs/f1/repository/DiagnosticsPreferenceManagerImpl->isVideoQualityEnabled()Z Reads SharedPreferences(\"key.diagnostics.videoQualityEnable\"). Forcing true exposes the in-app quality selector so the user can pick 2160p. (The other diagnostics overlays draw on-screen debug text and are intentionally left off.)",
+          "usedBy": [
+            "Unlock UHD (4K)"
+          ]
+        },
+        {
+          "id": "DoesDisplaySupportFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/f1tv/uhd/Fingerprints.kt",
+          "line": 44,
+          "returnType": "Z",
+          "parameters": [
+            "Landroid/content/Context;",
+            "I"
+          ],
+          "hasCustomMatcher": true,
+          "note": "com/tiledmedia/clearvrparameters/DeviceParameters->doesDisplaySupport(Context, int)Z Reads Display.getHdrCapabilities().getSupportedHdrTypes(). The core only serves an HDR tier whose type is in BOTH the EGL-supported AND the display-supported sets; an HDR10-only panel (type 2) makes it reject F1's HLG (type 3) upstream and fall back to the SDR 1620p tile. Forcing true lets the 2160p HLG tiles be served; the device's video pipeline then converts HLG to whatever the panel accepts (same path YouTube HLG uses on an HDR10 TV).",
+          "usedBy": [
+            "Unlock UHD (4K)"
+          ]
+        },
+        {
+          "id": "DeviceNeedsNoPostProcessFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/f1tv/uhd/Fingerprints.kt",
+          "line": 58,
+          "returnType": "Z",
+          "hasCustomMatcher": true,
+          "note": "com/tiledmedia/clearvrdecoder/util/Quirks->deviceNeedsNoPostProcessWorkaround()Z On NVIDIA devices this sets \"no-post-process\"=1 on the decoder MediaFormat, which can make ClearVR select a lower-quality tile tier. Forcing false removes that quirk (no-op on non-NVIDIA devices — the stock body only returns true for manufacturer == \"NVIDIA\").",
+          "usedBy": [
+            "Unlock UHD (4K)"
+          ]
+        },
+        {
+          "id": "GetDefaultDisplaySizeFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/f1tv/uhd/Fingerprints.kt",
+          "line": 70,
+          "returnType": "Landroid/graphics/Point;",
+          "parameters": [
+            "Landroid/app/Activity;"
+          ],
+          "hasCustomMatcher": true,
+          "note": "com/tiledmedia/clearvrview/TrueTVDisplaySizeHelper->getDefaultDisplaySize(Activity)Landroid/graphics/Point; Tiledmedia caps streaming resolution at ~1.5x the display size it detects; a 1080p UI surface pins tiles at 2880x1620 (\"can only select up to 2880x1620\"). Forcing a 3840x2160 panel lifts the cap so full 2160p is allowed.",
+          "usedBy": [
+            "Unlock UHD (4K)"
+          ]
+        },
+        {
+          "id": "ForcedHlgAdvertiseFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/f1tv/uhd/Fingerprints.kt",
+          "line": 86,
+          "returnType": "Z",
+          "hasCustomMatcher": true,
+          "note": "com/tiledmedia/clearvrview/EGLRenderTarget->getIsBt2020HlgExtensionSupported()Z THE key advertise gate. ClearVR reports EGL HDR support to F1's backend here; it is forced true so the 2160p (HDR) tier is offered. Most Android TV GPUs (incl. NVIDIA Shield and Amlogic/MediaTek boxes) don't expose the EGL BT2020 HLG colorspace, so unpatched the backend withholds EVERY 2160p tier. The honest answer is preserved under new helper methods (see UnlockUhdPatch) so the render path can still route each device correctly.",
+          "usedBy": []
+        }
+      ],
+      "patches": [
+        {
+          "id": "unlockUhdPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/f1tv/uhd/UnlockUhdPatch.kt",
+          "line": 24,
+          "name": "Unlock UHD (4K)",
+          "description": "Unlocks the 2160p/4K streaming tier for F1 TV on all Android TV hardware by removing the client-side device-capability gates and advertising HDR support to the F1 backend, while routing each device to the render path its GPU can actually drive. Requires a paid F1 TV Premium subscription — this changes no entitlement, only which video tier the app's own capability checks allow.",
+          "uses": [
+            {
+              "fingerprint": "DoesDisplaySupportFingerprint",
+              "smali": "/RenderTargetConfig;"
+            },
+            {
+              "fingerprint": "DeviceNeedsNoPostProcessFingerprint",
+              "call": "addInstructions",
+              "smali": "\r\n                const/4 v0, 0x0\r\n                return v0\r\n            "
+            },
+            {
+              "fingerprint": "GetDefaultDisplaySizeFingerprint",
+              "call": "addInstructions"
+            },
+            {
+              "fingerprint": "IsVideoQualityEnabledFingerprint",
+              "call": "addInstructions",
+              "smali": "\r\n                const/4 v0, 0x1\r\n                return v0\r\n            "
+            }
+          ]
+        }
+      ],
+      "runtime": {
+        "tags": [],
+        "messages": []
+      },
+      "packages": [
+        "com.formulaone.production"
+      ],
+      "targets": [
+        "3.0.49.4-SP166.4.1-release-R54.2-tv"
+      ],
+      "summary": {
+        "patches": 1,
+        "fingerprints": 5,
+        "unusedFingerprints": [
+          "ForcedHlgAdvertiseFingerprint"
+        ],
+        "runtimeMessages": 0
+      }
+    },
     "foxone": {
       "app": "foxone",
       "sourceRoots": [
@@ -844,6 +1135,138 @@
         "runtimeMessages": 0
       }
     },
+    "future": {
+      "app": "future",
+      "sourceRoots": [
+        "patches/src/main/kotlin/ajstrick81/morphe/patches/future"
+      ],
+      "fingerprints": [
+        {
+          "id": "PlayAdFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/future/ads/Fingerprints.kt",
+          "line": 35,
+          "returnType": "V",
+          "parameters": [
+            "Z"
+          ],
+          "hasCustomMatcher": true,
+          "note": "Hook 1 — Lcom/future/moviesByFawesomeAndroidTV/MediaPlayerActivity;->playAd(Z)V The upstream ad-break entry point. When an ad break is due, playAd() sets isAdsVisible=true and posts MediaPlayerActivity$7 (which runs AdsPlayer.initAds -> requestAds -> showMidRollAd to build the ImaAdsLoader and play the ad). playAd() ALSO contains the app's own no-ad branch (:cond_8): for a title with no ad data it pre-rolls straight to content (loadVideo(true)) and, for a mid-roll, simply returns (content keeps playing). The patch forces that exact no-ad path for EVERY ad break, so no ad is ever requested or shown and content loads/resumes natively. This is why hooking here (not showMidRollAd) avoids both the freeze-on-switch and the bounce-to-menu: we never enter the ad-waiting state at all. isMidRoll is the field playAd itself reads to choose loadVideo vs. return.",
+          "usedBy": [
+            "Skip ads"
+          ]
+        },
+        {
+          "id": "ShowBannerVastAdShowBannerAdFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/future/ads/Fingerprints.kt",
+          "line": 48,
+          "returnType": "V",
+          "hasCustomMatcher": true,
+          "note": "Hook 2 — Lcom/future/util/ShowBannerVastAd;->showBannerAd(Landroid/content/Context;Landroid/widget/ImageView;Landroid/widget/ImageView;Landroidx/media3/ui/PlayerView;Lcom/future/dto/Object_data;)V Draws the in-player VAST banner overlay (loads the banner image into the overlay ImageView and marks GlobalObject.isBannerAdVisible). Returning void suppresses the banner; it is a pure display side effect.",
+          "usedBy": [
+            "Skip ads"
+          ]
+        },
+        {
+          "id": "PlaybarShowPauseBugAdFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/future/ads/Fingerprints.kt",
+          "line": 62,
+          "returnType": "V",
+          "hasCustomMatcher": true,
+          "note": "Hook 3 — Lcom/future/customviews/Playbar;->showPauseBugAd()V Draws the pause-screen \"bug\" ad overlay from GlobalObject.pauseBanneradbannerVastDto. The method pauses the player + moves focus BEFORE the banner draw, and in the ENABLE_ITG=false branches of handleKeyPress this method is the pause handler itself. So the patch preserves the pause/focus prologue and returns just before the banner rendering (the first read of pauseBanneradbannerVastDto) — not a bare entry return.",
+          "usedBy": [
+            "Skip ads"
+          ]
+        },
+        {
+          "id": "CheckCurrentAppVersionFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/future/misc/Fingerprints.kt",
+          "line": 29,
+          "returnType": "V",
+          "hasCustomMatcher": true,
+          "note": "Lcom/future/moviesByFawesomeAndroidTV/SplashActivity;->checkCurrentAppVersion()V",
+          "usedBy": [
+            "Disable update prompt"
+          ]
+        },
+        {
+          "id": "SplashUpdateStateMethodFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/future/misc/Fingerprints.kt",
+          "line": 55,
+          "returnType": "V",
+          "parameters": [
+            "I",
+            "Ljava/lang/String;"
+          ],
+          "hasCustomMatcher": true,
+          "note": "───────────────────────────────────────────────────────────────────────────── 20.1 re-anchor. In 20.1 the whole com/future package is R8-obfuscated and the SplashActivity was rewritten (Hilt/ViewModel + coroutine StateFlow), so the version check moved into a splash view-model: com.future.moviesByFawesomeAndroidTV.ui.splash.<K>.e(int versionCode, String message) if (versionCode > 0 && versionCode > 0xC1 /*193 = installed code*/) emit updateState = new ui.splash.<C>(true, true, true, message) // dialog else emit proceedState = new ui.splash.<C>(0xE) // -> (a=1, b=0, c=0) no dialog The ui/splash/ package name survives obfuscation but the class/method letters do NOT, so we anchor structurally: an instance method (I, String)V inside ui/splash/ whose body constructs a sibling ui/splash/ state object via <init>(ZZZLjava/lang/String;)V (the update-state build). That construction is unique to e() among (I,String)V methods. ─────────────────────────────────────────────────────────────────────────────",
+          "usedBy": [
+            "Disable update prompt"
+          ]
+        }
+      ],
+      "patches": [
+        {
+          "id": "skipAdsPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/future/ads/SkipAdsPatch.kt",
+          "line": 12,
+          "name": "Skip ads",
+          "description": "Removes client-side ads in Fawesome Movies & TV (Android TV). The IMA pre/mid-roll video ad is suppressed by firing the app's own ad-complete transition (so content loads/resumes normally instead of waiting on an ad that never plays); the in-player VAST banner is removed; and the pause-screen bug ad is removed while the pause/focus behaviour is preserved. Ads are requested client-side, so this is a full removal with no server-stitched (SSAI) fallback to break.",
+          "uses": [
+            {
+              "fingerprint": "PlayAdFingerprint",
+              "call": "addInstructionsWithLabels"
+            },
+            {
+              "fingerprint": "ShowBannerVastAdShowBannerAdFingerprint",
+              "call": "addInstructions",
+              "smali": "return-void"
+            },
+            {
+              "fingerprint": "PlaybarShowPauseBugAdFingerprint",
+              "call": "apply",
+              "smali": "pauseBanneradbannerVastDto"
+            }
+          ]
+        },
+        {
+          "id": "disableUpdatePromptPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/future/misc/DisableUpdatePromptPatch.kt",
+          "line": 10,
+          "name": "Disable update prompt",
+          "description": "Stops Fawesome Movies & TV (Android TV) from showing the \\\"New version Available\\\" dialog on every launch. The app reads the server's latest version code (Firebase remote-config key \\\"versioncode_androidtv_googletv\\\") and, when it is higher than the installed build, shows an update dialog before continuing into the app. This patch forces the app's own no-update path instead, so startup is unchanged and the nag is gone — nothing is added, the client just stops being told to update. On 19.7 the seam is SplashActivity.checkCurrentAppVersion() -> Utilities.updateAlert(); on 20.1 (R8-obfuscated, ViewModel rewrite) it is the splash view-model's version-check method, forced down its own proceed branch. Whichever matches the installed version is applied.",
+          "uses": [
+            {
+              "fingerprint": "CheckCurrentAppVersionFingerprint",
+              "call": "apply"
+            },
+            {
+              "fingerprint": "SplashUpdateStateMethodFingerprint",
+              "call": "addInstructions",
+              "smali": "const/4 p1, 0x0"
+            }
+          ]
+        }
+      ],
+      "runtime": {
+        "tags": [],
+        "messages": []
+      },
+      "packages": [
+        "com.future.moviesByFawesomeAndroidTV"
+      ],
+      "targets": [
+        "19.7",
+        "20.1"
+      ],
+      "summary": {
+        "patches": 2,
+        "fingerprints": 5,
+        "unusedFingerprints": [],
+        "runtimeMessages": 0
+      }
+    },
     "hbomax": {
       "app": "hbomax",
       "sourceRoots": [
@@ -920,7 +1343,50 @@
           "line": 133,
           "hasCustomMatcher": true,
           "usedBy": [
-            "HBO Max - Prefer Ad-Free Stream"
+            "HBO Max - Prefer Ad-Free Stream",
+            "HBO Max - Remove Ad Periods (keep 5.1)"
+          ]
+        },
+        {
+          "id": "BeamApplicationOnCreateFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/hbomax/FingerprintsSpeed.kt",
+          "line": 22,
+          "definingClass": "Lcom/wbd/beam/BeamApplication;",
+          "name": "onCreate",
+          "returnType": "V",
+          "parameters": [],
+          "hasCustomMatcher": false,
+          "usedBy": [
+            "HBO Max - Playback Speed"
+          ]
+        },
+        {
+          "id": "ExoPlayerConstructorFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/hbomax/FingerprintsSpeed.kt",
+          "line": 39,
+          "name": "<init>",
+          "returnType": "V",
+          "hasCustomMatcher": true,
+          "usedBy": [
+            "HBO Max - Playback Speed"
+          ]
+        },
+        {
+          "id": "ExoPlayerDashManifestParserParseFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/hbomax/HBORemoveAdPeriodsPatch.kt",
+          "line": 50,
+          "hasCustomMatcher": true,
+          "usedBy": [
+            "HBO Max - Remove Ad Periods (keep 5.1)"
+          ]
+        },
+        {
+          "id": "CreateTimelineUseCaseInvokeFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/hbomax/HBORemoveAdPeriodsPatch.kt",
+          "line": 62,
+          "hasCustomMatcher": true,
+          "usedBy": [
+            "HBO Max - Remove Ad Periods (keep 5.1)"
           ]
         }
       ],
@@ -931,7 +1397,7 @@
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/hbomax/HBOAdsPatch.kt",
           "line": 10,
           "name": "HBO Max - Disable Ads",
-          "description": "Suppresses nonlinear overlay ads (Bolt), SSAI linear ad timeline registration (GMSS/AdSparx), and live stream preroll ad timeline entry generation for all content types.",
+          "description": "Suppresses nonlinear overlay ads (Bolt), SSAI linear ad timeline registration (GMSS/AdSparx), and live stream preroll ad timeline entry generation for all content types. Best paired with 'Remove Ad Periods (keep 5.1)': on its own, suppressing the ad-break registration can shift the skip-intro / next-episode markers earlier (the app maps those content-time chapters through the ad breaks).",
           "uses": [
             {
               "fingerprint": "BoltNonLinearAdsRequestWriteSelfFingerprint",
@@ -979,6 +1445,27 @@
           ]
         },
         {
+          "id": "hboPlaybackSpeedPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/hbomax/HBOPlaybackSpeedPatch.kt",
+          "line": 50,
+          "name": "HBO Max - Playback Speed",
+          "description": "Adds a remote-navigable on-screen speed control (0.5x–2.0x) to the HBO Max player. Opt-in; touches no DRM, ad, or network code. Not device-verified yet.",
+          "default": false,
+          "uses": [
+            {
+              "fingerprint": "BeamApplicationOnCreateFingerprint",
+              "call": "addInstructions",
+              "smali": "Could not find com.wbd.beam.BeamApplication.onCreate(). This patch "
+            },
+            {
+              "fingerprint": "ExoPlayerConstructorFingerprint",
+              "call": "instructions",
+              "smali": "No androidx.media3 ExoPlayer implementation found — HBO has "
+            }
+          ]
+        },
+        {
           "id": "hboPreferFallbackStreamPatch",
           "kind": "bytecodePatch",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/hbomax/HBOPreferFallbackStreamPatch.kt",
@@ -991,24 +1478,175 @@
               "call": "addInstructions"
             }
           ]
+        },
+        {
+          "id": "hboRemoveAdPeriodsPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/hbomax/HBORemoveAdPeriodsPatch.kt",
+          "line": 74,
+          "name": "HBO Max - Remove Ad Periods (keep 5.1)",
+          "description": "Keeps the normal PRIMARY stream (with 5.1 / E-AC-3 audio) but removes the stitched ad periods from its DASH manifest before playback. Overrides 'Prefer Ad-Free Stream' (its stereo-only fallback remap is switched off automatically). Fail-open: if the manifest cannot be matched, it is left unchanged.",
+          "default": false,
+          "uses": [
+            {
+              "fingerprint": "GetStreamInfoFingerprint",
+              "call": "addInstructions"
+            },
+            {
+              "fingerprint": "ExoPlayerDashManifestParserParseFingerprint",
+              "call": "addInstructions"
+            },
+            {
+              "fingerprint": "CreateTimelineUseCaseInvokeFingerprint",
+              "call": "addInstructions"
+            }
+          ]
         }
       ],
       "runtime": {
         "tags": [
-          "HboStreamSelector"
+          "HboManifestFilter",
+          "HboStreamSelector",
+          "HboSpeed"
         ],
         "messages": [
+          {
+            "level": "W",
+            "text": "fallback prefetch failed: ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 100
+          },
+          {
+            "level": "I",
+            "text": "decision for ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 115
+          },
+          {
+            "level": "I",
+            "text": "session ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 186
+          },
+          {
+            "level": "I",
+            "text": "playable has no fallback stream - nothing is filtered for it",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 192
+          },
+          {
+            "level": "W",
+            "text": "captureStreams failed: ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 194
+          },
+          {
+            "level": "I",
+            "text": "timeline: no fallback bound to ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 242
+          },
+          {
+            "level": "I",
+            "text": "hook order: timeline hook runs ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 248
+          },
+          {
+            "level": "I",
+            "text": "timeline: using FALLBACK timeline (len=",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 284
+          },
+          {
+            "level": "W",
+            "text": "timelineStreamInfo failed: ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 288
+          },
+          {
+            "level": "W",
+            "text": "read failed: ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 317
+          },
+          {
+            "level": "W",
+            "text": "filter failed, passing manifest through: ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 325
+          },
+          {
+            "level": "I",
+            "text": "manifest ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 337
+          },
+          {
+            "level": "I",
+            "text": "hook order: manifest parse runs ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 342
+          },
+          {
+            "level": "I",
+            "text": "manifest left unchanged to match the unchanged timeline",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 345
+          },
+          {
+            "level": "W",
+            "text": "MISALIGNED: timeline was already switched to the fallback timeline but the",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 359
+          },
+          {
+            "level": "I",
+            "text": "timeline already decided pass-through - manifest left unchanged",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 369
+          },
+          {
+            "level": "I",
+            "text": "dry run for ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 421
+          },
+          {
+            "level": "I",
+            "text": "no ad periods found in manifest for ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 426
+          },
+          {
+            "level": "I",
+            "text": "removed ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 449
+          },
+          {
+            "level": "I",
+            "text": "ambiguous durations resolved by audio-language count (",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 530
+          },
+          {
+            "level": "I",
+            "text": "manifest HTTP ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboManifestFilter.java",
+            "line": 643
+          },
           {
             "level": "I",
             "text": "remapping PRIMARY -> FALLBACK stream (ad-free manifest)",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboStreamSelector.java",
-            "line": 65
+            "line": 70
           },
           {
             "level": "W",
             "text": "preferFallbackType failed; using requested type",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/hbomax/ads/HboStreamSelector.java",
-            "line": 70
+            "line": 75
           }
         ]
       },
@@ -1016,14 +1654,143 @@
         "com.wbd.hbomax"
       ],
       "targets": [
+        "7.14.0.69",
         "7.9.0.61",
         "7.7.0.78",
         "7.5.0.73",
         "7.2.0.41"
       ],
       "summary": {
-        "patches": 3,
-        "fingerprints": 8,
+        "patches": 5,
+        "fingerprints": 12,
+        "unusedFingerprints": [],
+        "runtimeMessages": 23
+      }
+    },
+    "joyn": {
+      "app": "joyn",
+      "sourceRoots": [
+        "patches/src/main/kotlin/ajstrick81/morphe/patches/joyn"
+      ],
+      "fingerprints": [
+        {
+          "id": "AdsDisabledLogFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/joyn/ads/Fingerprints.kt",
+          "line": 33,
+          "strings": [
+            "Ads are disabled; skipping Ad SDK setup on the player"
+          ],
+          "hasCustomMatcher": false,
+          "usedBy": [
+            "Skip ads"
+          ]
+        }
+      ],
+      "patches": [
+        {
+          "id": "skipAdsPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/joyn/ads/SkipAdsPatch.kt",
+          "line": 12,
+          "name": "Skip ads",
+          "description": "Removes ads before and during videos in the Joyn Android TV app. It turns off the app's own \\\"ads enabled\\\" flag, so the player is built without Joyn's Ad SDK. Joyn is geo-restricted, so playback still needs Germany, Austria or Switzerland.",
+          "uses": [
+            {
+              "fingerprint": "AdsDisabledLogFingerprint",
+              "call": "instructions"
+            },
+            {
+              "fingerprint": "adSdkSetupFingerprint",
+              "call": "passed to helper/list"
+            }
+          ]
+        }
+      ],
+      "runtime": {
+        "tags": [],
+        "messages": []
+      },
+      "packages": [
+        "de.prosiebensat1digital.seventv"
+      ],
+      "targets": [
+        "6.5.2-ATV-605282491"
+      ],
+      "summary": {
+        "patches": 1,
+        "fingerprints": 1,
+        "unusedFingerprints": [],
+        "runtimeMessages": 0
+      }
+    },
+    "mediaset": {
+      "app": "mediaset",
+      "sourceRoots": [
+        "patches/src/main/kotlin/ajstrick81/morphe/patches/mediaset"
+      ],
+      "fingerprints": [
+        {
+          "id": "ShouldInterceptRequestFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/mediaset/ads/Fingerprints.kt",
+          "line": 28,
+          "name": "shouldInterceptRequest",
+          "returnType": "Landroid/webkit/WebResourceResponse;",
+          "parameters": [
+            "Landroid/webkit/WebView;",
+            "Landroid/webkit/WebResourceRequest;"
+          ],
+          "hasCustomMatcher": true,
+          "note": "The shell's WebViewClient.shouldInterceptRequest(WebView, WebResourceRequest). The app's own classes are not obfuscated; pinned to the ctv package so it can't match a WebViewClient from a library (androidx.webkit, Sentry, ...).",
+          "usedBy": [
+            "Skip ads"
+          ]
+        }
+      ],
+      "patches": [
+        {
+          "id": "skipAdsPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/mediaset/ads/SkipAdsPatch.kt",
+          "line": 13,
+          "name": "Skip ads",
+          "description": "Blocks the FreeWheel and Google ad calls the Mediaset Infinity Android TV web app makes, so no pre-roll, mid-roll, pause or welcome ad is ever chosen. Ads stitched into a live channel's stream on the server (if any) are not affected.",
+          "uses": [
+            {
+              "fingerprint": "ShouldInterceptRequestFingerprint",
+              "call": "apply"
+            }
+          ]
+        }
+      ],
+      "runtime": {
+        "tags": [
+          "MediasetAds"
+        ],
+        "messages": [
+          {
+            "level": "I",
+            "text": "blocked ad call: ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/mediaset/ads/MediasetAdBlocker.java",
+            "line": 55
+          },
+          {
+            "level": "E",
+            "text": "intercept failed; letting the request through",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/mediaset/ads/MediasetAdBlocker.java",
+            "line": 58
+          }
+        ]
+      },
+      "packages": [
+        "it.mediaset.infinitytv"
+      ],
+      "targets": [
+        "8.1.20",
+        "8.1.13"
+      ],
+      "summary": {
+        "patches": 1,
+        "fingerprints": 1,
         "unusedFingerprints": [],
         "runtimeMessages": 2
       }
@@ -1346,6 +2113,16 @@
           "uses": []
         },
         {
+          "id": "legacyGadgetPatch",
+          "kind": "resourcePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/netflix/nativehook/LegacyGadgetPatch.kt",
+          "line": 38,
+          "name": "Remove Netflix ads (legacy engine)",
+          "description": "Only for TVs where the patched Netflix clone crashes right at launch with the default ad remover (seen on some Android 12 devices, e.g. TiVo Stream 4K and some Philips TVs). Swaps the in-process ad-kill engine for an older build (frida-gadget 16.2.1) that those devices tolerate; the ad-kill script itself is unchanged. Select it IN ADDITION to the two default \\\"Remove Netflix ads\\\" patches. Leave it off if the default patch works for you. Opt-in / experimental.",
+          "default": false,
+          "uses": []
+        },
+        {
           "id": "loadGadgetPatch",
           "kind": "bytecodePatch",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/netflix/nativehook/LoadGadgetPatch.kt",
@@ -1369,10 +2146,12 @@
         "com.netflix.ninja"
       ],
       "targets": [
-        "13.0.1 build 25028"
+        "13.0.1 build 25028",
+        "13.2.1 build 27207",
+        "13.2.2 build 27250"
       ],
       "summary": {
-        "patches": 6,
+        "patches": 7,
         "fingerprints": 2,
         "unusedFingerprints": [],
         "runtimeMessages": 0
@@ -1452,6 +2231,7 @@
         "com.cbs.ott"
       ],
       "targets": [
+        "17.3.0",
         "16.19.0",
         "16.17.0",
         "16.12.0",
@@ -1537,11 +2317,11 @@
         {
           "id": "GetOkHttpClientFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/peacock/ads/Fingerprints.kt",
-          "line": 90,
+          "line": 91,
           "returnType": "Lokhttp3/OkHttpClient;",
           "parameters": [],
           "hasCustomMatcher": true,
-          "note": "── Layer 6 ────────────────────────────────────────────────────────────────── Target: the app's shared OkHttpClient BUILDER — the static, no-arg method that builds the client with OkHttpWorkaroundInterceptor. Replaces method body entirely via PeacockAdPatchHelper.buildOkHttpClient(). AdBlockInterceptor handles OkHttp-reachable ad/analytics traffic. ≤ 7.8.100: NetworkingKt.getOkHttpClient() (public static final) 7.10.102: OkHttpClientCacheKt.buildOkHttpClient() (private static final) In 7.10.102 getOkHttpClient() became a 4-instruction CACHE wrapper (OkHttpClientCache.getOrCreate()) around the private builder. Hooking the builder — not the wrapper — keeps Peacock's caching, so the ad-blocking client is built once instead of on every call. Matched by behavior (constructs OkHttpWorkaroundInterceptor) + either name, with no exact accessFlags (they changed public → private). NetworkingKt.generateTlsClient() also constructs the interceptor, so the name set is what keeps this unique.",
+          "note": "── Layer 6 ────────────────────────────────────────────────────────────────── Target: the app's shared OkHttpClient BUILDER — the static, no-arg method that builds the client with OkHttpWorkaroundInterceptor. AdBlockInterceptor is injected into this builder before build() (see Layer 6 in SkipAdsPatch) so the original client configuration is preserved. AdBlockInterceptor handles OkHttp-reachable ad/analytics traffic. ≤ 7.8.100: NetworkingKt.getOkHttpClient() (public static final) 7.10.102: OkHttpClientCacheKt.buildOkHttpClient() (private static final) In 7.10.102 getOkHttpClient() became a 4-instruction CACHE wrapper (OkHttpClientCache.getOrCreate()) around the private builder. Hooking the builder — not the wrapper — keeps Peacock's caching, so the ad-blocking client is built once instead of on every call. Matched by behavior (constructs OkHttpWorkaroundInterceptor) + either name, with no exact accessFlags (they changed public → private). NetworkingKt.generateTlsClient() also constructs the interceptor, so the name set is what keeps this unique.",
           "usedBy": [
             "Skip ads"
           ]
@@ -1549,7 +2329,7 @@
         {
           "id": "XtvClientWrapFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/peacock/ads/Fingerprints.kt",
-          "line": 127,
+          "line": 128,
           "hasCustomMatcher": true,
           "note": "── Layer 7 ────────────────────────────────────────────────────────────────── Target: XTVWebView's three <init> overloads. PCAP/GREASE fingerprinting confirmed all ad segment delivery and FreeWheel traffic travels through the Chromium/WebView stack, bypassing OkHttp. xtvClient (XTVWebView$xtvClient$1) extends WebViewClient but does NOT override shouldInterceptRequest. PeacockWebViewHelper.wrapClient() delegates all existing xtvClient callbacks and adds shouldInterceptRequest() with randomized responses to avoid FreeWheel fraud detection fingerprinting. XTVWebView has three constructors, and the app does NOT exclusively use the 1-arg Context-only one: activity_main.xml declares com.peacock.peacocktv.web.VirtualDpadXTVWebView (a subclass), which Android instantiates via LayoutInflater using the 2-arg (Context, AttributeSet) constructor — VirtualDpadXTVWebView's own 2-arg <init> delegates straight to XTVWebView's 2-arg <init>. Wrapping only the 1-arg constructor (as the original single-fingerprint version of this patch did) meant the wrap never ran at all in practice, since the 2-arg constructor sets xtvClient unwrapped. All three overloads now get their own fingerprint + injection so every instantiation path is covered. Confirmed matching v7.5.102 and v7.6.100.",
           "usedBy": [
@@ -1559,7 +2339,7 @@
         {
           "id": "XtvClientWrapTwoArgFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/peacock/ads/Fingerprints.kt",
-          "line": 143,
+          "line": 144,
           "hasCustomMatcher": true,
           "note": "Target: XTVWebView.<init>(Context, AttributeSet) — the constructor Android actually invokes when inflating VirtualDpadXTVWebView from activity_main.xml. The setWebViewClient(...) call and its holding register are located dynamically (see wrapXtvClientSetter in SkipAdsPatch.kt) since the instruction offset has already been confirmed to drift across versions (index 56 on v7.5.102, 52 on v7.6.100 after a field-init removal upstream). Confirmed matching v7.5.102 and v7.6.100 via direct smali inspection.",
           "usedBy": [
@@ -1569,7 +2349,7 @@
         {
           "id": "XtvClientWrapThreeArgFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/peacock/ads/Fingerprints.kt",
-          "line": 159,
+          "line": 160,
           "hasCustomMatcher": true,
           "note": "Target: XTVWebView.<init>(Context, AttributeSet, int) — the 3-arg style- attribute constructor overload. The setWebViewClient(...) call and its holding register are located dynamically (see wrapXtvClientSetter in SkipAdsPatch.kt) rather than via a fixed offset, since that offset is confirmed to drift across versions (index 57 on v7.5.102, 53 on v7.6.100). Confirmed matching v7.5.102 and v7.6.100 via direct smali inspection.",
           "usedBy": [
@@ -1579,7 +2359,7 @@
         {
           "id": "FreewheelModuleSkipFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/peacock/ads/Fingerprints.kt",
-          "line": 192,
+          "line": 193,
           "hasCustomMatcher": true,
           "note": "── Layer 8 ────────────────────────────────────────────────────────────────── Target: AddonInjectorImpl.di$lambda$0(AddonInjectorImpl, DI$MainBuilder) This is the Sky SDK dependency injection wiring method that imports all addon modules into the player's DI container. At instruction indices 16-17: idx=16: iget-object v0, v4, AddonInjectorImpl->freewheelModule DI$Module idx=17: invoke-static v5,v0,v1,v2,v3, DI$Builder$DefaultImpls->import$default(...) Skipping these two instructions prevents FreeWheel from ever being registered in the DI container. The player has no FreeWheel addon — no ad requests, no VMAP fetches, no tracking pixels. This is the Sky SDK equivalent of returning null from getSsaiConfigurationProvider() (Layer 4) but targeting CSAI/FreeWheel rather than SSAI/MediaTailor. Anchor: \"FreewheelModule\" is unique across the entire APK and sits at instruction 92 in AddonInjectorImpl.<init>, same class as di$lambda$0. customFingerprint guards on both method name and defining class. Confirmed matching v7.5.102 and v7.6.100 — the freewheelModule iget-object/import$default pair remains at the same indices 16-17 in v7.6.100 (this method's body wasn't touched by the field-init removal that shifted Layer 7's setWebViewClient offsets in this release).",
           "usedBy": [
@@ -1589,7 +2369,7 @@
         {
           "id": "NativeNetworkApiConstructorFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/peacock/ads/Fingerprints.kt",
-          "line": 213,
+          "line": 214,
           "hasCustomMatcher": true,
           "note": "── Layer 9 ────────────────────────────────────────────────────────────────── Target: NativeNetworkApi.<init>(DeviceContext, OkHttpClient) The Sky Core Player SDK's addon network stack (FreeWheel ad decisioning, Conviva/Comscore/Nielsen measurement — delivered dynamically via the ad-config response rather than hardcoded, so no literal domain strings for them exist anywhere in the dex) is entirely independent from the app's main NetworkingKt.getOkHttpClient() client that Layer 6 patches. This constructor derives its own child OkHttpClient via newBuilder()/build() and was the unfiltered gap: AdGuard Home DNS logs showed sas.peacocktv.com and fwmrm.net still being requested with the patched APK installed, even though both hostnames were already in AdBlockInterceptor's lists — the interceptor just wasn't wired into this client. Confirmed matching v7.6.100 via direct smali inspection.",
           "usedBy": [
@@ -1627,12 +2407,12 @@
               "smali": "\r\n                return-void\r\n            "
             },
             {
-              "fingerprint": "GetOkHttpClientFingerprint",
-              "call": "addInstructions"
-            },
-            {
               "fingerprint": "FreewheelModuleSkipFingerprint",
               "call": "apply"
+            },
+            {
+              "fingerprint": "GetOkHttpClientFingerprint",
+              "call": "passed to helper/list"
             },
             {
               "fingerprint": "XtvClientWrapFingerprint",
@@ -1689,37 +2469,37 @@
             "level": "D",
             "text": "BLOCKED [",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/peacock/ads/PeacockWebViewHelper.java",
-            "line": 223
+            "line": 239
           },
           {
             "level": "E",
             "text": "shouldInterceptRequest error: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/peacock/ads/PeacockWebViewHelper.java",
-            "line": 228
+            "line": 244
           },
           {
             "level": "D",
             "text": "DAI clean manifest HTTP ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/peacock/ads/PeacockWebViewHelper.java",
-            "line": 302
+            "line": 318
           },
           {
             "level": "D",
             "text": "DAI->CLEAN manifest served (",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/peacock/ads/PeacockWebViewHelper.java",
-            "line": 314
+            "line": 330
           },
           {
             "level": "E",
             "text": "DAI clean manifest fetch failed -> fall through: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/peacock/ads/PeacockWebViewHelper.java",
-            "line": 321
+            "line": 337
           },
           {
             "level": "D",
             "text": "PeacockWebViewHelper.wrapClient() — Layer 7 active (randomized responses)",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/peacock/ads/PeacockWebViewHelper.java",
-            "line": 331
+            "line": 347
           }
         ]
       },
@@ -1727,8 +2507,6 @@
         "com.peacocktv.peacockandroid"
       ],
       "targets": [
-        "7.5.102",
-        "7.6.100",
         "7.8.100",
         "7.10.102"
       ],
@@ -1925,6 +2703,120 @@
           "usedBy": [
             "Mask live ad breaks (black screen + mute)"
           ]
+        },
+        {
+          "id": "AviaDaiShouldPlayAdFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/pluto/ads/FingerprintsV17.kt",
+          "line": 23,
+          "returnType": "Z",
+          "hasCustomMatcher": true,
+          "note": "Hook 1 — AviaDAIResourceProvider.shouldPlayAd(AviaAdPod): Z [required] The AVIA DAI provider gates each VOD ad pod through shouldPlayAd(); its position monitor skips the pod natively when this returns false. Forcing false removes the DAI pre-roll while the stream keeps playing. Private, boolean return; matched by its (readable, stable) name + Z return + unique leaf class name.",
+          "usedBy": [
+            "Skip ads (v17)"
+          ]
+        },
+        {
+          "id": "AviaImaShouldPlayAdFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/pluto/ads/FingerprintsV17.kt",
+          "line": 35,
+          "returnType": "Z",
+          "hasCustomMatcher": true,
+          "note": "Hook 2 — AviaIMAResourceProvider.shouldPlayAd(AviaAdPod): Z [optional] The IMA counterpart of Hook 1. Not all titles route through it, so the patch applies it via methodOrNull — a build without this provider simply skips it.",
+          "usedBy": [
+            "Skip ads (v17)"
+          ]
+        },
+        {
+          "id": "AviaDashParserParseFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/pluto/ads/FingerprintsV17.kt",
+          "line": 55,
+          "parameters": [
+            "Landroid/net/Uri;",
+            "Ljava/io/InputStream;"
+          ],
+          "hasCustomMatcher": true,
+          "note": "Hook 3 — AviaDashParser.parse(Uri, InputStream): <DashManifest> [required] The mid-roll ads are stitched into the multi-period DASH manifest (FreeWheel SSAI), so emptying ad metadata is not enough — the ad <Period>s must be removed from the manifest itself. media3's parser is R8-renamed (can't be hooked by name like leanback), so we hook AVIA's OWN un-renamed parse() and swap its InputStream for a cleaned one (PlutoV17ManifestProbe.cleanManifestStream) at entry. parse(Uri, InputStream) is NOT unique — R8 also emits a synthetic bridge with the same params returning Ljava/lang/Object;. The custom predicate excludes that bridge (returnType != Object) so we anchor the REAL DASH parser (returns the obfuscated DashManifest type, whose exact R8 name varies per build and so is never hardcoded).",
+          "usedBy": [
+            "Skip ads (v17)"
+          ]
+        },
+        {
+          "id": "Clid3ProcessAdPodStartFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/pluto/ads/FingerprintsV17.kt",
+          "line": 74,
+          "returnType": "V",
+          "parameters": [
+            "Ljava/util/Map;",
+            "J"
+          ],
+          "hasCustomMatcher": true,
+          "note": "Hook 4 — CLID3Processor.processAdPodStartAsync(Map, long): V [required] On VOD, the ID3/CLID3 beacon path also fires a CSAI ad call (processAdPodStartAsync), which can re-introduce ad fetches independent of the manifest. When Hook 3 has seen a static (VOD) manifest, PlutoV17ManifestProbe.shouldSuppressDynamicAdFetch() is true; prepending that to the method's early-return guard suppresses the CSAI call on VOD while leaving live/linear (dynamic) untouched. Readable AVIA name + Map,long params.",
+          "usedBy": [
+            "Skip ads (v17)"
+          ]
+        },
+        {
+          "id": "CbsPauseOverlayRenderFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/pluto/ads/FingerprintsV17.kt",
+          "line": 95,
+          "returnType": "V",
+          "hasCustomMatcher": true,
+          "note": "Hook 6 — CbsPauseWithAdsOverlay render dispatch: static V (overlay, state) [optional] v17 TV draws pause ads in Paramount's own CbsPauseWithAdsOverlay, not through IMA's pause-ad slot (Hook 5 is a no-op on TV). The static render method takes (overlay, state) and, per state, loads the ad image and fades the overlay in. R8 renames the method and the state type and strips the log strings the Paramount+ fingerprint uses, so it is matched by shape: static, void, two params, the first being the overlay itself. Overlay starts at alpha 0, so returning at entry keeps it invisible.",
+          "usedBy": [
+            "Skip ads (v17)"
+          ]
+        },
+        {
+          "id": "BeaconConsumeAdsFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/pluto/ads/FingerprintsV17.kt",
+          "line": 114,
+          "returnType": "V",
+          "strings": [
+            "Feature is disabled, can't consume the adsData"
+          ],
+          "hasCustomMatcher": false,
+          "note": "Hook 7 — ad beacon tracker consumeAds(adsData): V [optional] With the ad periods stripped (Hook 3) no ad plays, but the beacon tracker (tag \"_BeaconFiring\") still receives the stitcher's ad-break data and fires IMPRESSION_SLOT_START beacons to FreeWheel (fwmrm.net) and k.pluto.tv at each break position (device-observed 17.2.0). consumeAds already returns early when the feature is disabled; returning at entry takes that same path, so no ad timeline is loaded and no impressions are reported. Class and method are R8-renamed; anchored on the method's own disabled-path message.",
+          "usedBy": [
+            "Skip ads (v17)"
+          ]
+        },
+        {
+          "id": "AviaDaiContentDurationFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/pluto/ads/FingerprintsV17.kt",
+          "line": 133,
+          "returnType": "J",
+          "hasCustomMatcher": true,
+          "note": "Hook 8 — AviaResourceProvider.getContentDuration(): J [all optional] (issue #300) The seekbar's scale is AviaPlayerInfo.contentDuration, which AbstractAviaPlayer sets once from the active provider's getContentDuration(). In 17.2.0 the DAI provider computes it as getAbsoluteDuration() minus the summed durations of adPodList — ad time subtracted from the player's duration. After Hook 3 the player's duration already excludes the ads, but adPodList is still populated, so the deduction happens twice and the bar is scaled shorter than the content. Hooking each provider's returns lets the extension substitute the duration the strip actually measured. Anchored on the readable AVIA leaf class + method name; the return type is J and there are no parameters, so no obfuscated type is referenced. Each is resolved optionally: only the provider actually in use for a given title matters, and a build or title that routes through a different one simply skips the others.",
+          "usedBy": []
+        },
+        {
+          "id": "AviaImaContentDurationFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/pluto/ads/FingerprintsV17.kt",
+          "line": 142,
+          "returnType": "J",
+          "hasCustomMatcher": true,
+          "usedBy": []
+        },
+        {
+          "id": "AviaUriContentDurationFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/pluto/ads/FingerprintsV17.kt",
+          "line": 151,
+          "returnType": "J",
+          "hasCustomMatcher": true,
+          "usedBy": []
+        },
+        {
+          "id": "AviaPlayerSeekFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/pluto/ads/FingerprintsV17.kt",
+          "line": 206,
+          "returnType": "V",
+          "parameters": [
+            "J",
+            "Z"
+          ],
+          "hasCustomMatcher": true,
+          "note": "REMOVED — Hook 8 (first attempt): AviaPlayer.seek(long, boolean): V Kept as a note because the reasoning is easy to repeat. The idea was that the UI computed seek targets against Pluto's ad-inclusive metadata duration, so they needed remapping onto the stripped clock. The caller audit supported half of that — only AviaDecor and AbstractAviaDecor call seek(J,Z), so it is purely a UI entry point — but the coordinate assumption was never verified and turned out to be wrong. On-device (17.2.0, Burn Notice): three successive forward nudges of ~12s each moved playback BACKWARDS ~138s every time, because each requested target was derived from the player's own (already stripped) position and the hook subtracted the ad time again. The displayed position snapped back by exactly the removed ad time. Only the SCALE was ever wrong, not the needle, so the duration is corrected instead and no position is remapped. Do not reintroduce a seek remap without first proving, on a device, which clock the UI's targets are actually in. The original rationale is preserved below, since the parts of it that were correct (the caller audit, the register encoding) are worth keeping: Hook 3 shortens the player's timeline but not Pluto's own duration metadata, so the seekbar is drawn against the ad-INCLUSIVE length while playback runs on the content-only one. A seek the UI computes therefore arrives in the wrong clock: it overshoots by all the ad time before it, which is the wrong-seek half of #300. Routing the requested position through PlutoV17ManifestProbe.toStrippedMs puts it back on the player's clock. WHY THIS METHOD AND NOT _seek(J): the two are split exactly along the coordinate boundary in 17.2.0, confirmed by every caller in the decomp. seek(J,Z) <- AviaDecor$1 and AbstractAviaDecor ONLY (the player controls), so every caller is the UI, in original/metadata coordinates. _seek(J) <- AviaDAIResourceProvider, AviaIMAResourceProvider, AviaUriResourceProvider and AbstractAviaPlayer.seekToLive, i.e. ad-pod transitions, retries and live-edge jumps. Those positions are read back FROM the player and are already stripped, so remapping them would subtract the ad time a second time and send playback backwards. _seek must stay untouched. seek(J,Z) is declared abstract on AbstractAviaPlayer and implemented on AviaPlayer, so the predicate anchors the leaf class to get a method with a body. Note that \"/AviaPlayer;\" does not match \"AbstractAviaPlayer;\" (the preceding character is 't', not '/'), so the abstract declaration is excluded. This covers scrubbing, NOT the restoration of a Continue Watching bookmark: that arrives through AbstractAviaMediaAsset.setStartPosition(J), which the app calls before the manifest is fetched — so the strip has not run yet and no map exists at that moment. That seam needs a post-parse application point and is not wired here.",
+          "usedBy": []
         }
       ],
       "patches": [
@@ -1937,9 +2829,7 @@
           "description": "Masks Pluto TV LIVE/linear commercial breaks, which are real broadcast time stitched into the live feed and cannot be removed (unlike VOD ads, which \\\"Skip ads\\\" deletes outright). During a live break it covers the player with a black screen and mutes the audio, then restores both the instant the show returns — so gambling, drinking, or any other live ad is blanked and silenced. Detection is driven by Pluto's own ID3 ad-state flow (ID3AdsBeaconTracker), which fires only while an ad plays, so it needs no polling and keeps working alongside \\\"Skip ads\\\". Opt-out: leave it OFF to watch live ads normally; runtime controls are marker files in the app's external files dir — `slate_off` disables it, and `pluto_slate_mode` set to `black` or `mute` picks cover-only or mute-only instead of both. Validated on-device, 5.66.0-leanback.",
           "uses": [
             {
-              "fingerprint": "Id3ConsumeFingerprint",
-              "call": "addInstructions",
-              "smali": "invoke-static { p1 }, Lajstrick81/morphe/extension/pluto/ads/PlutoLiveSlateHelper;"
+              "fingerprint": "Id3ConsumeFingerprint"
             },
             {
               "fingerprint": "LeanbackHostOnCreateFingerprint",
@@ -1992,6 +2882,49 @@
             {
               "fingerprint": "AviaStartExoplayerFingerprint",
               "call": "apply"
+            }
+          ]
+        },
+        {
+          "id": "skipAdsV17Patch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/pluto/ads/SkipAdsV17Patch.kt",
+          "line": 12,
+          "name": "Skip ads (v17)",
+          "description": "Removes Pluto TV's on-demand (VOD) ads on the v17.x rebuild (the Paramount+/AVIA player stack). Four layers: (1+2) force AVIA's DAI and IMA shouldPlayAd() gates to false so the pre-roll ad pods are skipped natively; (3) drop the ad <Period>s from the stitched multi-period DASH manifest at AVIA's own DashParser and re-base the content periods into a contiguous timeline, so the mid-roll ad VIDEO is never played AND the seekbar tracks correctly; (4) suppress the ID3/CLID3-driven CSAI ad call on static VOD manifests. Also hides pause ads and stops ad impression beacons for the removed breaks. Fail-open: a manifest it can't rewrite is passed through unchanged (ads remain, playback never breaks). LIVE TV ads are real broadcast time in the linear feed and are not removable. Validated on-device, 17.2.0.",
+          "uses": [
+            {
+              "fingerprint": "AviaDaiShouldPlayAdFingerprint",
+              "call": "addInstructions",
+              "smali": "\r\n                const/4 v0, 0x0\r\n                return v0\r\n            "
+            },
+            {
+              "fingerprint": "AviaImaShouldPlayAdFingerprint",
+              "call": "addInstructions",
+              "smali": "\r\n                const/4 v0, 0x0\r\n                return v0\r\n            "
+            },
+            {
+              "fingerprint": "AviaDashParserParseFingerprint",
+              "call": "apply"
+            },
+            {
+              "fingerprint": "Clid3ProcessAdPodStartFingerprint",
+              "call": "addInstructions"
+            },
+            {
+              "fingerprint": "ImaPauseAdDisplayFingerprint",
+              "call": "addInstructions",
+              "smali": "return-void"
+            },
+            {
+              "fingerprint": "CbsPauseOverlayRenderFingerprint",
+              "call": "addInstructions",
+              "smali": "return-void"
+            },
+            {
+              "fingerprint": "BeaconConsumeAdsFingerprint",
+              "call": "addInstructions",
+              "smali": "return-void"
             }
           ]
         },
@@ -2065,13 +2998,13 @@
             "level": "I",
             "text": "resume remap (#147): original=",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoDashManifestProbe.java",
-            "line": 275
+            "line": 287
           },
           {
             "level": "E",
             "text": "resume remap failed -> original position (resume unaffected): ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoDashManifestProbe.java",
-            "line": 279
+            "line": 291
           },
           {
             "level": "D",
@@ -2186,6 +3119,138 @@
             "text": "contentRoot failed: …",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoLiveSlateHelper.kt",
             "line": 336
+          },
+          {
+            "level": "I",
+            "text": "v17 StitcherSession.adBreaks neutralised (#300): ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 215
+          },
+          {
+            "level": "E",
+            "text": "v17 StitcherSession.adBreaks neutralise failed -> original: ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 220
+          },
+          {
+            "level": "I",
+            "text": "v17 adBreaks neutralised (#300): ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 243
+          },
+          {
+            "level": "E",
+            "text": "v17 adBreaks neutralise failed -> original: ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 247
+          },
+          {
+            "level": "I",
+            "text": "v17 adBreaksDuration zeroed (#300): was ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 277
+          },
+          {
+            "level": "E",
+            "text": "v17 adBreaksDuration zero failed -> original: ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 281
+          },
+          {
+            "level": "I",
+            "text": "v17 duration passthrough (#300): provider reported ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 293
+          },
+          {
+            "level": "I",
+            "text": "v17 duration fix (#300): provider reported ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 298
+          },
+          {
+            "level": "E",
+            "text": "v17 duration fix failed -> provider value: ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 304
+          },
+          {
+            "level": "I",
+            "text": "v17 map O->S (#300): ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 353
+          },
+          {
+            "level": "E",
+            "text": "v17 map O->S failed -> identity: ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 357
+          },
+          {
+            "level": "I",
+            "text": "v17 map S->O (#300): ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 392
+          },
+          {
+            "level": "E",
+            "text": "v17 map S->O failed -> identity: ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 396
+          },
+          {
+            "level": "I",
+            "text": "v17 period[",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 451
+          },
+          {
+            "level": "E",
+            "text": "v17 strip failed -> original manifest: ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 593
+          },
+          {
+            "level": "E",
+            "text": "v17 read failed -> original stream: ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 601
+          },
+          {
+            "level": "I",
+            "text": "v17 dynamic (live) MPD -> untouched",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 637
+          },
+          {
+            "level": "W",
+            "text": "v17 strip: ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 678
+          },
+          {
+            "level": "W",
+            "text": "v17 strip: no content periods kept (of ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 728
+          },
+          {
+            "level": "W",
+            "text": "v17 GUARD tripped: kept ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 732
+          },
+          {
+            "level": "I",
+            "text": "v17 STRIPPED ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 760
+          },
+          {
+            "level": "E",
+            "text": "v17 strip failed -> original manifest: ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/pluto/ads/PlutoV17ManifestProbe.java",
+            "line": 766
           }
         ]
       },
@@ -2193,13 +3258,19 @@
         "tv.pluto.android"
       ],
       "targets": [
-        "5.66.0-leanback"
+        "5.66.0-leanback",
+        "17.2.0"
       ],
       "summary": {
-        "patches": 5,
-        "fingerprints": 10,
-        "unusedFingerprints": [],
-        "runtimeMessages": 26
+        "patches": 6,
+        "fingerprints": 20,
+        "unusedFingerprints": [
+          "AviaDaiContentDurationFingerprint",
+          "AviaImaContentDurationFingerprint",
+          "AviaUriContentDurationFingerprint",
+          "AviaPlayerSeekFingerprint"
+        ],
+        "runtimeMessages": 48
       }
     },
     "primevideo": {
@@ -2288,15 +3359,12 @@
         {
           "id": "ApplicationOnCreateFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/primevideo/nativehook/Fingerprints.kt",
-          "line": 26,
+          "line": 44,
           "definingClass": "Lcom/amazon/primevideo/PrimeVideoApplication;",
           "name": "onCreate",
           "returnType": "V",
-          "accessFlags": [
-            "PUBLIC"
-          ],
           "hasCustomMatcher": false,
-          "note": "───────────────────────────────────────────────────────────────────────────── Application.onCreate — earliest reliable point to load the native hook lib. We inject System.loadLibrary(\"pvhook\") at the TOP of onCreate so JNI_OnLoad runs (and installs the memcpy/memmove hooks) before the first playback session builds its native MediaPipelineBackend. definingClass confirmed 2026-07-23 from a decoded 6.23.23+v15.5.0.70-armv7a APK's AndroidManifest.xml (<application android:name=\"…\">): com.amazon.primevideo.PrimeVideoApplication. This also matches the class used for the manual System.loadLibrary(\"frida-gadget\") smali injection in the earlier Frida-gadget recipe (see repo memory), so it's a repeatedly confirmed anchor, not a one-off guess. Re-verify on every version bump — an onCreate fingerprint anchored to the wrong class silently won't resolve. If pinning the class proves brittle across updates, switch this to a strings/custom predicate that matches the unique onCreate that also calls super.onCreate() on an Application — but keep it anchored to exactly one method so the loadLibrary isn't injected twice. ─────────────────────────────────────────────────────────────────────────────",
+          "note": "───────────────────────────────────────────────────────────────────────────── Application.onCreate — earliest reliable point to load the native hook lib. We inject System.loadLibrary(\"pvhook\") at the TOP of onCreate so JNI_OnLoad runs (and installs the memcpy/memmove hooks) before the first playback session builds its native MediaPipelineBackend. definingClass confirmed 2026-07-23 from a decoded 6.23.23+v15.5.0.70-armv7a APK's AndroidManifest.xml (<application android:name=\"…\">): com.amazon.primevideo.PrimeVideoApplication. This also matches the class used for the manual System.loadLibrary(\"frida-gadget\") smali injection in the earlier Frida-gadget recipe (see repo memory), so it's a repeatedly confirmed anchor, not a one-off guess. Re-verify on every version bump — an onCreate fingerprint anchored to the wrong class silently won't resolve. If pinning the class proves brittle across updates, switch this to a strings/custom predicate that matches the unique onCreate that also calls super.onCreate() on an Application — but keep it anchored to exactly one method so the loadLibrary isn't injected twice. NO accessFlags — deliberate (2026-11-07). Morphe compares accessFlags with exact integer equality (app.morphe.patcher.Fingerprint: getAccessFlags() then if_icmpeq), not a subset test. Measured from each build's smali: 6.23.23+v15.5.0.70 .method public onCreate()V PUBLIC 0x1 6.24.7+v16.0.0.332 .method public final onCreate()V PUBLIC|FINAL 0x11 6.24.13+v16.0.1.93 .method public final onCreate()V PUBLIC|FINAL 0x11 So a pinned `listOf(AccessFlags.PUBLIC)` silently fails to resolve on every v16 build: loadNativeHookPatch uses methodOrNull, so the loadLibrary call is never injected, libpvhook never loads, and the strip is absent with no error anywhere. That is the long-standing \"v16 doesn't suppress ads\" symptom recorded in docs/seam-map/overlay.json; the recorded fix (drop accessFlags) had never actually been applied to this file. definingClass + name + empty parameters + returnType V already identify exactly one method in this class, so dropping accessFlags costs no precision and is drift-tolerant across future public/final churn. ─────────────────────────────────────────────────────────────────────────────",
           "usedBy": [
             "Load native ad-strip hook"
           ]
@@ -2372,7 +3440,7 @@
           "id": "bundleNativeHookPatch",
           "kind": "resourcePatch",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/primevideo/nativehook/BundleNativeHookPatch.kt",
-          "line": 32,
+          "line": 39,
           "name": "Bundle native ad-strip hook",
           "description": "Packages libpvhook.so into the APK's native lib dir for the in-process ad strip (libignite memcpy/memmove GOT/PLT import hook).",
           "uses": []
@@ -2456,169 +3524,331 @@
             "level": "N",
             "text": "got: … has no PT_DYNAMIC",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 60
+            "line": 92
           },
           {
             "level": "N",
             "text": "got: … missing dynamic entries (symtab=… strtab=… jmprel=… sz=…)",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 82
+            "line": 114
           },
           {
             "level": "N",
-            "text": "got: … PLT reloc type is not DT_REL (…)",
+            "text": "got: … PLT reloc type …, expected … for …",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 88
+            "line": 121
           },
           {
             "level": "N",
             "text": "got: … has no JUMP_SLOT for '…'",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 103
+            "line": 137
           },
           {
             "level": "N",
             "text": "got: could not locate GOT slot for …!…",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 113
+            "line": 147
           },
           {
             "level": "N",
             "text": "got: mprotect RW failed for …!… slot=…",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 123
+            "line": 157
           },
           {
             "level": "N",
             "text": "got: hooked …!… slot=… prev=… -> proxy=…",
             "file": "experimental/primevideo-libignite-native/jni/got_hook.cpp",
-            "line": 134
+            "line": 168
           },
           {
             "level": "N",
             "text": "CALLER …: libignite+0x… n=… remotes=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 119
+            "line": 154
           },
           {
             "level": "N",
             "text": "CALLER …: … (no dladdr) n=… remotes=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 122
+            "line": 157
+          },
+          {
+            "level": "N",
+            "text": "PVDIAG rego cont dst=… prev_end=… contiguous=… n=…",
+            "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
+            "line": 223
+          },
+          {
+            "level": "N",
+            "text": "PVKILL path=tv-reassembled playlist emptied across chunks (span=… close=…)",
+            "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
+            "line": 250
           },
           {
             "level": "N",
             "text": "PVDIAG rego TRUNCATED (mid-roll suspect) n=… open=… head=[…]",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 212
+            "line": 289
           },
           {
             "level": "N",
             "text": "PVKILL path=tv-trunc blanked=… complete ad item(s) in truncated chunk (n=…)",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 235
+            "line": 313
           },
           {
             "level": "N",
             "text": "[rego] TRUNCATED playlist: blanked … complete media.urls ",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 244
+            "line": 322
           },
           {
             "level": "N",
             "text": "PVKILL path=tv-trunc urls=… n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 246
+            "line": 324
+          },
+          {
+            "level": "N",
+            "text": "[rego] TRUNCATED playlist closed before tail item (tail at …) n=…",
+            "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
+            "line": 341
+          },
+          {
+            "level": "N",
+            "text": "PVKILL path=tv-split n=…",
+            "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
+            "line": 343
+          },
+          {
+            "level": "N",
+            "text": "PVDIAG rego trunc dst=… n=… end=… (armed for reassembly)",
+            "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
+            "line": 357
           },
           {
             "level": "N",
             "text": "PVDIAG rego already-empty n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 252
+            "line": 364
           },
           {
             "level": "N",
             "text": "[rego] emptied playlist (~… ad(s), interior … bytes blanked) n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 268
+            "line": 380
           },
           {
             "level": "N",
             "text": "PVKILL path=tv ads=… n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 271
+            "line": 383
           },
           {
             "level": "N",
             "text": "PVMANIFEST […] n=…: …",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 295
+            "line": 407
           },
           {
             "level": "N",
             "text": "TRUNCATED array: blanked …/… COMPLETE Remote item(s) before cut, ",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 332
+            "line": 452
           },
           {
             "level": "N",
             "text": "marker found but array TRUNCATED (not touched) n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 337
+            "line": 457
           },
           {
             "level": "N",
             "text": "PVSKIP path=movie gvaRemotesLeftForPath2=… n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 344
+            "line": 464
           },
           {
             "level": "N",
             "text": "blanked …/… Remote item(s) in complete array (n=…)",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 349
+            "line": 469
           },
           {
             "level": "N",
             "text": "PVKILL path=movie blanked=…/… n=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 352
+            "line": 472
           },
           {
             "level": "N",
             "text": "marker found, array complete, 0 Remote items (n=… total=…)",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 355
+            "line": 475
           },
           {
             "level": "N",
             "text": "worker: libignite present, …/4 copy imports hooked after … attempt(s)",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 429
+            "line": 561
           },
           {
             "level": "N",
-            "text": "worker: libignite never appeared within cap — strip will not run",
+            "text": "worker: chapteringAdBreak inline patch applied after … attempt(s)",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 435
+            "line": 566
+          },
+          {
+            "level": "N",
+            "text": "worker: libignite never appeared within cap — no strip installed",
+            "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
+            "line": 572
+          },
+          {
+            "level": "N",
+            "text": "worker: ready (v15 SGAI strip=…, v16 adbreak patch=…)",
+            "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
+            "line": 575
           },
           {
             "level": "N",
             "text": "[hb] skipchunk=… malloc=… | cpy=… mov=… cpy_chk=… mov_chk=… | ",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 441
+            "line": 580
           },
           {
             "level": "N",
-            "text": "PVOBS movieBlanked=… tvEmptied=… tvTruncSalvaged=…",
+            "text": "PVOBS movieBlanked=… tvEmptied=… tvTruncSalvaged=… tvReassembled=… tvSplit=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 462
+            "line": 604
           },
           {
             "level": "N",
             "text": "JNI_OnLoad: pvhook loaded (GOT import hook on libignite memcpy/memmove) — writes=…",
             "file": "experimental/primevideo-libignite-native/jni/hooks.cpp",
-            "line": 481
+            "line": 625
+          },
+          {
+            "level": "N",
+            "text": "inline: mprotect RWX failed @…",
+            "file": "experimental/primevideo-libignite-native/jni/ignite_inline_patch.cpp",
+            "line": 69
+          },
+          {
+            "level": "N",
+            "text": "inline: adbreak patch is armeabi-v7a only — skipped on this ABI",
+            "file": "experimental/primevideo-libignite-native/jni/ignite_inline_patch.cpp",
+            "line": 89
+          },
+          {
+            "level": "N",
+            "text": "inline: libignite not mapped yet — adbreak patch deferred",
+            "file": "experimental/primevideo-libignite-native/jni/ignite_inline_patch.cpp",
+            "line": 95
+          },
+          {
+            "level": "N",
+            "text": "inline: adbreak patch already applied @…",
+            "file": "experimental/primevideo-libignite-native/jni/ignite_inline_patch.cpp",
+            "line": 103
+          },
+          {
+            "level": "N",
+            "text": "inline: prologue mismatch @… (got … … … … … …) — ",
+            "file": "experimental/primevideo-libignite-native/jni/ignite_inline_patch.cpp",
+            "line": 110
+          },
+          {
+            "level": "N",
+            "text": "inline: chapteringAdBreak parser neutralized @… (bias=… +0x…) — mid-roll flag forced false",
+            "file": "experimental/primevideo-libignite-native/jni/ignite_inline_patch.cpp",
+            "line": 118
+          },
+          {
+            "level": "N",
+            "text": "timeline: mprotect RWX failed @… (errno=…)",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 123
+          },
+          {
+            "level": "N",
+            "text": "timeline: no writable segment found in libignite",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 139
+          },
+          {
+            "level": "N",
+            "text": "timeline: resolved … -> impl @… (data entry @…)",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 167
+          },
+          {
+            "level": "N",
+            "text": "timeline: could NOT resolve … (not found in NativeSymbol table)",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 176
+          },
+          {
+            "level": "N",
+            "text": "timeline DIAG: string '…' found at … (bias+0x…)",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 189
+          },
+          {
+            "level": "N",
+            "text": "timeline DIAG: data ref @… -> [0]=…(str) [1]=… [2]=… [3]=…",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 196
+          },
+          {
+            "level": "N",
+            "text": "timeline DIAG: NO data-section pointer to '…' @…",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 203
+          },
+          {
+            "level": "N",
+            "text": "timeline: libignite not mapped yet — deferred",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 224
+          },
+          {
+            "level": "N",
+            "text": "timeline: libignite bias=… text=[…,…) rodata=[…,…) data=[…,…)",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 228
+          },
+          {
+            "level": "N",
+            "text": "timeline: … @… prologue: … … … …",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 249
+          },
+          {
+            "level": "N",
+            "text": "timeline: … already patched",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 255
+          },
+          {
+            "level": "N",
+            "text": "timeline: FAILED to patch …",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 262
+          },
+          {
+            "level": "N",
+            "text": "timeline: … NEUTRALIZED @… — timeline action creation suppressed",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 268
+          },
+          {
+            "level": "N",
+            "text": "timeline: patch complete — …/… StartTimelineAction variants neutralized",
+            "file": "experimental/primevideo-libignite-native/jni/timeline_action_patch.cpp",
+            "line": 272
           }
         ]
       },
@@ -2626,13 +3856,15 @@
         "com.amazon.amazonvideo.livingroom"
       ],
       "targets": [
-        "6.23.23+v15.5.0.70-armv7a"
+        "6.23.23+v15.5.0.70-armv7a",
+        "6.24.7+v16.0.0.332-allAbis",
+        "6.24.13+v16.0.1.93-allAbis"
       ],
       "summary": {
         "patches": 7,
         "fingerprints": 5,
         "unusedFingerprints": [],
-        "runtimeMessages": 37
+        "runtimeMessages": 64
       }
     },
     "raiplay": {
@@ -2644,7 +3876,7 @@
         {
           "id": "ParseAdContextFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/raiplay/ads/Fingerprints.kt",
-          "line": 34,
+          "line": 36,
           "returnType": "Lit/rai/raiplay/androidtv/nativeplayer/SmartclipAdContext;",
           "parameters": [
             "Lorg/json/JSONObject;"
@@ -2657,6 +3889,35 @@
           "note": "The ad-context parser. Matched on its STABLE signature — the only method returning SmartclipAdContext from a single JSONObject (the SmartclipAdContext constructor and copy() take the unpacked fields, not a JSONObject) — and pinned to NativePlaybackRequestParser so it can't hit an unrelated helper. The app is not obfuscated on 5.0.0, so the class/type names are stable anchors.",
           "usedBy": [
             "Skip ads"
+          ]
+        },
+        {
+          "id": "RaiPlayApplicationOnCreateFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/raiplay/debug/Fingerprints.kt",
+          "line": 13,
+          "definingClass": "Lit/rai/raiplay/androidtv/RaiPlayTvApp;",
+          "name": "onCreate",
+          "returnType": "V",
+          "accessFlags": [
+            "PUBLIC"
+          ],
+          "hasCustomMatcher": false,
+          "note": "RaiPlayTvApp.onCreate() — first app code to run, before MainActivity builds the WebView that hosts the remote SPA (https://www.raiplay.it/appTv/rp2020SmartTV/prod/). v0 is free at index 0 on 5.0.0 (3 registers) and 5.0.1 (4 registers).",
+          "usedBy": [
+            "Enable WebView debugging"
+          ]
+        },
+        {
+          "id": "NativePlaybackRequestInitFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/raiplay/live/Fingerprints.kt",
+          "line": 27,
+          "definingClass": "Lit/rai/raiplay/androidtv/nativeplayer/NativePlaybackRequest;",
+          "name": "<init>",
+          "returnType": "V",
+          "hasCustomMatcher": true,
+          "note": "───────────────────────────────────────────────────────────────────────────── RaiPlay Android TV (it.rainet.androidtv) — live manifest URL seam. Every native playback request (load, refreshContentDescriptor, updateStreamSource and NativePlaybackRequest.copy()) is built through the PRIMARY constructor of NativePlaybackRequest, so rewriting the manifest URL there covers all paths. Primary constructor shape: 5.0.0 → 19 params (…, NativeCmcdRequest) 5.0.1 → 20 params (…, NativeCmcdRequest, NativeSsaiRequest) Both start with (String hostSessionId, String playbackSessionId, String contentId, String manifestUrl, long startPositionMs, …), so p4 = manifestUrl on both, and both have 7 locals that are untouched before the first instruction (v0/v1 are free at index 0). The Kotlin synthetic default-args constructor ends with DefaultConstructorMarker and is excluded. ─────────────────────────────────────────────────────────────────────────────",
+          "usedBy": [
+            "Fix live HLS variant 404"
           ]
         }
       ],
@@ -2675,6 +3936,36 @@
               "smali": "\r\n                const/4 v0, 0x0\r\n                return-object v0\r\n            "
             }
           ]
+        },
+        {
+          "id": "webViewDebugPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/raiplay/debug/WebViewDebugPatch.kt",
+          "line": 11,
+          "name": "Enable WebView debugging",
+          "description": "Debug only: enables chrome://inspect on the RaiPlay WebView so the SPA console and native-bridge traffic can be inspected. Do not leave enabled.",
+          "default": false,
+          "uses": [
+            {
+              "fingerprint": "RaiPlayApplicationOnCreateFingerprint",
+              "call": "addInstructions"
+            }
+          ]
+        },
+        {
+          "id": "fixLiveVariantPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/raiplay/live/FixLiveVariantPatch.kt",
+          "line": 11,
+          "name": "Fix live HLS variant 404",
+          "description": "Fixes live channels (e.g. Rai 2) that fail with an error toast because the relinker hands the Android TV app the bitrate-capped HLS variant playlist_ma_1800-3600.m3u8, which does not exist on the Akamai origin (HTTP 404). The URL is rewritten to the full master playlist_ma.m3u8; the hdnea token (acl=/*) stays valid. Other URLs are left untouched.",
+          "uses": [
+            {
+              "fingerprint": "NativePlaybackRequestInitFingerprint",
+              "call": "addInstructions",
+              "smali": "\r\n                const-string v0, "
+            }
+          ]
         }
       ],
       "runtime": {
@@ -2685,11 +3976,12 @@
         "it.rainet.androidtv"
       ],
       "targets": [
+        "5.0.1",
         "5.0.0"
       ],
       "summary": {
-        "patches": 1,
-        "fingerprints": 1,
+        "patches": 3,
+        "fingerprints": 3,
         "unusedFingerprints": [],
         "runtimeMessages": 0
       }
@@ -2850,9 +4142,9 @@
         {
           "id": "TubiPauseAdsFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/tubi/ads/Fingerprints.kt",
-          "line": 33,
+          "line": 34,
           "definingClass": "Lcom/tubitv/features/player/presenters/pauseads/ImagePauseAds;",
-          "name": "m",
+          "name": "n",
           "returnType": "V",
           "parameters": [
             "Lcom/tubitv/core/api/models/VideoApi;",
@@ -2863,7 +4155,7 @@
             "FINAL"
           ],
           "hasCustomMatcher": false,
-          "note": "Hook 4 — ImagePauseAds.m(VideoApi, long) R8 renames this method each release (it's a com.tubitv class, so unlike the Fox SDK methods its member name churns): l (10.28) → m (10.36). Signature (VideoApi, long)V is unique in the class, so re-pin the name on each bump.",
+          "note": "Hook 4 — ImagePauseAds.n(VideoApi, long) R8 renames this method each release (it's a com.tubitv class, so unlike the Fox SDK methods its member name churns): l (10.28) → m (10.36) → n (10.40). Signature (VideoApi, long)V is unique in the class, so re-pin the name on each bump.",
           "usedBy": [
             "Skip ads"
           ]
@@ -2871,7 +4163,7 @@
         {
           "id": "FoxImaVodStreamRequestFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/tubi/ads/Fingerprints.kt",
-          "line": 45,
+          "line": 46,
           "definingClass": "Lcom/fox/android/video/player/api/ima/loaders/FoxImaStreamIdLoader;",
           "name": "requestVODDAIUrl",
           "returnType": "V",
@@ -2895,7 +4187,7 @@
         {
           "id": "FoxImaLiveStreamRequestFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/tubi/ads/Fingerprints.kt",
-          "line": 59,
+          "line": 60,
           "definingClass": "Lcom/fox/android/video/player/api/ima/loaders/FoxImaStreamIdLoader;",
           "name": "requestImaStreamId",
           "returnType": "V",
@@ -2919,8 +4211,8 @@
         {
           "id": "TubiWebClientInterceptFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/tubi/ads/Fingerprints.kt",
-          "line": 83,
-          "definingClass": "LAp/C$c;",
+          "line": 84,
+          "definingClass": "LFp/C$c;",
           "name": "shouldInterceptRequest",
           "returnType": "Landroid/webkit/WebResourceResponse;",
           "parameters": [
@@ -2931,7 +4223,7 @@
             "PUBLIC"
           ],
           "hasCustomMatcher": false,
-          "note": "Hook 7 — Po/C$c.shouldInterceptRequest(WebView, WebResourceRequest) Intercepts WebView XHR/fetch requests and blocks ad domains. Cannot intercept media element (<video> src) requests — those are blocked at DNS layer via AGH rules. Class is the TvWebFragment.kt WebViewClient (source-confirmed). R8 renames its outer prefix each release: xo (10.20) → yo (10.21) → Po (10.28) → Ap (10.36). NOTE a second class (WebViewFragment.kt) also has this exact signature, so a pure signature match would be ambiguous — keep the class pinned.",
+          "note": "Hook 7 — Fp/C$c.shouldInterceptRequest(WebView, WebResourceRequest) Intercepts WebView XHR/fetch requests and blocks ad domains. Cannot intercept media element (<video> src) requests — those are blocked at DNS layer via AGH rules. Class is the TvWebFragment.kt WebViewClient (source-confirmed). R8 renames its outer prefix each release: xo (10.20) → yo (10.21) → Po (10.28) → Ap (10.36) → Fp (10.40). NOTE a second class (WebViewFragment.kt) also has this exact signature, so a pure signature match would be ambiguous — keep the class pinned.",
           "usedBy": [
             "Skip ads",
             "Block analytics & tracking"
@@ -2940,8 +4232,8 @@
         {
           "id": "TubiWebClientPageFinishedFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/tubi/ads/Fingerprints.kt",
-          "line": 107,
-          "definingClass": "LAp/C$c;",
+          "line": 108,
+          "definingClass": "LFp/C$c;",
           "name": "onPageFinished",
           "returnType": "V",
           "parameters": [
@@ -2952,7 +4244,7 @@
             "PUBLIC"
           ],
           "hasCustomMatcher": false,
-          "note": "Hook 8 — Po/C$c.onPageFinished(WebView, String) JavaScript fetch override injection. Fires after the SPA at ott-androidtv.tubitv.com has fully loaded, before the user selects any content. Patches window.fetch in the SPA's JS context to return empty responses for ad orchestration endpoints, eliminating the initial pre-roll countdown ad that survives Hook 7 (shouldInterceptRequest fires for fetch/XHR but the media element video request is exempt from that API, so the JS fetch override blocks it at the source — before the <video> src is ever set). Uses window.__tubiAdBlockInstalled guard to ensure idempotency if onPageFinished fires multiple times in a session.",
+          "note": "Hook 8 — Fp/C$c.onPageFinished(WebView, String) JavaScript fetch override injection. Fires after the SPA at ott-androidtv.tubitv.com has fully loaded, before the user selects any content. Patches window.fetch in the SPA's JS context to return empty responses for ad orchestration endpoints, eliminating the initial pre-roll countdown ad that survives Hook 7 (shouldInterceptRequest fires for fetch/XHR but the media element video request is exempt from that API, so the JS fetch override blocks it at the source — before the <video> src is ever set). Uses window.__tubiAdBlockInstalled guard to ensure idempotency if onPageFinished fires multiple times in a session.",
           "usedBy": [
             "Skip ads"
           ]
@@ -2960,8 +4252,8 @@
         {
           "id": "QfcSuspendGetAdBreaksFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/tubi/ads/Fingerprints.kt",
-          "line": 128,
-          "definingClass": "LSf/c;",
+          "line": 129,
+          "definingClass": "LOf/c;",
           "name": "suspendGetAdBreaks",
           "returnType": "Ljava/lang/Object;",
           "parameters": [
@@ -2975,7 +4267,29 @@
             "PUBLIC"
           ],
           "hasCustomMatcher": false,
-          "note": "Hook 9 — Sf/c.suspendGetAdBreaks(String, String, String, Map, Continuation) Rainmaker ad-break fetch coroutine (RainmakerAdsFetcher.kt). Returns Lqn/d; (sealed result wrapper, NetworkResponse.kt) — Lqn/d$e for success, Lqn/d$b subtypes (Lqn/d$c / Lqn/d$d) for error. The caller branches on instance-of Lqn/d$e vs Lqn/d$b and converges afterward either way, so a synchronously-returned error result is sufficient — no suspension needed. R8 renames per release: class qf/c → sf/c → Sf/c; wrapper wm/d → Mm/d → qn/d (10.36).",
+          "note": "Hook 9 — Of/c.suspendGetAdBreaks(String, String, String, Map, Continuation) Rainmaker ad-break fetch coroutine (RainmakerAdsFetcher.kt). Returns LBn/d; (sealed result wrapper, NetworkResponse.kt) — LBn/d$e for success, LBn/d$b subtypes (LBn/d$c / LBn/d$d) for error. The caller branches on instance-of LBn/d$e vs LBn/d$b and converges afterward either way, so a synchronously-returned error result is sufficient — no suspension needed. R8 renames per release: class qf/c → sf/c → Sf/c → Of/c (10.40); wrapper wm/d → Mm/d → qn/d (10.36) → Bn/d (10.40).",
+          "usedBy": [
+            "Skip ads"
+          ]
+        },
+        {
+          "id": "TubiPauseAdsManagerShowImageFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/tubi/ads/Fingerprints.kt",
+          "line": 156,
+          "returnType": "V",
+          "parameters": [
+            "Landroid/graphics/Bitmap;",
+            "Ljava/lang/String;"
+          ],
+          "accessFlags": [
+            "PRIVATE",
+            "FINAL"
+          ],
+          "strings": [
+            "show image ad, altText:"
+          ],
+          "hasCustomMatcher": false,
+          "note": "Hook 10 — PauseAdsManager.A(Bitmap, String): image pause-ad render funnel 10.40 split the pause-ad system: the legacy ImagePauseAds presenter (Hook 4) no longer drives the on-pause image overlay. A separate controller (PauseAdsManager, R8 class name `a` in …/player/presenters/pauseads/) now requests (u/C) and renders every image pause ad — both third-party creatives and Tubi house promos — through one private funnel: A(Bitmap, String). That method posts show=true + the bitmap to the two LiveData fields the player fragment observes to raise PauseAdsView, so neutering it suppresses all image pause ads regardless of entry point or source. Anchored on the stable log literal \"show image ad, altText:\" (unique to this method), NOT the obfuscated class/method name `a.A`, which churns per release.",
           "usedBy": [
             "Skip ads"
           ]
@@ -3093,6 +4407,11 @@
               "fingerprint": "QfcSuspendGetAdBreaksFingerprint",
               "call": "addInstructions",
               "smali": "\r\n                new-instance v0, Ljava/io/IOException;\r\n                const-string v1, "
+            },
+            {
+              "fingerprint": "TubiPauseAdsManagerShowImageFingerprint",
+              "call": "addInstructions",
+              "smali": "return-void"
             }
           ]
         },
@@ -3150,11 +4469,11 @@
         "com.tubitv"
       ],
       "targets": [
-        "10.36.5000"
+        "10.40.5000"
       ],
       "summary": {
         "patches": 2,
-        "fingerprints": 12,
+        "fingerprints": 13,
         "unusedFingerprints": [],
         "runtimeMessages": 2
       }
@@ -3173,7 +4492,18 @@
           "hasCustomMatcher": true,
           "note": "=========================================================================== Twitch Android TV (\"Twitch Live Streaming Android TV\", tv.twitch.android.app v13.0.0.2, app package tv.twitch.starshot64.app — codename \"Starshot\"). The TV app is a thin native shell hosting the Twitch web player (\"laserarray\", hls.js) in a WebView. Live ads are server-stitched (SSAI) into the video-weaver media playlist ( *.playlist.ttvnw.net ), fetched by page JS. That fetch is NOT service-worker mediated (verified fromServiceWorker=false), so a native WebViewClient.shouldInterceptRequest sees it regardless of JS timing — which is where we scrub the stitched-ad segments (see TwitchAtvWebViewHelper). StarshotActivity installs its WebViewClient (Ls4/a extends Ls4/k) via WebView.setWebViewClient(...). We wrap that client at the call site so our scrubbing shouldInterceptRequest override sits in front of it. Pinned by the unobfuscated StarshotActivity class + the framework setWebViewClient call, so it survives R8 renames of the client class. ===========================================================================",
           "usedBy": [
-            "Block TV ads"
+            "Block TV ads",
+            "Playback speed controls"
+          ]
+        },
+        {
+          "id": "StarshotKeyFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/twitchatv/speed/Fingerprints.kt",
+          "line": 20,
+          "definingClass": "Ltv/twitch/starshot64/app/StarshotActivity;",
+          "hasCustomMatcher": true,
+          "usedBy": [
+            "Playback speed controls"
           ]
         }
       ],
@@ -3192,6 +4522,25 @@
               "smali": "->setWebViewClient("
             }
           ]
+        },
+        {
+          "id": "twitchSpeedTogglePatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/twitchatv/speed/TwitchSpeedTogglePatch.kt",
+          "line": 33,
+          "name": "Playback speed controls",
+          "description": "Adds playback-speed controls to the Twitch Android TV (Starshot) WebView player. Press the blue colour key to open a 0.5x-2x list, pick with the D-pad, OK applies (hold OK also works on remotes without colour keys). The chosen speed stays until it is picked again - nothing changes it automatically. No button is added and no existing control is modified: the page only ever gets <video>.playbackRate written, so Twitch's own controls and gear/quality menu keep working exactly as before. Uses the same WebView hook as Block TV ads (selecting this also installs that hook). Opt-in.",
+          "default": false,
+          "uses": [
+            {
+              "fingerprint": "SetWebViewClientFingerprint",
+              "call": "addInstructions",
+              "smali": "invoke-static {}, $EXTENSION_CLASS->setSpeedEnabled()V"
+            },
+            {
+              "fingerprint": "StarshotKeyFingerprint"
+            }
+          ]
         }
       ],
       "runtime": {
@@ -3203,31 +4552,133 @@
             "level": "D",
             "text": "wrapClient — Twitch ATV HLS scrubber active",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
-            "line": 109
+            "line": 123
           },
           {
             "level": "E",
             "text": "playback-fix injection failed",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
-            "line": 128
+            "line": 142
+          },
+          {
+            "level": "I",
+            "text": "playback speed controls enabled",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
+            "line": 232
+          },
+          {
+            "level": "I",
+            "text": "WebView debugging enabled via morphe_webview_debug",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
+            "line": 249
+          },
+          {
+            "level": "W",
+            "text": "could not read morphe_webview_debug",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
+            "line": 252
+          },
+          {
+            "level": "E",
+            "text": "speed toggle injection failed",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
+            "line": 259
+          },
+          {
+            "level": "W",
+            "text": "no activity for key interceptor; WebView listener only",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
+            "line": 278
+          },
+          {
+            "level": "I",
+            "text": "window key interceptor installed on ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
+            "line": 286
+          },
+          {
+            "level": "E",
+            "text": "window key interceptor failed",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
+            "line": 288
+          },
+          {
+            "level": "E",
+            "text": "speed key handling failed",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
+            "line": 511
+          },
+          {
+            "level": "I",
+            "text": "blue key: swallowing key-up",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
+            "line": 529
+          },
+          {
+            "level": "I",
+            "text": "blue key: closing speed menu",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
+            "line": 537
+          },
+          {
+            "level": "I",
+            "text": "blue key: opening speed menu",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
+            "line": 540
+          },
+          {
+            "level": "I",
+            "text": "ok long-press: swallowing key-up",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
+            "line": 551
+          },
+          {
+            "level": "I",
+            "text": "ok long-press: opening speed menu",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
+            "line": 568
+          },
+          {
+            "level": "I",
+            "text": "speed menu: applying ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
+            "line": 612
+          },
+          {
+            "level": "I",
+            "text": "speed menu: closed without change",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
+            "line": 671
+          },
+          {
+            "level": "E",
+            "text": "evaluateJavascript failed",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
+            "line": 685
+          },
+          {
+            "level": "I",
+            "text": "speed menu: closed by timeout",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
+            "line": 702
           },
           {
             "level": "E",
             "text": "shouldInterceptRequest error",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
-            "line": 173
+            "line": 798
           },
           {
             "level": "I",
             "text": "blanked stitched-ad segments in weaver playlist",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
-            "line": 223
+            "line": 850
           },
           {
             "level": "E",
             "text": "httpGet failed: ",
             "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/twitchatv/ads/TwitchAtvWebViewHelper.java",
-            "line": 346
+            "line": 973
           }
         ]
       },
@@ -3238,10 +4689,10 @@
         "13.0.0.2"
       ],
       "summary": {
-        "patches": 1,
-        "fingerprints": 1,
+        "patches": 2,
+        "fingerprints": 2,
         "unusedFingerprints": [],
-        "runtimeMessages": 5
+        "runtimeMessages": 22
       }
     },
     "vix": {
@@ -3253,7 +4704,7 @@
         {
           "id": "InnovidStartAdFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/vix/ads/Fingerprints.kt",
-          "line": 49,
+          "line": 59,
           "definingClass": "Lcom/univision/descarga/videoplayer/utilities/innovid/InnovidHelper;",
           "returnType": "V",
           "accessFlags": [
@@ -3263,18 +4714,28 @@
           "strings": [
             "innovidAd"
           ],
-          "hasCustomMatcher": false,
-          "note": "───────────────────────────────────────────────────────────────────────────── InnovidHelper — ad overlay mount entry point com/univision/descarga/videoplayer/utilities/innovid/InnovidHelper Method `h(boolean, WebView, VideoModel, Flow)` is the call that mounts the Innovid SSAI ad WebView overlay. Its sole call site in the player's ad-event switch dispatches it; returning void at index 0 stops the overlay before any WebView is attached or network request fires. Anchored on the \"innovidAd\" string constant, which appears only inside this mount method within InnovidHelper — so definingClass + that string uniquely identify it. The method name (`h`) is R8-obfuscated and NOT matched on. Version note (4.46.0_tv → 4.47.2_tv): the earlier fingerprint pinned the full parameter list, but R8 renamed the obfuscated VideoModel param type (…/models/video/v → …/models/video/t) between builds, which broke the exact match. The string anchor is immune to that obfuscation drift and matches both builds, so it replaces the parameter list. returnType + [PUBLIC, FINAL] are kept as cheap extra constraints (the other public-final-void methods — the a/b accessors and c(DisposeReason) teardown — don't carry this string). ─────────────────────────────────────────────────────────────────────────────",
+          "hasCustomMatcher": true,
+          "note": "───────────────────────────────────────────────────────────────────────────── InnovidHelper — ad overlay mount entry point com/univision/descarga/videoplayer/utilities/innovid/InnovidHelper Method `h(boolean, WebView, VideoModel, Flow)` is the call that mounts the Innovid SSAI ad WebView overlay. Its sole call site in the player's ad-event switch dispatches it; returning void at index 0 stops the overlay before any WebView is attached or network request fires. Anchored on the \"innovidAd\" string constant, which appears only inside this mount method within InnovidHelper — so definingClass + that string uniquely identify it. The method name (`h`) is R8-obfuscated and NOT matched on. Version note (4.46.0_tv → 4.47.2_tv): the earlier fingerprint pinned the full parameter list, but R8 renamed the obfuscated VideoModel param type (…/models/video/v → …/models/video/t) between builds, which broke the exact match. The string anchor is immune to that obfuscation drift and matches both builds, so it replaces the parameter list. returnType + [PUBLIC, FINAL] are kept as cheap extra constraints (the other public-final-void methods — the a/b accessors and c(DisposeReason) teardown — don't carry this string). Version note (4.47.2_tv → 4.50.1_tv): the mount method was renamed h → u, and a SECOND public-final-void method (t(WebView, VideoModel)) in the same class now also carries the \"innovidAd\" string — so string + [PUBLIC, FINAL] + V is no longer unique and binds ambiguously. The mount method is the 4-arg overload whose first parameter is the boolean gate and last is the coroutine Flow; the decoy t() takes 2 params starting with the WebView. A custom predicate pins parameter count == 4 with a leading boolean (Z) — both stable across the VideoModel (v→t) obfuscation drift — to select the mount method unambiguously. ─────────────────────────────────────────────────────────────────────────────",
           "usedBy": [
             "Skip ads"
           ]
         },
         {
-          "id": "LuraAdBreakSchedulerFingerprint",
+          "id": "DashManifestParseFingerprint",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/vix/ads/Fingerprints.kt",
-          "line": 81,
+          "line": 122,
           "hasCustomMatcher": true,
-          "note": "───────────────────────────────────────────────────────────────────────────── LuraPlayer ad-break scheduler — linear (client-side VAST/VMAP) ad trigger classes6.dex / com/akta/luraplayer/implementations/ads/analyzers/ The abstract base analyzer's TIME_UPDATED handler is the single entry point that decides when a linear ad break fires. On every time update it dispatches to the VOD subclass's per-tick evaluator (l(J)), which launches the LuraVodAdAnalyzer coroutine that locates the due break and plays it, or to the live subclass for SGAI/DASH timing. Returning void at index 0 stops the VOD client-side ad-break evaluation at its root, so no VAST creative is requested or played. Content playback is unaffected — the analyzer is an event subscriber, separate from the media pipeline. ViX uses provider = \"generic\" (client-side VAST), so the ad creative is a separate playback the analyzer triggers; cutting the trigger removes the ad. (Live SGAI ads are server-stitched into the manifest and are NOT removable from the client — that requires a network/manifest-layer block.) Robustness: both the analyzer class and method names are R8-obfuscated single letters, so they are NOT matched on. The handler is pinned by its parameter type — Lcom/akta/luraplayer/api/event/LuraEventData$TimeUpdate; — which lives in LuraPlayer's un-obfuscated public `api` package and is a stable anchor. This method (taking exactly that single param, returning V) is unique across the entire analyzers package. ─────────────────────────────────────────────────────────────────────────────",
+          "note": "───────────────────────────────────────────────────────────────────────────── LuraPlayer interstitials (ad-break) schedule — client-VMAP ad source com/akta/luraplayer/api/event/LuraEventData$InterstitialsData->getBreaks() ViX serves its VOD ads client-side (provider = \"generic\", VMAP from the GAM ad unit /6881/vix.tv/viewer/vod/androidtv/ondemand, confirmed on-device by the LuraAdPingExecutor AD_BREAK_START trace). After the VMAP is fetched and parsed, the ad engine emits a LuraEvent carrying an InterstitialsData payload whose getBreaks() is the List<LuraAdBreak> schedule. The player state machine (c5) ingests it — getData() → instanceof InterstitialsData → getBreaks() — and stores it into its schedule holder (j4 fields G/J, read back via c5.x() / getGetIntersititals()); the media3 layer (f5) then inserts those breaks as timeline ad-periods and plays the VAST creatives. Returning an EMPTY list (java.util.Collections.emptyList — NOT null: the ingestion site skips on a null but ingests-empty on an empty list) empties the schedule at its single ingestion point. With no breaks the player inserts no ad-periods → content plays through, seamless, no pre/mid-roll. This is the \"empty the ad DATA, never the flow the player waits on\" rule (RTE/Tubi/FoxOne IMA precedent): content playback runs on a separate path and is untouched. Why this seam and not the earlier attempts: the 4.51.0 ad IMPLEMENTATION was R8-flattened into com/akta/lura/<short>, so every impl-side anchor drifted or hit the wrong seam — d3.a→g$g is the MEDIA-FRAME producer (crashed content), m2 (LuraAdPingExecutor) and the quartile reporters fire DOWNSTREAM of delivery (device-proven: ad still played), and the LuraGam*.getAdTagUrl() config getters are never read at request time (device-proven: emptied to \"\" and the VMAP still fetched). getBreaks() lives in the RETAINED public `api/event` package — class + method names survive R8 — and sits UPSTREAM of the schedule store, so it is both obfuscation-proof and the true data source. Anchored on returnType + method name + enclosing class suffix (smallest unique set). The `$` in the nested class name is escaped for the Kotlin string. ───────────────────────────────────────────────────────────────────────────── ───────────────────────────────────────────────────────────────────────────── media3 DashManifestParser.parse(Uri, InputStream) — server-stitched VOD ads On-demand ads are stitched by the Lura platform into a multi-period DASH manifest (clear ad periods around the Widevine content periods), so the manifest itself is the ad source. The injected AdPeriodFilter rewrites the manifest text before this method parses it (see Hook 1b in SkipAdsPatch). Device-proven dead end this replaces: emptying LuraGenericConfiguration.getBreaks() (the app-supplied \"preroll\" GAM tag) changed nothing — the pre-roll is not requested by the client at all. The parser class is R8-renamed (dash/manifest/d on 4.52.0) but keeps its overridable method names, so: the public non-synthetic parse(Uri, InputStream) on the class in media3's dash.manifest package. The bridge overload returning Object is excluded by the synthetic flag check. ─────────────────────────────────────────────────────────────────────────────",
+          "usedBy": [
+            "Skip ads"
+          ]
+        },
+        {
+          "id": "InterstitialsDataGetBreaksFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/vix/ads/Fingerprints.kt",
+          "line": 132,
+          "returnType": "Ljava/util/List;",
+          "hasCustomMatcher": true,
           "usedBy": [
             "Skip ads"
           ]
@@ -3285,14 +4746,17 @@
           "id": "skipAdsPatch",
           "kind": "bytecodePatch",
           "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/vix/ads/SkipAdsPatch.kt",
-          "line": 8,
+          "line": 12,
           "name": "Skip ads",
-          "description": "Suppresses ViX ad delivery by stopping the LuraPlayer linear ad-break scheduler (client-side VAST) and preventing the Innovid SSAI ad overlay from mounting.",
+          "description": "Suppresses ViX ad delivery by emptying the LuraPlayer ad-break schedule — both the client-side VMAP breaks (third-party ads) and the first-party house / cross-promo breaks — so no ad-periods are inserted into the timeline, by removing the ad periods the server stitches into on-demand stream manifests, and by preventing the Innovid SSAI ad overlay from mounting.",
           "uses": [
             {
-              "fingerprint": "LuraAdBreakSchedulerFingerprint",
-              "call": "addInstructions",
-              "smali": "\r\n                return-void\r\n            "
+              "fingerprint": "InterstitialsDataGetBreaksFingerprint",
+              "call": "addInstructions"
+            },
+            {
+              "fingerprint": "DashManifestParseFingerprint",
+              "call": "addInstructions"
             },
             {
               "fingerprint": "InnovidStartAdFingerprint",
@@ -3300,6 +4764,16 @@
               "smali": "\r\n                return-void\r\n            "
             }
           ]
+        },
+        {
+          "id": "logUrlsPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/vix/debug/LogUrlsPatch.kt",
+          "line": 12,
+          "name": "Log player URLs (debug)",
+          "description": "Research aid, off by default: writes every URL the media player and the LuraPlayer SDK open to the device's local logcat (tag VIXURL). Nothing is sent anywhere.",
+          "default": false,
+          "uses": []
         },
         {
           "id": "certificatePinningPatch",
@@ -3312,21 +4786,327 @@
         }
       ],
       "runtime": {
-        "tags": [],
-        "messages": []
+        "tags": [
+          "VixAdFilter"
+        ],
+        "messages": [
+          {
+            "level": "W",
+            "text": "manifest left unchanged: ",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/vix/ads/AdPeriodFilter.java",
+            "line": 76
+          }
+        ]
       },
       "packages": [
         "com.univision.prendetv"
       ],
       "targets": [
         "4.46.0_tv",
-        "4.47.2_tv"
+        "4.47.2_tv",
+        "4.50.1_tv",
+        "4.51.0_tv",
+        "4.52.0_tv"
       ],
       "summary": {
-        "patches": 2,
+        "patches": 3,
+        "fingerprints": 3,
+        "unusedFingerprints": [],
+        "runtimeMessages": 1
+      }
+    },
+    "xumo": {
+      "app": "xumo",
+      "sourceRoots": [
+        "patches/src/main/kotlin/ajstrick81/morphe/patches/xumo"
+      ],
+      "fingerprints": [
+        {
+          "id": "ExoPlayerPlayAmsOrImaAdFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/xumo/ads/Fingerprints.kt",
+          "line": 29,
+          "returnType": "V",
+          "parameters": [
+            "Lcom/xumo/xumo/tv/data/response/PlayAms;"
+          ],
+          "hasCustomMatcher": true,
+          "note": "playAmsOrImaAd(PlayAms): V on ExoPlayerManager (VOD). [primary]",
+          "usedBy": [
+            "Skip ads"
+          ]
+        },
+        {
+          "id": "TifPlayAmsOrImaAdFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/xumo/ads/Fingerprints.kt",
+          "line": 39,
+          "returnType": "V",
+          "parameters": [
+            "Lcom/xumo/xumo/tv/data/response/PlayAms;"
+          ],
+          "hasCustomMatcher": true,
+          "note": "playAmsOrImaAd(PlayAms): V on XumoTvInputPlayer (Live TV). [optional]",
+          "usedBy": [
+            "Skip ads"
+          ]
+        }
+      ],
+      "patches": [
+        {
+          "id": "skipAdsPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/xumo/ads/SkipAdsPatch.kt",
+          "line": 37,
+          "name": "Skip ads",
+          "description": "Removes Xumo Play's client-inserted (CSAI) VOD ads by no-opping the player's ad-play step (playAmsOrImaAd) so fetched VAST/AMS/IMA ads are never played and content continues. Applies to both the VOD and Live TV players. FreeWheel SSAI ads that are server-stitched into the stream are not removable client-side and may remain; Xumo is migrating toward SSAI, so coverage can vary by title and region. Not yet device-verified on 4.9.147.",
+          "uses": [
+            {
+              "fingerprint": "ExoPlayerPlayAmsOrImaAdFingerprint",
+              "call": "addInstructions",
+              "smali": "Could not find ExoPlayerManager.playAmsOrImaAd(PlayAms). This patch "
+            },
+            {
+              "fingerprint": "TifPlayAmsOrImaAdFingerprint",
+              "call": "addInstructions"
+            }
+          ]
+        }
+      ],
+      "runtime": {
+        "tags": [],
+        "messages": []
+      },
+      "packages": [
+        "com.xumo.xumo.tv"
+      ],
+      "targets": [
+        "4.9.147"
+      ],
+      "summary": {
+        "patches": 1,
         "fingerprints": 2,
         "unusedFingerprints": [],
         "runtimeMessages": 0
+      }
+    },
+    "youtubetv": {
+      "app": "youtubetv",
+      "sourceRoots": [
+        "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv"
+      ],
+      "fingerprints": [
+        {
+          "id": "GooglePlayUtilityFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/gms/Fingerprints.kt",
+          "line": 32,
+          "returnType": "I",
+          "parameters": [
+            "Landroid/content/Context;",
+            "I"
+          ],
+          "strings": [
+            "MetadataValueReader",
+            "This should never happen.",
+            "com.google.android.gms"
+          ],
+          "hasCustomMatcher": false,
+          "usedBy": [
+            "GmsCore support"
+          ]
+        },
+        {
+          "id": "ServiceCheckFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/gms/Fingerprints.kt",
+          "line": 56,
+          "returnType": "V",
+          "parameters": [
+            "Landroid/content/Context;",
+            "I"
+          ],
+          "accessFlags": [
+            "PUBLIC",
+            "STATIC"
+          ],
+          "strings": [
+            "Google Play Services not available"
+          ],
+          "hasCustomMatcher": false,
+          "usedBy": [
+            "GmsCore support"
+          ]
+        },
+        {
+          "id": "PrimeMethodFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/gms/Fingerprints.kt",
+          "line": 76,
+          "returnType": "Z",
+          "strings": [
+            "com.android.vending",
+            "com.google.android.GoogleCamera"
+          ],
+          "hasCustomMatcher": false,
+          "usedBy": [
+            "GmsCore support"
+          ]
+        },
+        {
+          "id": "CobaltActivityOnCreateFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/gms/Fingerprints.kt",
+          "line": 98,
+          "definingClass": "Ldev/cobalt/coat/CobaltActivity;",
+          "name": "onCreate",
+          "returnType": "V",
+          "parameters": [
+            "Landroid/os/Bundle;"
+          ],
+          "hasCustomMatcher": false,
+          "usedBy": [
+            "GmsCore support"
+          ]
+        },
+        {
+          "id": "StartupGuardObserverConstructorFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/scripts/Fingerprints.kt",
+          "line": 22,
+          "name": "<init>",
+          "parameters": [
+            "WEB_CONTENTS"
+          ],
+          "hasCustomMatcher": false,
+          "usedBy": []
+        },
+        {
+          "id": "StartupGuardFinishNavigationFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/scripts/Fingerprints.kt",
+          "line": 28,
+          "name": "didFinishNavigationInPrimaryMainFrame",
+          "returnType": "V",
+          "parameters": [
+            "NAVIGATION_HANDLE"
+          ],
+          "hasCustomMatcher": false,
+          "usedBy": []
+        },
+        {
+          "id": "StartupGuardRedirectNavigationFingerprint",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/scripts/Fingerprints.kt",
+          "line": 35,
+          "name": "didRedirectNavigation",
+          "returnType": "V",
+          "parameters": [
+            "NAVIGATION_HANDLE"
+          ],
+          "hasCustomMatcher": false,
+          "usedBy": []
+        }
+      ],
+      "patches": [
+        {
+          "id": "skipAdsPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/ads/SkipAdsPatch.kt",
+          "line": 9,
+          "name": "Skip ads",
+          "description": "Removes the ad schedule (adPlacements, adSlots, playerAds, adBreakHeartbeatParams) from every InnerTube response before the YouTube leanback web app (youtube.com/tv) reads it, and removes sponsored tiles (adSlotRenderer and the promoted* renderers) from feeds. Also keeps the existing Android Automotive OS-name spoof that suppresses video ads client-side.",
+          "uses": []
+        },
+        {
+          "id": "cloneAppPatch",
+          "kind": "resourcePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/clone/CloneAppPatch.kt",
+          "line": 42,
+          "name": "Clone YouTube (Android TV)",
+          "description": "Installs the patched YouTube Android TV as a separate app alongside the stock one, instead of replacing it. Enable this when YouTube is a preinstalled system app that can't be uninstalled — most Android TV boxes ship it in /product, and a patched build cannot be installed over it (signature mismatch). The clone gets its own package (suffix .$CLONE_SUFFIX) and its own settings. Leave OFF if the original was uninstalled first, or if the app is not a system app. Makes no changes when \\\"GmsCore support\\\" is applied, because that patch already renames the app. Opt-in.",
+          "uses": []
+        },
+        {
+          "id": "clientContextHookPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/contexthook/ClientContextHookPatch.kt",
+          "line": 22,
+          "name": "Client context hook",
+          "description": "Spoofs the OS name to Android Automotive to suppress video ads.",
+          "uses": [
+            {
+              "fingerprint": "automotiveCheckFingerprint",
+              "call": "addInstructions",
+              "smali": "\r\n                const/4 v0, 0x1\r\n                return v0\r\n            "
+            }
+          ]
+        },
+        {
+          "id": "gmsCoreSupportPatch",
+          "kind": "bytecodePatch",
+          "file": "patches/src/main/kotlin/ajstrick81/morphe/patches/youtubetv/misc/gms/GmsCoreSupportPatch.kt",
+          "line": 209,
+          "name": "GmsCore support",
+          "description": "Signs in to Google through MicroG-RE (GmsCore) instead of Google Play services. Points every Play services package name, permission, intent action and content provider at $GMS_CORE_PACKAGE_NAME, telling MicroG-RE to present the stock package name and signing certificate. Required for resigned builds: Google Play services rejects them with \\\"PackageVerificationRslt: not allowed\\\". MicroG-RE must be installed; without it the app cannot sign in.",
+          "uses": [
+            {
+              "fingerprint": "GooglePlayUtilityFingerprint",
+              "smali": "GMS availability method (Context, int) not found — the bundled Play services "
+            },
+            {
+              "fingerprint": "ServiceCheckFingerprint",
+              "smali": "GooglePlayServicesNotAvailable throw not found — re-verify the fingerprint"
+            },
+            {
+              "fingerprint": "PrimeMethodFingerprint",
+              "smali": "Primes package allowlist method not found — re-verify the fingerprint"
+            },
+            {
+              "fingerprint": "CobaltActivityOnCreateFingerprint",
+              "smali": "CobaltActivity.onCreate(Bundle) not found — re-verify the fingerprint"
+            }
+          ]
+        }
+      ],
+      "runtime": {
+        "tags": [
+          "MorpheYTTV"
+        ],
+        "messages": [
+          {
+            "level": "D",
+            "text": "scripts injected (",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/youtubetv/scripts/TvScripts.java",
+            "line": 42
+          },
+          {
+            "level": "W",
+            "text": "native pointer field not found",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/youtubetv/scripts/TvScripts.java",
+            "line": 65
+          },
+          {
+            "level": "W",
+            "text": "evaluateJavaScript native not found",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/youtubetv/scripts/TvScripts.java",
+            "line": 73
+          },
+          {
+            "level": "W",
+            "text": "script injection failed",
+            "file": "extensions/extension/src/main/java/ajstrick81/morphe/extension/youtubetv/scripts/TvScripts.java",
+            "line": 80
+          }
+        ]
+      },
+      "packages": [
+        "com.google.android.youtube.tv"
+      ],
+      "targets": [
+        "7.31.300",
+        "7.05.301"
+      ],
+      "summary": {
+        "patches": 4,
+        "fingerprints": 7,
+        "unusedFingerprints": [
+          "StartupGuardObserverConstructorFingerprint",
+          "StartupGuardFinishNavigationFingerprint",
+          "StartupGuardRedirectNavigationFingerprint"
+        ],
+        "runtimeMessages": 4
       }
     }
   }

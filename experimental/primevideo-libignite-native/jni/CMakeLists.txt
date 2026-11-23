@@ -10,12 +10,24 @@
 # mandatory dl-init monitor depends on ShadowHook's linker-constructor hook,
 # which fails here (errno 12). See got_hook.h and shadowhook/VENDORED.md.
 #
-# Build (armeabi-v7a — this app's only shipping ABI):
+# Build — BOTH ABIs are shipping ABIs now. v15.5 was armeabi-v7a only, but the
+# v16 bundles (6.24.x) are allAbis, so a 64-bit install needs an arm64 hook or
+# the strip is simply absent with no error anywhere.
+#
 #   cmake -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
 #         -DANDROID_ABI=armeabi-v7a -DANDROID_PLATFORM=android-23 -B build-v7a
 #   cmake --build build-v7a
 #
-# Output: build-v7a/libpvhook.so  → goes into the APK's lib/armeabi-v7a/.
+#   cmake -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
+#         -DANDROID_ABI=arm64-v8a   -DANDROID_PLATFORM=android-23 -B build-arm64
+#   cmake --build build-arm64
+#
+# Outputs: build-v7a/libpvhook.so   → APK lib/armeabi-v7a/
+#          build-arm64/libpvhook.so → APK lib/arm64-v8a/
+#
+# CI and release build both and install them over the committed resources before
+# packaging (see .github/workflows/{ci,release}.yml), so a release can never
+# ship a stale blob — the failure mode that let #260's fix sit unshipped.
 
 cmake_minimum_required(VERSION 3.18)
 project(pvhook LANGUAGES C CXX)
@@ -23,8 +35,10 @@ project(pvhook LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(NOT ANDROID_ABI STREQUAL "armeabi-v7a")
-    message(FATAL_ERROR "This app ships armeabi-v7a only; got ANDROID_ABI=${ANDROID_ABI}")
+if(NOT ANDROID_ABI MATCHES "^(armeabi-v7a|arm64-v8a)$")
+    message(FATAL_ERROR
+        "Prime Video ships armeabi-v7a and arm64-v8a; got ANDROID_ABI=${ANDROID_ABI}. "
+        "got_hook.cpp only encodes the PLT reloc format for those two.")
 endif()
 
 add_compile_options(-Os -fvisibility=hidden -ffunction-sections -fdata-sections)
@@ -34,7 +48,15 @@ add_library(pvhook SHARED
     hooks.cpp
     got_hook.cpp
     remote_strip.cpp
+    # v16 native mid-roll kill (chapteringAdBreak parser inline patch). Self-
+    # gating: compiled for both ABIs, but apply_adbreak_patch() refuses on
+    # anything but armeabi-v7a, where its offset was measured.
+    ignite_inline_patch.cpp
 )
+# NOT compiled, kept as research: timeline_action_patch.{cpp,h} (0/3 on-device —
+# the Native_StartTimelineAction* host functions aren't reachable through the
+# NativeSymbol table) and xray_{dump,strip}.h (LiveExplore shop/betting overlay).
+# See ../v16-recon/README.md.
 target_include_directories(pvhook PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # TV-show ad suppression (verified on-device 2026-07-30, Onn 4K):

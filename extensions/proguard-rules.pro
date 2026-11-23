@@ -94,6 +94,31 @@
 }
 -dontwarn androidx.media3.exoplayer.dash.manifest.**
 
+# Pluto v17 (Paramount+/AVIA rebuild) DASH period strip — skipAdsV17Patch Hooks 3 & 4
+# (see SkipAdsV17Patch.kt). cleanManifestStream is called from injected smali at
+# AviaDashParser.parse, and shouldSuppressDynamicAdFetch from CLID3Processor; both are
+# unreferenced from Java, so R8 would strip or rename them. Uses only platform/XML types
+# (no library deps), so no -dontwarn is needed.
+-keep class ajstrick81.morphe.extension.pluto.ads.PlutoV17ManifestProbe {
+    public static java.io.InputStream cleanManifestStream(java.io.InputStream);
+    public static boolean shouldSuppressDynamicAdFetch();
+    # #300. correctContentDuration is called from injected smali (Hook 8, at the
+    # AviaResourceProvider.getContentDuration returns). The mapping entry points are
+    # kept alongside it: they are not currently injected anywhere (the seek remap that
+    # used toStrippedMs was reverted after device testing), but they are covered by
+    # testing/checks/PlutoTimelineMapCheck.java and are the tested basis for any future
+    # coordinate translation, so keep them resolvable rather than silently stripped.
+    public static java.util.ArrayList neutralizeStitcherAdBreaks(java.util.ArrayList);
+    public static java.util.List neutralizeAdBreaks(java.util.List);
+    public static long zeroAdBreakDuration(long);
+    public static long correctContentDuration(long);
+    public static long toStrippedMs(long);
+    public static long toOriginalMs(long);
+    public static boolean hasTimelineMap();
+    public static long getStrippedDurationMs();
+    public static long getOriginalDurationMs();
+}
+
 # Pluto LIVE ad-break mask — liveSlatePatch (see LiveSlatePatch.kt). Its @JvmStatic
 # entry points are called only from injected smali, so R8 would strip/rename them.
 -keep class ajstrick81.morphe.extension.pluto.ads.PlutoLiveSlateHelper {
@@ -117,6 +142,37 @@
 -keep class ajstrick81.morphe.extension.hbomax.ads.HboStreamSelector {
     public static java.lang.Object preferFallbackType(java.lang.Object, java.lang.Object);
 }
+
+# discovery+ — same FALLBACK-stream remap, called only from injected smali.
+-keep class ajstrick81.morphe.extension.discoveryplus.ads.DplayStreamSelector {
+    public static java.lang.Object preferFallbackType(java.lang.Object, java.lang.Object);
+}
+
+# HBO Max — Remove Ad Periods. HboManifestFilter.captureStreams / filter are called
+# only from injected smali (at PlayableKt.getStreamInfo and
+# ExoPlayerDashManifestParser.parse, CreateTimelineUseCase.invoke), so R8 would strip the class.
+# Keep all entry points.
+-keep class ajstrick81.morphe.extension.hbomax.ads.HboManifestFilter {
+    public static void captureStreams(java.lang.Object);
+    public static java.io.InputStream filter(java.lang.Object, java.io.InputStream);
+    public static java.lang.Object timelineStreamInfo(java.lang.Object);
+    public static boolean isActive();
+}
+
+# HBO Max — playback-speed control (issue #258, opt-in). Two entry points are
+# called from injected smali: HboSpeedController.setContext (at
+# BeamApplication.onCreate) and PlayerBridge.onPlayerCreated / setSpeedNative (at
+# the media3 ExoPlayer constructor).
+#
+# The WHOLE package is kept, not just those entry points. HboSpeedPanel extends
+# android.widget.Button, and when only the entry points were kept R8 inlined /
+# merged / renamed the rest across that View-subclass boundary and emitted
+# bytecode the ART verifier rejects at class-load — a startup VerifyError on
+# HboSpeedController ("'this' ... not instance of android.widget.Button") the
+# first time BeamApplication.onCreate referenced it. Keeping every class and
+# member in the package stops R8 from optimizing across these UI classes and
+# leaves the bytecode verifiable.
+-keep class ajstrick81.morphe.extension.hbomax.speed.** { *; }
 
 # Paramount+ — LIVE sports slate PTS-aligner. MorpheTsRewriter.alignSlateToLive(String,String)
 # is called only from injected smali (invoke-static {} in AviaNetworkInterceptor.intercept),
@@ -156,3 +212,37 @@
     public static *** blockWebRequest(android.webkit.WebResourceRequest);
 }
 -keep class ajstrick81.morphe.extension.tubi.privacy.TrackerBlocker$BlockInterceptor { *; }
+
+# ViX — "Skip ads": filter(InputStream) is called only from smali injected into
+# media3's DashManifestParser.parse, so R8 must keep it.
+-keep class ajstrick81.morphe.extension.vix.ads.AdPeriodFilter {
+    public static java.io.InputStream filter(java.io.InputStream);
+}
+
+# YouTube TV — GmsCore support (MicroG-RE) availability check.
+# checkGmsCore(Object) is called via invoke-static from smali injected into
+# CobaltActivity.onCreate (see youtubetv/misc/gms/GmsCoreSupportPatch.kt), so R8
+# sees it as unreferenced and would strip or rename it. The parameter stays
+# java.lang.Object: the extension is reflection-only and the injected descriptor
+# is (Ljava/lang/Object;)V.
+-keep class ajstrick81.morphe.extension.youtubetv.gms.GmsCoreSupportPatch {
+    public static void checkGmsCore(java.lang.Object);
+}
+
+# YouTube TV — "Skip ads" script injection into the Cobalt leanback web app.
+# TvScripts.setWebContents / onPageEvent / onTitle are called only from smali
+# injected into StartupGuardNavigationObserver (see youtubetv/misc/scripts/
+# TvScriptsPatch.kt), so R8 sees them as unreferenced and would strip or rename
+# them. TvScriptsPayload needs no rule: its SCRIPT constant is inlined by javac.
+-keep class ajstrick81.morphe.extension.youtubetv.scripts.TvScripts {
+    public static void setWebContents(java.lang.Object);
+    public static void onPageEvent(java.lang.String);
+    public static void onTitle(java.lang.String);
+}
+
+# Mediaset Infinity Android TV — "Skip ads". MediasetAdBlocker.intercept is called
+# only from smali injected at the top of the shell's WebViewClient
+# .shouldInterceptRequest (see mediaset/ads/SkipAdsPatch.kt), so R8 would strip it.
+-keep class ajstrick81.morphe.extension.mediaset.ads.MediasetAdBlocker {
+    public static android.webkit.WebResourceResponse intercept(android.webkit.WebResourceRequest);
+}

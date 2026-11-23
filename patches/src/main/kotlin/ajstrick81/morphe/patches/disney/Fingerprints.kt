@@ -3,10 +3,13 @@
  * https://gitlab.com/ReVanced/revanced-patches/-/blob/main/patches/src/main/kotlin/app/revanced/patches/disneyplus/ads/Fingerprints.kt
  * ALL CREDIT GOES TO RookieEnough FOR THE ORIGINAL CODE
  *
- * Verified on Disney+ Android TV v26.12.1+rc1-2026.07.15 (versionCode 1784077450)
- * — all fingerprints resolve unchanged; on-device pre- and mid-roll ads gone for
- * both movies and TV (AGH off). Previously validated on v26.8.0+rc6 (1779314460)
- * and the DMP-pipeline fix landed on v26.9.2+rc1 (1781224190).
+ * Verified on Disney+ Android TV v26.20.0+rc3-2026.11.02 (versionCode 1793662190)
+ * — both Insertion seams resolve unchanged and the empty-ArrayList prologue is
+ * confirmed in the patched dex; on-device playback clean (Widevine + HW decoder
+ * active, zero ad-decision/beacon/InsertionPoint traffic, no pre- or mid-roll on
+ * movies or TV, AGH off). The pause-ad seam stays unresolved, as on 26.16 (#167).
+ * Previously verified on v26.12.1+rc1-2026.07.15 (versionCode 1784077450) and
+ * v26.8.0+rc6 (1779314460); the DMP-pipeline fix landed on v26.9.2+rc1 (1781224190).
  * - InsertionGetPointsFingerprint:     VALIDATED ✅  (legacy DSS-SDK Insertion)
  * - InsertionGetRangesFingerprint:     VALIDATED ✅  (legacy DSS-SDK Insertion)
  * - DmpInsertionGetPointsFingerprint:  VALIDATED ✅  (new com.disney.dmp Insertion)
@@ -117,34 +120,44 @@ internal object PauseAdStartedFingerprint : Fingerprint(
 // Out-of-household ("Verify Household Network") decision — OPT-IN suppression.
 //
 // The household prompt is a startup-flow gate in
-// com.bamtechmedia.dominguez.accountsharing. On v26.12.1 the app resolves the
-// device's household status through ONE authoritative suspend predicate:
+// com.bamtechmedia.dominguez.accountsharing. The app resolves the device's
+// household status through ONE authoritative suspend predicate (a boxed Boolean
+// meaning "device is OUT of household"):
 //
-//   Lv8/x;->y(Lv81/c;)Ljava/lang/Object;   (returns a boxed Boolean)
+//   v26.12.1:  Lv8/x;->y(Lv81/c;)Ljava/lang/Object;
+//   v26.16.0:  Lg11/o;->A(Lt91/c;)Ljava/lang/Object;   ← current pin
 //       ≈  (firstCheck && !secondCheck)  →  "device is OUT of household"
+//          firstCheck  = Lg00/f;->x(..)   (boxed Boolean)
+//          secondCheck = Lur0/q;->c(..)   (boxed Boolean)
 //
-// Every household/verify routing site funnels through this single method:
-//   - Lzy/c1; (startup destination resolver) — two sites: true → returns the
-//     OutOfHouseholdBlock destination (Lzy/h0;->c) instead of continuing to home.
-//   - Ln00/d; — true → navigates to the "verifyDevice" route.
-//   - Lo1/t; — same boolean gate.
-// (Lkf/b; is y()'s own coroutine continuation, not a distinct caller.)
+// Every household/verify routing site funnels through this single method —
+// confirmed on 26.16.0 by listing its callers:
+//   - Lqz/e1; (startup destination resolver, was Lzy/c1;) — two sites: true →
+//     returns the OutOfHouseholdBlock destination (Lqz/i0;->c, whose toString()
+//     is "OutOfHouseholdBlock") instead of continuing to home.
+//   - Lsf1/a; (was Ln00/d;) — true → navigates to the "verifyDevice" route.
+//   - Lr50/o; (was Lo1/t;) — same boolean gate.
+// (Lnf/a; is A()'s own coroutine continuation, not a distinct caller — was Lkf/b;.)
 //
-// Forcing y() to return Boolean.FALSE makes every caller see an in-household
-// device, so none of the block/verify screens are ever routed to and the app
-// proceeds to home exactly as it does for a normal in-household device. This is
-// behaviour-neutral for users who are already in-household (they already get
-// false here); it only changes the out-of-household path.
+// Forcing the predicate to return Boolean.FALSE makes every caller see an
+// in-household device, so none of the block/verify screens are ever routed to
+// and the app proceeds to home exactly as it does for a normal in-household
+// device. This is behaviour-neutral for users who are already in-household (they
+// already get false here); it only changes the out-of-household path.
 //
-// ⚠️ OBFUSCATION-PINNED: Lv8/x; and the method name "y" are R8-minified names,
-// exact for v26.12.1+rc1-2026.07.15 (versionCode 1784077450). They WILL drift on
-// app updates — re-resolve against a fresh decompile and re-pin on each version
-// bump (the patch fails loud if the fingerprint no longer resolves). The stable
+// ⚠️ OBFUSCATION-PINNED: the class (Lg11/o;, an R8 horizontally-merged synthetic)
+// and the method letter ("A") are R8-minified names, exact for
+// v26.16.0+rc2-2026.09.08 (versionCode 1788909180). They WILL drift on app
+// updates — re-resolve against a fresh decompile and re-pin on each version bump
+// (the patch fails loud if the fingerprint no longer resolves). The stable
 // anchors to re-locate it from: the singleton whose toString() is
-// "OutOfHouseholdBlock" (Lkh/t;/Lzy/h0;), the "verifyDevice" nav string in the
-// n00/d caller, and the router constructor's kept param-name strings
-// ("sessionStateRepository", "completeProfileStateProvider",
-// "huluLinkEligibleProfilesRepository", "sessionConfig").
+// "OutOfHouseholdBlock" (26.16.0: Lqz/i0; field c), the "verifyDevice" nav string
+// in the device-verify caller, and the startup destination resolver's kept
+// @Inject param-name strings ("sessionStateRepository",
+// "completeProfileStateProvider", "huluLinkEligibleProfilesRepository",
+// "sessionConfig") — the resolver class that has all four references the
+// OutOfHouseholdBlock destination singleton and calls this predicate; the
+// predicate is the boxed-Boolean suspend method it casts + branches on.
 //
 // HONEST SCOPE: this suppresses only the CLIENT-side prompt/routing. Disney's
 // out-of-household detection is server/IP-driven; if the server also refuses to
@@ -156,7 +169,7 @@ internal object PauseAdStartedFingerprint : Fingerprint(
 internal object OutOfHouseholdCheckFingerprint : Fingerprint(
     returnType = "Ljava/lang/Object;",
     custom = { method, _ ->
-        method.name == "y" &&
-            method.definingClass == "Lv8/x;"
+        method.name == "A" &&
+            method.definingClass == "Lg11/o;"
     },
 )

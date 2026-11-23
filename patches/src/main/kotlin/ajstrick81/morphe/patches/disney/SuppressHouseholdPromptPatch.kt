@@ -11,13 +11,13 @@ import ajstrick81.morphe.patches.shared.compat.AppCompatibilities
 // Unlike Netflix's household prompt (which lives in a V8 JS VM and could not be
 // beaten from bytecode), Disney's enforcement is entirely Java/Kotlin bytecode in
 // com.bamtechmedia.dominguez.accountsharing, and it funnels through a single
-// authoritative suspend predicate: Lv8/x;->y(Lv81/c;) returns a boxed Boolean
-// meaning "device is OUT of household". Three routing sites consume it — the
-// startup destination resolver (Lzy/c1;, → OutOfHouseholdBlock screen), the
-// device-verify router (Ln00/d;, → "verifyDevice"), and Lo1/t; — so forcing y()
-// to return Boolean.FALSE makes every one of them see an in-household device and
-// the app proceeds to home exactly as normal. See Fingerprints.kt for the full
-// trace and the re-pin anchors.
+// authoritative suspend predicate (v26.16.0: Lg11/o;->A(Lt91/c;)) that returns a
+// boxed Boolean meaning "device is OUT of household". Three routing sites consume
+// it — the startup destination resolver (Lqz/e1;, → OutOfHouseholdBlock screen),
+// the device-verify router (Lsf1/a;, → "verifyDevice"), and Lr50/o; — so forcing
+// the predicate to return Boolean.FALSE makes every one of them see an
+// in-household device and the app proceeds to home exactly as normal. See
+// Fingerprints.kt for the full trace and the re-pin anchors.
 //
 // Behaviour-neutral for in-household users (y() already returns false for them);
 // it only changes the out-of-household path. Kept as its own opt-in — separate
@@ -32,10 +32,10 @@ import ajstrick81.morphe.patches.shared.compat.AppCompatibilities
 // by a user actually in a flagged out-of-household state, since the state is not
 // reproducible on demand.
 //
-// ⚠️ OBFUSCATION-PINNED to v26.12.1+rc1-2026.07.15 (versionCode 1784077450).
-// Lv8/x;/"y" are R8-minified names and WILL drift on app updates; the fingerprint
+// ⚠️ OBFUSCATION-PINNED to v26.16.0+rc2-2026.09.08 (versionCode 1788909180).
+// Lg11/o;/"A" are R8-minified names and WILL drift on app updates; the fingerprint
 // fails loud (patch errors) if it no longer resolves — re-pin against a fresh
-// decompile on each version bump.
+// decompile on each version bump (see #278: drifted from the v26.12.1 Lv8/x;->y pin).
 // ─────────────────────────────────────────────────────────────────────────────
 @Suppress("unused")
 val suppressHouseholdPromptPatch = bytecodePatch(
@@ -45,10 +45,13 @@ val suppressHouseholdPromptPatch = bytecodePatch(
         "straight to home. Does NOT change what Disney's servers detect (that's driven by your " +
         "public IP — use a VPN for that); it only suppresses the on-screen prompt/routing. " +
         "Opt-in / experimental; only takes visible effect when the device would otherwise be " +
-        "prompted.",
+        "prompted. Works on 26.12.1+rc1-2026.07.15 ONLY — it targets an obfuscated method " +
+        "whose name changes every release, so it cannot be applied to other builds.",
     default = false,
 ) {
-    compatibleWith(AppCompatibilities.DISNEY_PLUS_TV)
+    // Scoped to 26.12.1+rc1 only — the fingerprint is pinned to that build's R8 names.
+    // See DISNEY_PLUS_TV_HOUSEHOLD_PINNED and #289.
+    compatibleWith(AppCompatibilities.DISNEY_PLUS_TV_HOUSEHOLD_PINNED)
 
     execute {
         // Prepend `return Boolean.FALSE;` so the out-of-household predicate always

@@ -1,12 +1,14 @@
 package ajstrick81.morphe.patches.raiplay.ads
 
+// RaiPlay 5.0.1 support (target + re-verified seam) contributed by Michael Bompani (github.com/michaelbompani).
+
 import app.morphe.patcher.Fingerprint
 import com.android.tools.smali.dexlib2.AccessFlags
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RaiPlay Android TV (it.rainet.androidtv) — ad seam.
 //
-// Autopsy of 5.0.0: native Kotlin app on androidx.media3/ExoPlayer. NO Google
+// Autopsy of 5.0.0 (seam re-verified unchanged on 5.0.1): native Kotlin app on androidx.media3/ExoPlayer. NO Google
 // IMA. Ads are served by Smartclip (tv.smartclip.smartclientcore, a European
 // broadcaster ad SDK) via RAI's own bridge under it/rai/raiplay/androidtv/
 // nativeplayer/*:

@@ -43,11 +43,20 @@ val loadNativeHookPatch = bytecodePatch(
         // Inject at index 0 of Application.onCreate so JNI_OnLoad runs before
         // any native media pipeline is constructed.
         //
-        // Optional (issue #120): methodOrNull so a missing anchor (v16 refactor —
-        // ApplicationOnCreateFingerprint no longer resolves) skips rather than
-        // aborting the whole patch. The native hook simply won't load on that build
-        // (a no-op) and the rest of the patch set still applies; on supported
-        // versions this fires as before.
+        // Optional (issue #120): methodOrNull so a missing anchor skips rather
+        // than aborting the whole patch. The native hook simply won't load on
+        // that build (a no-op) and the rest of the patch set still applies; on
+        // supported versions this fires as before.
+        //
+        // Correction (2026-11-07): this comment used to blame a "v16 refactor"
+        // for the anchor not resolving. The class never moved —
+        // Lcom/amazon/primevideo/PrimeVideoApplication; is still the manifest's
+        // android:name and still in classes.dex on 6.24.7 and 6.24.13. What
+        // failed was the fingerprint's pinned accessFlags=[PUBLIC] against v16's
+        // `public final` onCreate, under Morphe's exact-equality flag compare.
+        // So on v16 this methodOrNull was always null and the strip never loaded
+        // — silently, which is why v16 looked architecturally out of reach.
+        // accessFlags is now dropped (see Fingerprints.kt).
         ApplicationOnCreateFingerprint.methodOrNull?.addInstructions(
             0,
             """

@@ -416,19 +416,34 @@ In heavy-ad regions an occasional mid-roll carries an unusually **large** ad lis
 *   **Workaround (verified by testers):** press **Back** to leave the episode, then **Resume**. On resume, the app fetches the ad decision again through a path the hook fully handles, and playback continues ad-free.
 *   The freeze is **rare, intermittent, and fully recoverable**. A complete fix isn't reachable at the `memcpy` layer: the data never crosses it. That would need deeper native work inside the engine.
 
-### 11.2 v16 (`6.24.x`, engine `v16.0.0.x`): the ad pipeline went native
+### 11.2 v16 (`6.24.x`, engine `v16.0.x`): the Java ad surface went native — the strip followed it
 
-Prime Video 6.24.x moved the remaining Java-reachable ad surface into the native engine. `setAdPlaybackStates`, the media3/exo SSAI source and `MetricsTransporter` are all gone from the dex, and `libignite.so` grew to ~20 MB. The new ad path surfaces in `logcat` only as Megablast lines such as:
+Prime Video 6.24.x moved the remaining Java-reachable ad surface into the native engine. `setAdPlaybackStates`, the media3/exo SSAI source and `MetricsTransporter` are all gone from the dex. The new ad path surfaces in `logcat` only as Megablast lines such as:
 
 ```
 [WASM:MegablastLog]   [InteractiveVideoAd] Field 'dtw' not found in ad metadata
 [SCRIPT:MegablastLog] [InteractiveVideoAd] Field 'hl' not found in ad metadata
 ```
 
+> **Revised 2026-11-07.** Two claims here were wrong. `libignite.so` did not grow to ~20 MB — it is 16.4 MB (armeabi-v7a), ~0.7 MB larger than v15.5. And the reason v16 showed no suppression was never "the ad pipeline is out of reach": it was a **resolvable patch bug**. `ApplicationOnCreateFingerprint` pinned `accessFlags = [PUBLIC]`, v16's `onCreate` is `public final`, and Morphe compares access flags with exact integer equality — so the fingerprint silently failed to resolve, `loadNativeHookPatch` (which uses `methodOrNull`) injected nothing, and `libpvhook.so` was never loaded on any v16 build. The strip was never given a chance to run.
+
+**What the native layer actually looks like on v16.** The strip is a GOT/PLT import-slot hook on libignite's own `memcpy`/`memmove` calls (§6). It reads the destination buffer *after* the engine decompresses the ad decision, so it does not depend on the Java ad surface v16 deleted. That surface is intact across versions — measured on the armeabi-v7a slice of each bundle:
+
+| Build | `libignite.so` | Hooked import slots | `onCreate` flags |
+|---|---|---|---|
+| `6.23.23+v15.5.0.70-armv7a` | 15.68 MB | `memcpy`, `memmove`, `__memcpy_chk`, `__memmove_chk`, `memset`, `__memset_chk` | `public` (0x1) |
+| `6.24.7+v16.0.0.332-allAbis` | 16.35 MB | identical set | `public final` (0x11) |
+| `6.24.13+v16.0.1.93-allAbis` | 16.38 MB | identical set | `public final` (0x11) |
+
+Every slot carries an `R_ARM_JUMP_SLOT` relocation in all three, and `Lcom/amazon/primevideo/PrimeVideoApplication;` is still the manifest's `android:name` and still in `classes.dex` on both v16 builds. Only the access-flag pin stood in the way; with it dropped, the anchor resolves and `libpvhook.so` loads on v16.
+
 Current status:
 - Since v1.35.3 the Java hooks are optional, so v16 **patches and installs cleanly** (clone, certificate override and disable auto-updates all apply).
-- **Ads are not suppressed on v16.** The recommendation is to stay on `6.23.23` / v15.5 with auto-updates disabled.
-- Re-solving v16 means native reverse-engineering, and the `InteractiveVideoAd` signature above is the starting point.
+- `6.24.7+v16.0.0.332-allAbis` and `6.24.13+v16.0.1.93-allAbis` ship as **experimental** targets (`isExperimental = true`), on **static evidence only**. The hook surface is intact and the loader can now fire, but neither build has a device pass confirming the strip actually lands. An informal 6.24.7 session on the Onn 4K looked ad-free, but that build's hook was never loaded, so it says nothing about this patch.
+- First device check on v16: are there any `PVNativeHook` lines in `logcat` at all (hook loaded), and do the `PVKILL` / `rego_*` heartbeat counters move at an ad break?
+- `6.23.23` / v15.5 remains the **stable, recommended** target. It is the build validated end to end, and the one to stay on if you want no surprises.
+- **ABI coverage.** The v16 bundles are `allAbis` (arm64-v8a + armeabi-v7a). The hook is now built for both and `bundleNativeHookPatch` writes it into every ABI the input carries, so a 64-bit install no longer runs unstripped. Only the PLT reloc encoding differs between them — arm64 uses `.rela.plt` / `Elf64_Rela` / `R_AARCH64_JUMP_SLOT` (1026) against arm32's `.rel.plt` / `Elf32_Rel` / `R_ARM_JUMP_SLOT` (22) — and `got_hook.cpp` keeps that in one conditional block. Before this, a v7a-only hook on an arm64 install failed the worst way available: no error, no crash and nothing in `logcat` from `PVNativeHook`, just ads.
+- The `InteractiveVideoAd` Megablast signature remains the entry point for anyone wanting to understand the v16 ad path itself, but it is no longer a prerequisite for suppression.
 
 * * *
 
@@ -500,4 +515,4 @@ The second half of the story taught the complementary lesson: **once you're thro
 
 _Reverse-engineered from on-device observation for the [morphe-androidtv-patches](https://github.com/ajstrick81/morphe-androidtv-patches) project. Code excerpts are minified fragments recovered from memory, reproduced only as needed for technical commentary. No Amazon source, keys or credentials are included. Findings reflect Prime Video `6.23.23` / engine `v15.5.x` as observed through September 2026 (patches v1.37.4). The bundle updates constantly, so expect drift._
 
-_Revision history: **r1** (2026-08) first edition · **r2** (2026-09-23) count-gate correction, issue #14 restart lesson, truncated-response salvage, shipping and observability details, known limits, v16 status._
+_Revision history: **r1** (2026-08) first edition · **r2** (2026-09-23) count-gate correction, issue #14 restart lesson, truncated-response salvage, shipping and observability details, known limits, v16 status · **r3** (2026-11-07) §11.2 rewritten: the v16 "out of reach" verdict was an unresolved accessFlags pin, not an architectural limit; 6.24.7/6.24.13 added as experimental targets pending device verification; libignite size claim corrected; arm64 ABI caveat recorded._

@@ -26,8 +26,9 @@ val skipAdsPatch = bytecodePatch(
         // hard-fail, so users couldn't even build/install a patched v16 (no clone,
         // no cert bypass, no auto-update disable). methodOrNull lets the patch
         // apply on every version: on v15.x/older each hook that still matches fires
-        // exactly as before; on v16 the missing hooks are skipped (ad suppression
-        // there awaits a native-engine re-solve). TRADEOFF: a genuinely-drifted
+        // exactly as before; on v16 the missing hooks are skipped and suppression
+        // rests entirely on the native libpvhook GOT strip, which still loads
+        // there (see loadNativeHookPatch and Constants). TRADEOFF: a genuinely-drifted
         // hook on a supported version now degrades silently instead of erroring —
         // acceptable vs. a total patch abort. See #120.
         // ─────────────────────────────────────────────────────────────────────

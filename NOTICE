@@ -83,4 +83,39 @@ Modifications:
   cannot provide — the piece that fixes tree-wide content search, our slowest
   step (measured ~165 s over 33.6k HBO Max smali files).
 
+- Michael Bompani (michaelbompani)
+  RaiPlay Android TV 5.0.1 support, "Fix live HLS variant 404" (rewrites the
+  missing bitrate-capped playlist_ma_1800-3600.m3u8 to playlist_ma.m3u8) and
+  the opt-in "Enable WebView debugging" patch.
+  Contributed code, used with credit under GPL-3.0.
+  Source: https://github.com/michaelbompani/morphe-androidtv-patches
+
+- Joker4Life12 (github.com/Joker4Life12)
+  HBO Max "Remove Ad Periods (keep 5.1)": keeps the PRIMARY (E-AC-3 5.1) DASH
+  manifest and strips its stitched ad <Period>s instead of falling back to the
+  stereo-only ad-free stream. Captured and tested on-device by the author on
+  HBO Max (Android TV) 7.14.0.69.
+  Contributed code, used with credit under GPL-3.0.
+  Source: https://github.com/Joker4Life12/morphe-androidtv-patches (PR #285)
+
+- farotv-patches (jair1c/farotv-patches), GPL-3.0
+  Author: jair1c (github.com/jair1c)
+  Source of the YouTube for Android TV (com.google.android.youtube.tv) script
+  injection seam behind our "Skip ads" patch: the StartupGuardNavigationObserver
+  hook, the org.jni_zero.GEN_JNI -> WebContentsImpl.evaluateJavaScript injection
+  path and the ad-key stripping payload are ported from its YouTvScriptsPatch,
+  TvScripts.java and extensions/extension/src/main/js/ads.js, retargeted to
+  7.05.301 and reduced to the ad block (its settings UI, SponsorBlock/DeArrow,
+  native device spoof and branding were left out). farotv in turn credits
+  ysamjo/morphe-patches (GPLv3, CobaltScriptInjector) and DylanDuff/utv-runtime
+  (MIT, RuntimeObserver) for the injection technique.
+  Source: https://github.com/jair1c/farotv-patches
+
+- DylanDuff/utv-runtime, MIT
+  Author: Dylan Duff (github.com/DylanDuff)
+  The idea of hooking JSON.parse inside the leanback web app to delete InnerTube
+  ad keys (adPlacements, adSlots, playerAds) before the player reads them comes
+  from utv-runtime's adblock patch, reached through farotv-patches' runtime.js.
+  Source: https://github.com/DylanDuff/utv-runtime
+
 All original authors retain credit for their contributions.
