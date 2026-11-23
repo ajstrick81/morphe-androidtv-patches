@@ -2507,8 +2507,6 @@
         "com.peacocktv.peacockandroid"
       ],
       "targets": [
-        "7.5.102",
-        "7.6.100",
         "7.8.100",
         "7.10.102"
       ],

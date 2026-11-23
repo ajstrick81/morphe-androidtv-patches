@@ -127,7 +127,7 @@ Read more: [system design teardown](docs/NETFLIX_ATV_SYSTEM_DESIGN.md)
 <details>
 <summary><b>🦚 Peacock</b> · no DNS · use Clone Peacock on Fire TV and system-app devices</summary>
 
-- **Version:** use the direct [`7.8.100`](https://www.apkmirror.com/apk/peacock-tv-llc/peacock-tv-android-tv/peacock-tv-stream-tv-movies-android-tv-7-8-100-apk-release/) link rather than searching, which can land on a similarly named build. `7.10.102`, `7.5.102` and `7.6.100` are also supported.
+- **Version:** use the direct [`7.8.100`](https://www.apkmirror.com/apk/peacock-tv-llc/peacock-tv-android-tv/peacock-tv-stream-tv-movies-android-tv-7-8-100-apk-release/) link rather than searching, which can land on a similarly named build. `7.10.102` is also supported. Peacock now force-updates `7.6.100` and older, so those builds no longer work.
 - **Bundle:** this release has three. Pick **`arm64-v8a + armeabi-v7a`** (Android 6.0+). The `armeabi-v7a`-only bundle needs Android 12L+, and the `arm64-v8a`-only one won't run on 32-bit TV boxes.
 - **Fire TV and preinstalled Peacock:** on many Fire TV sticks and some Android TV boxes Peacock is a system app that can't be uninstalled, and installing over it fails with a signature or `CONFLICTING_PROVIDER` error. Enable the opt-in **Clone Peacock** patch to install side by side under its own package, with its own icon and login. Leave it off if you could fully uninstall stock Peacock first.
 - **Disable auto-updates** is on by default and stops the Play Store from replacing the patched build.
