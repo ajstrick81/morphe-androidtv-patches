@@ -47,8 +47,8 @@ current `main`.
 | `claude/prime-video-continuation-kaplat` | 2026-07-23 | `experimental/native-adstrip-toolkit/`, `experimental/primevideo-research/2026-07-23_continuation/` |
 | `claude/primevideo-interception-handoff-pxhsn0` | 2026-07-25 | `experimental/primevideo-research/2026-07-25_interception-handoff/` |
 | `claude/scte35-youtube-tv-signaling-vyy0cy` | 2026-08-22 | `docs/SCTE35_AD_SIGNALING_REFERENCE.md`, `docs/YOUTUBE_TV_*`, `experimental/youtubetv-scte35/`, `testing/youtubetv-capture-runbook.md` (the YouTube TV patch code stays in the tag) |
-| `claude/youtube-tv-apkm-decompile-hb84gr` | 2026-08-19 | `analysis/youtubetv/` (YouTube TV patch code stays in the tag) |
-| `claude/powershell-atv-youtube-upload-0m7mg2` | 2026-08-19 | `analysis/youtube-tv/711300320/*.md` (the APK split and patch code stay in the tag) |
+| `claude/youtube-tv-apkm-decompile-hb84gr` | 2026-08-19 | `docs/analysis/youtubetv/` (YouTube TV patch code stays in the tag) |
+| `claude/powershell-atv-youtube-upload-0m7mg2` | 2026-08-19 | `docs/analysis/youtube-tv/711300320/*.md` (the APK split and patch code stay in the tag) |
 | `claude/onn-usb-install-method-zr8qd7` | 2026-08-24 | `docs/ONN_WAYNE_RTD1325_ROOT_GUIDE.md`, `testing/onn-wayne/` |
 | `claude/twitch-ad-blocking-techniques-x0pi28` | 2026-08-14 | `docs/twitch-ad-delivery-map.md`, `experimental/twitchatv-ad-probe/` |
 | `claude/netflix-household-android-tv-bou10v` | 2026-08-23 | `experimental/netflix-household-loadhook/lolomo_probe.js`, `experimental/netflix-native-adstrip/frida/ad_drift_probe.js` |
@@ -82,36 +82,91 @@ current `main`.
 `feat/espn-live-slate`, `fix/paramount-harden-fingerprints-1619`,
 `fix/paramount-slate-revert-hotpath`.
 
-# Branch archive (cleanup of 2026-10-30)
+## 2026-11-01 batch (monthly stale report, issue #291)
 
-A second sweep after the PR triage of 2026-10-30. 16 branches archived as
-`archive/<branch>` tags and deleted, leaving `main` and the 7 open-PR branches
-(#281, #276, #270, #269, #268, #263, #207). Content was compared file-by-file
-against `main` before deleting; **no commit was lost** (every tip is a tag).
+Nine branches flagged by the monthly **Stale branch report** (no commits in
+30+ days) were archived + deleted. They predated the 2026-08-28 history
+rewrite, so GitHub showed them as ~1000 commits ahead; compared by file
+content, each held only **older versions of files `main` has since evolved
+past** (pre-26.12.1 Disney fingerprints, pre-rewrite `killads.js`, older
+`SEAM_MAP`, etc.) plus one byte-identical, superseded scaffold
+(`extensions/.../peacock/ads/OkHttpWorkaroundInterceptor.kt`, removed from
+`main` on purpose — the `OkHttpWorkaroundInterceptor` name on `main` refers to
+Peacock's own app class, a fingerprint target). All the shipping work these
+branches represent (RaiPlay #217/#220, ESPN scoreboard #221, Netflix #212 via
+#250, Peacock 7.10.102) already landed on `main`. Nothing copied; the tag is
+the record.
 
-**Already fully in `main`.** Merged PRs (or superseded by newer `main` code);
-nothing unique on the branch:
+| Tag `archive/…` | Tip SHA | Last commit | Notes |
+|---|---|---|---|
+| `claude/github-repo-cleanup-dpn5fl` | `a15e721b` | 2026-09-24 | Pre-rewrite repo-cleanup snapshot; superseded |
+| `fix/seam-map-case-index` | `c87e45a6` | 2026-09-25 | Older seam-map; `main`'s is newer |
+| `claude/sleepy-ramanujan-52uk53` | `518b6085` | 2026-09-26 | Older patch tree snapshot |
+| `feat/raiplay-skip-ads` | `47cac2f7` | 2026-09-27 | RaiPlay skip-ads shipped via #217/#220 |
+| `feat/espn-scoreboard-card` | `d53b6b74` | 2026-09-28 | ESPN scoreboard seam shipped via #221 |
+| `chore/smali-search-tool` | `12ba5c2c` | 2026-09-28 | Older smali-search snapshot |
+| `fix/netflix-212-fastadv` | `cb03d71e` | 2026-09-29 | Netflix #212 shipped via #250 |
+| `fix/peacock-v7.10.102` | `59a55074` | 2026-10-02 | Peacock 7.10.102 bump, landed |
+| `fix/peacock-live-dai-origin-swap` | `4b850a2b` | 2026-10-02 | Peacock LIVE DAI origin-swap research; VOD shipped via #228 |
 
-| Tag `archive/…` | Last commit | PR / notes |
-|---|---|---|
-| `fix/hbomax-speed-remote-258` | 2026-10-29 | Merged #277 |
-| `raiplay-501-live-fix` | 2026-10-28 | Merged #271 |
-| `fix/tubi-10.40.5000` | 2026-10-22 | Merged #256 |
-| `feat/f1tv-uhd` | 2026-10-16 | Merged #245 |
-| `claude/practical-mayer-dp16pq` | 2026-10-04 | Merged #231 |
-| `chore/smali-search-tool` | 2026-09-27 | Merged #222 |
-| `feat/espn-scoreboard-card` | 2026-09-27 | Merged #221 |
-| `feat/raiplay-skip-ads` | 2026-09-27 | Merged #220 |
-| `claude/sleepy-ramanujan-52uk53` | 2026-09-26 | Merged #213 |
-| `fix/seam-map-case-index` | 2026-09-25 | Merged #210 |
-| `claude/github-repo-cleanup-dpn5fl` | 2026-09-24 | Merged #201 |
-| `fix/netflix-212-reminify` | 2026-10-06 | No PR. Its V3 re-minify ad-kill (#212) shipped via #250; `main`'s `killads.js` has it plus a newer stability layer. Superseded |
+`claude/jev-implementation-analysis-kwhty2` was on the same report but **kept**:
+it has an open PR (#207) and unique tooling not on `main` (`.claude/hooks/`
+secret-guard hooks + tests, `scripts/check_docs.py`). Resolve #207 before
+archiving it.
+
+## 2026-11-08: `feat/fawesome-20.8` (issue #257)
+
+Archived on purpose rather than merged. The branch re-anchored Fawesome's ad
+and update-prompt seams for 20.8 and the work itself was sound — the patches
+compiled, CI was green, both applied to the 20.8 APK and all three injections
+were confirmed in the patched dex.
+
+It was dropped because of what the APK turned out to be. Fawesome 20.8 (build
+200, the `com.future.moviesByFawesomeAndroidTV` package on APKMirror) is the
+**phone/tablet build**, not an Android TV one: its manifest requires
+`android.hardware.touchscreen`, pins activities to `sensorPortrait`, and has no
+`LEANBACK_LAUNCHER` category. Installed on the Onn 4K Plus it rendered as a
+608×1080 portrait window letterboxed on a 1920×1080 screen, the D-pad did
+nothing, and it showed a "long press any movie to share" phone interstitial.
+19.7 (the known-good TV build) requires no touchscreen and declares no
+orientation at all. This repo does not support phone/tablet APKs, and shipping
+a "Skip ads (v20)" patch against one would only create confusion about what
+Fawesome support means.
+
+19.7 remains the newest Android TV release and the supported target: `Skip ads`
++ `Disable update prompt` were re-verified on-device on 2026-11-08 (correct TV
+layout, D-pad focus, no update nag, no pre-roll, clean next-video transition).
+
+Also on the tag, and **not** copied to `main`: a `docs/seam-map/overlay.json`
+entry for Fawesome (the app has none, so its seam map renders as `_unknown_`).
+It was written around the 20.8 seams, so it needs rewriting for 19.7/20.1
+before it belongs on `main` rather than being lifted across as-is.
+
+| Tag `archive/…` | Tip SHA | Last commit | Notes |
+|---|---|---|---|
+| `feat/fawesome-20.8` | `fdfda337` | 2026-11-08 | Fawesome 20.8 seams; 20.8 is the phone build, out of scope |
+
+## 2026-11-22: leftovers from the 2026-10-30 PR triage
+
+The 2026-10-30 triage listed 16 branches for archiving. Nine of them were
+archived in the 2026-11-01 batch above; these seven were still live and were
+archived + deleted on 2026-11-22 with the **Archive branches** workflow. Each
+tip was confirmed as its tag before the branch was deleted.
+
+**Already in `main`.** Merged PRs, or superseded by newer `main` code; nothing
+unique on the branch:
+
+| Tag `archive/…` | Tip SHA | Last commit | Notes |
+|---|---|---|---|
+| `fix/hbomax-speed-remote-258` | `c448b8d7` | 2026-10-29 | Merged #277 |
+| `raiplay-501-live-fix` | `9447223d` | 2026-10-28 | Merged #271 |
+| `fix/tubi-10.40.5000` | `6ac45f6b` | 2026-10-22 | Merged #256 |
+| `feat/f1tv-uhd` | `a4094ef1` | 2026-10-16 | Merged #245 |
+| `claude/practical-mayer-dp16pq` | `583934b7` | 2026-10-04 | Merged #231 |
+| `fix/netflix-212-reminify` | `a35256ba` | 2026-10-06 | No PR. Its V3 re-minify ad-kill (#212) shipped via #250; `main`'s `killads.js` has it plus a newer stability layer |
 
 **Abandoned or superseded code.** Nothing copied; the tag is the record:
 
-| Tag `archive/…` | Last commit | Notes |
-|---|---|---|
-| `feat/netflix-async-scan-scheduler` | 2026-10-11 | PR #240 (closed). Async-scan scheduler for the household prompt (#237). Household/ad-drift work shipped another way via #250/#261; #237 closed. Idea credited to @phly95 in project notes |
-| `fix/netflix-212-fastadv` | 2026-09-28 | PR #225 (closed). Persistent fastADV scanner for #212. Superseded by the V3 selective-token scan shipped in #250; #212 closed |
-| `fix/peacock-v7.10.102` | 2026-10-02 | PR #229 (closed). 7.10.102 target support landed separately (current compat: 7.8.100, 7.10.102) |
-| `fix/peacock-live-dai-origin-swap` | 2026-10-02 | No PR. WIP "Layer 13 live SLE DAI origin swap" — explicitly NOT verified, do not ship. Finding recorded in project notes (event-class-dependent; VOD shipped #228). Prototype kept in the tag |
+| Tag `archive/…` | Tip SHA | Last commit | Notes |
+|---|---|---|---|
+| `feat/netflix-async-scan-scheduler` | `c4aee4b3` | 2026-10-11 | PR #240 (closed). Async-scan scheduler for the household prompt (#237). Household/ad-drift work shipped another way via #250/#261; #237 closed. Idea credited to @phly95 in project notes |

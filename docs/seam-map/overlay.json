@@ -20,13 +20,13 @@
   "apps": {
     "primevideo": {
       "engine": "proprietary",
-      "runtime": "libignite = WAMR AoT WASM runtime; player/timeline in QuickJS. v16 (6.24.x) moved the whole ad pipeline native (Java ad surface gone); the Megablast Rust ad client is a DOWNLOADED .so.br blob, updatable server-side.",
+      "runtime": "libignite = WAMR AoT WASM runtime; player/timeline in QuickJS. v16 (6.24.x) removed the Java ad surface but left libignite's memcpy/memmove import slots unchanged, so the native GOT strip is still reachable there; it had never loaded on v16 because the loader fingerprint pinned accessFlags=[PUBLIC] against a `public final` onCreate (fixed 2026-11-07, device verification still pending). The Megablast Rust ad client is a DOWNLOADED .so.br blob, updatable server-side.",
       "delivery": "Client-stitched: the app fetches an ad schedule (regolith / SGAI `getVideoAds` response, intraTitlePlaylist) and stitches ad pods into playback itself.",
       "seam": "The regolith ad-playlist response inside libignite — intercepted by a native GOT/PLT hook (memcpy) and emptied; intraTitlePlaylist PATH1 skipped.",
       "action": "Empty the ad playlist before the player sees it → the break is never scheduled.",
       "patch_evidence": "`[rego] emptied playlist (~N ad(s), interior X bytes blanked)` + `PVKILL path=tv ads=N` at the moment each pod is fetched (2026-09-24 live: 1 pre-roll, 4 + 3 mid-roll ads emptied).",
       "device_signature": "When an ad DOES play (6.24.7 capture): decoder reconfigure (`Discard frames from previous generation`, `VideoResolutionChange`) + crop switch (title-specific, e.g. letterbox 960 → ad 1080) + ~27 `I/f Successfully uploaded metrics` in ~2 s from the app process. With the patch working: none of these at the marker, 0 metrics uploads.",
-      "drift": "v16 loader never fired because onCreate became `public final` vs an exact accessFlags match (fix: drop accessFlags). 6.24.7 = minor bump, seam re-pointed (declared target still in progress). High-ad-region mid-roll truncation (#120) fixed in v1.37.4.",
+      "drift": "v16 loader never fired because onCreate became `public final` vs an exact accessFlags match; the recorded fix (drop accessFlags) sat unapplied for weeks while docs blamed the v16 native move instead, so APPLY recorded drift fixes, don't just record them. Applied 2026-11-07; 6.24.7 and 6.24.13 declared as experimental targets, device verification pending. High-ad-region mid-roll truncation (#120) fixed in v1.37.4.",
       "gaps": [
         "Timeline-action native symbols unresolved (Native_StartTimelineAction not in NativeSymbol table)."
       ]
@@ -49,16 +49,18 @@
     "disney": {
       "engine": "proprietary",
       "runtime": "Disney media player (legacy DSS SDK and new com.disney.dmp).",
-      "delivery": "SGAI (server-guided ad insertion): the player receives insertion points / ranges that say where ads go.",
-      "seam": "Insertion accessors `getPoints()` / `getRanges()` (legacy + DMP variants).",
-      "action": "Return empty insertion points/ranges → no breaks scheduled. 26.16: obfuscated MEL pause layer → pause ad made optional.",
+      "delivery": "VOD: SGAI/SSAI insertion points + ranges via `com.disney.dmp.internal.pbo.Insertion` (and the legacy DSS-SDK `Insertion`). LIVE is a SEPARATE channel: breaks arrive as HLS `#EXT-X-DATERANGE` interstitial tags (`CLASS=com.disney.media.break.v1` or `com.apple.hls.interstitial`) carrying START-DATE / END-DATE / PLANNED-DURATION / X-ASSET-LIST / X-COM-DISNEY-PAYLOAD, delivered to the player as `playlistRetrieved(DateTime, List<DateRange>)`. Live never travels through `Insertion`.",
+      "seam": "VOD: `Insertion` accessors `getPoints()` / `getRanges()` (legacy + DMP variants). LIVE: `playlistRetrieved(DateTime, List<DateRange>)` — R8-minified to `Lssc;->g(Lorg/joda/time/DateTime;Ljava/util/List;)V` on 26.20 (interface `Lnmh;`, logging decorator `Ljcl;->g`); parsed entirely in Java, so bytecode-reachable. Not patched: see docs/DISNEY_LIVE_AD_DELIVERY.md.",
+      "action": "VOD: return empty insertion points/ranges -> no breaks scheduled. 26.16: obfuscated MEL pause layer -> pause ad made optional. LIVE: nothing shipped. Two gates (`cub.p:Li08`, `cub.j:Z`) choose client-side `scheduleLiveInterstitials` (removable by filtering the DateRange list) vs passthrough (nothing scheduled -> mask only, as ESPN does). The measured ESPN-in-Disney+ stream takes the passthrough branch.",
       "patch_evidence": null,
-      "device_signature": null,
-      "drift": "Verified through 26.12.1; 26.16 pause-ad needed an optional patch (#167).",
+      "device_signature": "LIVE passthrough: one continuous decoder session over ~25 min — 0 `C2VdecComponent`/`CCodec` lines, 0 decoder `onStopDone`, 1 `WVCdm` op, `PLAYING(3)` throughout, strictly monotonic position. VOD baseline over a comparable span: 1,744 codec lines, 12 stops, 421 `WVCdm` ops. The app emits none of its own `p97.w` logging in release, so logcat shows zero ad vocabulary either way.",
+      "drift": "Verified through 26.20.0+rc3-2026.11.02; 26.16 pause-ad needed an optional patch (#167). Live seam names `Lssc;`/`g` are R8 and drift every version — re-anchor on the in-method strings `com.disney.media.break.v1`, `X-COM-DISNEY-PAYLOAD`, `X-ASSET-LIST`.",
       "gaps": [
-        "Re-anchor the 26.16 pause-ad seam.",
+        "Re-anchor the 26.16+ pause-ad seam.",
         "No runtime log line.",
-        "Device signature not captured."
+        "LIVE: no user-flagged commercial-break timestamp yet, so passthrough is consistent-with, not proven.",
+        "LIVE: pcap a break to see whether an X-ASSET-LIST URI is fetched (decides client-side vs passthrough).",
+        "LIVE: resolve what sets the gates cub.p / cub.j."
       ]
     },
     "hbomax": {
@@ -83,7 +85,7 @@
       "action": "VOD: shouldPlayAd → false. Live: pure slate-redirect (accepted ceiling — in-interceptor PTS alignment crashed weak hardware).",
       "patch_evidence": null,
       "device_signature": null,
-      "drift": "16.17 ANR fixed in v1.19.0; fingerprints hardened for 16.19.",
+      "drift": "16.17 ANR fixed in v1.19.0; fingerprints hardened for 16.19. 17.3.0 (experimental): all three seams unchanged; VOD device-verified 2026-11-12, pause/mid-roll/live not yet re-verified.",
       "gaps": [
         "Device signature not captured."
       ]
@@ -207,6 +209,49 @@
       "drift": "v9.0.0 is a native ExoPlayer build that predates Starshot → incompatible (#164).",
       "gaps": [
         "Device signature not captured."
+      ]
+    },
+    "mediaset": {
+      "engine": "proprietary",
+      "runtime": "Thin native shell: WebView runs Mediaset's remote React TV app (static1.mediasetplay.mediaset.it/app/ctv-lng/androidtv/), media3 ExoPlayer driven over Media3JavascriptBridge. No ad SDK in Java.",
+      "delivery": "Client-side: per play request the web app gets advData (engine FREEWHEEL or IMA) and calls FreeWheel (*.fwmrm.net) or a Google VMAP tag (pubads.g.doubleclick.net, optionally via SpringServe); pause/welcome display ads from gampad/adx. Ad media then goes to the native player.",
+      "seam": "Shell WebViewClient `shouldInterceptRequest` (BaseActivity$getClient$1) — every web-app request passes through it.",
+      "action": "Answer ad-decision hosts (fwmrm.net, doubleclick.net, springserve.com, 2mdn.net) with an empty 204 + CORS, so no ad is ever chosen.",
+      "patch_evidence": "logcat tag MediasetAds: `blocked ad call: <host><path>`.",
+      "device_signature": null,
+      "drift": "Seam is the shell's own Java (unobfuscated); ad logic is remote JS and can change without an APK update. Fallback seam: remote config keys freewheel.skipAdsVod / freewheel.skipAdsLive. Field-verified on 8.1.13 and 8.1.20 (#217): VOD and live ad-free on a free account.",
+      "gaps": [
+        "Device signature not captured (field test in Italy had no logcat)."
+      ]
+    },
+    "discoveryplus": {
+      "engine": "ssai-manifest",
+      "runtime": "WBD Bolt/Beam player shared with HBO Max (`com.discovery.player.*`, `com.wbd.beam.player.*`, `com.wbd.adtech.bolt.*`); UI is You.i Engine (`CYI*` native logs).",
+      "delivery": "SSAI: ads stitched server-side into the DASH stream; ad-break timeline built from the GMSS/AdSparx payload. Nonlinear (overlay/pause) ads fetched by BoltDynamicAdFetcher.",
+      "seam": "`PlayableKt.getStreamInfo` (PRIMARY → FALLBACK remap), `TimelineStateKt.isAdBreakAlreadyWatched` (Beam GMSS seek mediator watched-state check), Bolt nonlinear request/fetch, live preroll entry builder. Free-tier gate: `IapManager.onStoreMarketplaceRetrievalCompleted` (Play storefront country → native PlatformIAPBroker → server-side welcome CTAs).",
+      "action": "Prefer the ad-free FALLBACK stream (verified present on the Italian free tier); otherwise mark every ad break watched so GmssSeekMediator.onRangeEnded skips it. Opt-in Store Country Override reports IT so the \"Naviga gratis\" free tier is offered.",
+      "patch_evidence": "`I/DplayStreamSelector: remapping PRIMARY -> FALLBACK stream` on every stream lookup; `W/PlatformIAPBroker: Country code available: IT` with Store Country Override.",
+      "device_signature": "Clean start: `c2.amlogic.avc.decoder.secure` from the first frame, BUFFERING → PLAYING at position 0 within ~1 s (onn 4K Plus, 2026-11-20).",
+      "drift": "22.1.0.71 is the first target. SsaiInfoTimelineBuilder is deliberately NOT suppressed (without a manifest filter the stitched ads would play as content). The welcome-screen options depend on the Google Play storefront country, not the IP: a US Play account or a re-signed app hides \"Naviga gratis\" even on an Italian IP (#334).",
+      "gaps": [
+        "Mid-roll breaks not reached in device testing (three ~30 s plays).",
+        "Non-DRM titles not tested.",
+        "Store Country Override effect on subscribers outside Italy unknown (kept opt-in)."
+      ]
+    },
+    "joyn": {
+      "engine": "proprietary",
+      "runtime": "Native Kotlin app (R8-obfuscated). Ads come from ProSiebenSat.1's own \"Ads Wrapper\" Ad SDK: a JS bundle in assets driven over a JS bridge (`AdSdkSender`/`AdSdkReceiver`). No Google IMA.",
+      "delivery": "Client-side: the Ad SDK instance is attached to the player when the player is built and drives the pre/mid-roll ad pods. The app has its own ad-free branch that logs \"Ads are disabled; skipping Ad SDK setup on the player\".",
+      "seam": "The player setup method (6.5.2-ATV: `Lv30/e;->c()`) reads an \"ads enabled\" Boolean and either attaches the Ad SDK or takes the ads-disabled branch. Anchored by reference: the class holding the ads-disabled log string (R8-merged log lambda, 6.5.2: `Lr30/y;`), then the method that constructs it and calls `Boolean.booleanValue()`, then the last booleanValue + move-result before the first lambda construction.",
+      "action": "Replace that move-result with `const/4 vX, 0x0`, so the player always takes the app's own ads-disabled branch and the Ad SDK is never attached. Same seam as hxreborn's phone \"Hide ads\" patch.",
+      "patch_evidence": null,
+      "device_signature": null,
+      "drift": "6.5.2-ATV-605282491 is the first target. hxreborn's phone patch fails on this TV build (#328): R8 merged the three log lambdas into one top-level switch class (no `$` suffix) and inlined the player factory into its caller.",
+      "gaps": [
+        "Not device-verified: playback needs a Joyn account, and NordVPN on the test TV could not get a German IP. The patched app installs and reaches the home screen on an onn 4K Plus.",
+        "Expected device signature (unconfirmed): the app's own log line \"Ads are disabled; skipping Ad SDK setup on the player\" at playback start.",
+        "Unknown whether live channels carry server-stitched ads that the Ad SDK only tracks."
       ]
     }
   }

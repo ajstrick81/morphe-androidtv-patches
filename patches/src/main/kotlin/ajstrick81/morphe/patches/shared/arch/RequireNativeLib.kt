@@ -42,3 +42,37 @@ fun ResourcePatchContext.requireNativeLib(appName: String, mainLib: String, abi:
             "linked in the README.",
     )
 }
+
+/**
+ * Multi-ABI form: returns every ABI in [abis] whose [mainLib] is present, and fails
+ * only when none is. Use this for an app that ships more than one architecture, where
+ * any one of them is a valid input — Prime Video v15.5 is armeabi-v7a only while the
+ * v16 bundles are allAbis, and both are legitimate.
+ *
+ * The caller is expected to inject its own library into *each* returned ABI; injecting
+ * into only one leaves a 64-bit install silently unhooked.
+ *
+ * @param appName shown to the user, e.g. "Prime Video".
+ * @param mainLib the app's own engine library that every good input contains.
+ * @param abis the ABIs worth looking for, most-preferred first.
+ */
+fun ResourcePatchContext.requirePresentNativeAbis(
+    appName: String,
+    mainLib: String,
+    abis: List<String> = listOf("armeabi-v7a", "arm64-v8a"),
+): List<String> {
+    val present = abis.filter { get("lib/$it/$mainLib").exists() }
+    if (present.isNotEmpty()) return present
+
+    val found = get("lib").listFiles()?.filter { it.isDirectory }?.map { it.name }?.sorted().orEmpty()
+    val describe = if (found.isEmpty()) "no native libraries at all" else "only ${found.joinToString()}"
+
+    throw PatchException(
+        "$appName needs its native libraries, but this APK has $describe " +
+            "(expected $mainLib under one of ${abis.joinToString()}). This usually means " +
+            "Morphe Manager's \"Optimize for device architecture\" option was ON while " +
+            "patching on a phone. Turn it OFF (it is an Expert mode setting) and patch the " +
+            "original .apkm again. If the option is already off, re-download the exact " +
+            "Android TV bundle linked in the README.",
+    )
+}

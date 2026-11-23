@@ -1,0 +1,137 @@
+name: Bug report
+description: A patch fails to apply, ads still play, or playback misbehaves after patching.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Problems get fixed fastest when we can replay **exactly** what you
+        watched on our own test device, so the title and timestamps below matter more than
+        anything else on this form.
+
+  - type: dropdown
+    id: app
+    attributes:
+      label: App
+      options:
+        - Pluto TV
+        - Prime Video
+        - Netflix
+        - Disney+
+        - HBO Max
+        - Paramount+
+        - Peacock
+        - Tubi
+        - ViX
+        - Fawesome
+        - Other (say which below)
+    validations:
+      required: true
+
+  - type: input
+    id: app_version
+    attributes:
+      label: App version
+      description: Settings → Apps → the app, or the APK file name.
+      placeholder: "17.2.0"
+    validations:
+      required: true
+
+  - type: input
+    id: patches_version
+    attributes:
+      label: Patch bundle version
+      description: Shown in Morphe Manager as "ajstrick81 Patches x.y.z", or the .mpp file name.
+      placeholder: "1.52.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: selected_patches
+    attributes:
+      label: Patches you selected
+      description: List them, or say "defaults".
+      placeholder: "Skip ads (v17)"
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: "onn. 4K Plus, Android 14  /  Chromecast with Google TV, Android 12"
+    validations:
+      required: true
+
+  - type: input
+    id: patcher
+    attributes:
+      label: How you patched
+      description: Morphe Manager or Morphe CLI, with its version.
+      placeholder: "Morphe Manager 2.3.0"
+
+  - type: input
+    id: country
+    attributes:
+      label: Country / region
+      description: Ad loads and catalogs differ by region, and so do the ads that slip through.
+      placeholder: "US"
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of problem?
+      options:
+        - Patching fails (error in Manager / CLI)
+        - Ads still play
+        - Playback problem (seeking, progress bar, resume, freeze, crash)
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: title_and_times
+    attributes:
+      label: Exactly what you watched, and where it went wrong
+      description: |
+        The exact title (movie, or show + season + episode, or live channel) and the
+        timestamps where the problem appeared. For ads, also say roughly how long each
+        one lasted and what it was (a brand ad, a "You're watching…" bumper, a promo).
+      placeholder: |
+        Movie: IF (2024), on demand
+        16:10  10-second "You're watching the Kids channel" bumper
+        1:00:00  about 1 minute: bumper + a Nick Jr. promo
+        Seeking on the progress bar jumps to the wrong place after the first one.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+
+  - type: dropdown
+    id: stock
+    attributes:
+      label: Does the unpatched app do the same thing?
+      description: Helps separate a patch bug from the app's own behaviour.
+      options:
+        - Not tested
+        - "Yes, the stock app does it too"
+        - "No, only the patched app"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error text or logs
+      description: |
+        For a patching failure, paste the full error from Manager / CLI.
+        For a playback problem, an `adb logcat` capture taken while it happens is a big help
+        if you are able to get one (optional).
+      render: text
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots, whether it happens every time, when it started.

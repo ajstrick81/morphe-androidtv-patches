@@ -82,7 +82,7 @@ jobs:
             echo
             echo "### What to do"
             echo "- **Keep working on it?** Push a commit and it drops off next month's report."
-            echo "- **Anything worth keeping?** Copy docs/research into \`main\` first (see CLAUDE.md, \"Where research goes\")."
+            echo "- **Anything worth keeping?** Copy docs/research into \`main\` first (see .claude/CLAUDE.md, \"Where research goes\")."
             echo "- **Archive it:** Actions → **Archive branches** → Run workflow, paste the names, run on \`dry-run\` and then \`execute\`. Each branch becomes an \`archive/<branch>\` tag before it's deleted, so it can always be restored. Add a row to \`docs/archive/BRANCH_ARCHIVE.md\`."
             echo
             echo "Stale branches without an open PR, ready to paste:"

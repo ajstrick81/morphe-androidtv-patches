@@ -11,7 +11,10 @@ val hboAdsPatch = bytecodePatch(
     name = "HBO Max - Disable Ads",
     description = "Suppresses nonlinear overlay ads (Bolt), SSAI linear ad " +
         "timeline registration (GMSS/AdSparx), and live stream preroll ad " +
-        "timeline entry generation for all content types.",
+        "timeline entry generation for all content types. Best paired with " +
+        "'Remove Ad Periods (keep 5.1)': on its own, suppressing the ad-break " +
+        "registration can shift the skip-intro / next-episode markers earlier " +
+        "(the app maps those content-time chapters through the ad breaks).",
 ) {
     compatibleWith(AppCompatibilities.HBO_TV)
 
