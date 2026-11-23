@@ -22,11 +22,11 @@
   root.**
 - ✅ **Recommended build: `6.23.23` (engine `v15.5`).** It's the one validated end
   to end. Keep **Disable auto-updates** on so the Play Store can't move you off it.
-- 🧪 **v16 (`6.24.x`) is now worth testing, not yet worth trusting.** The reason
+- ✅ **v16: `6.24.7+v16.0.0.332-allAbis` is now a supported build.** The reason
   v16 never suppressed ads turned out to be a bug in our own patch, not a wall in
-  the app — it's fixed, and `6.24.7+v16.0.0.332-allAbis` and
-  `6.24.13+v16.0.1.93-allAbis` ship as *experimental* targets. **Unconfirmed on a
-  real device so far.** See [v16 (`6.24.x`)](#v16-624x--experimental).
+  the app. It's fixed, and 6.24.7 has since run for weeks of daily use with ads
+  stripped. `6.24.13+v16.0.1.93-allAbis` is still *experimental*. See
+  [v16 (`6.24.x`)](#v16-624x).
 - **Where it's tested:** Onn 4K Android TV, US account, ad-supported tier.
   Other devices — see [Device compatibility](#device-compatibility).
 - 🔬 **Want the deep dive?** A full reverse-engineering teardown with an
@@ -104,9 +104,9 @@ enforced one layer lower and more completely.
 2. **Get the right APK.** On APKMirror, open the
    **[Prime Video (Android TV) listing](https://www.apkmirror.com/apk/amazon-mobile-llc/prime-video-android-tv-android-tv/)**
    and download version **`6.23.23+v15.5.0.70-armv7a`** as the **`.apkm`** bundle.
-   - `6.23.23` is the recommended build. If you want to run v16 instead, see
-     [v16 (`6.24.x`) — experimental](#v16-624x--experimental) first; it works, but
-     with caveats you should read before relying on it.
+   - `6.23.23` is the recommended build. `6.24.7+v16.0.0.332-allAbis` is also
+     supported; see [v16 (`6.24.x`)](#v16-624x). Leave `6.24.13` alone unless you
+     want to help test it.
    - ⚠️ Get the **Android TV** build, not the phone build and **not** the Fire TV
      build. Fire TV is a different app (`com.amazon.firebat`) — this patch targets
      `com.amazon.amazonvideo.livingroom`.
@@ -134,10 +134,10 @@ enforced one layer lower and more completely.
 - **Keep the patch from being overwritten:** **Disable auto-updates** is available
   so the Play Store won't silently replace the patched build with an unpatched one.
 
-### v16 (`6.24.x`) — experimental
+### v16 (`6.24.x`)
 
-Two v16 builds are supported targets, flagged **experimental** in Morphe Manager:
-`6.24.7+v16.0.0.332-allAbis` and `6.24.13+v16.0.1.93-allAbis`.
+- `6.24.7+v16.0.0.332-allAbis`: **supported** (no longer experimental).
+- `6.24.13+v16.0.1.93-allAbis`: still flagged **experimental** in Morphe Manager.
 
 **What changed.** For months the answer here was "v16 moved the ad pipeline into
 the native engine, so ads come back." That was the wrong diagnosis. The native
@@ -147,21 +147,18 @@ untouched — but it was never getting loaded on v16: the patch looked for an
 match silently failed and the library was never injected. One pinned flag, not an
 architectural wall.
 
-**Be honest about where this stands:** that fix means the strip can now run on
-v16. It does **not** mean anyone has watched it work there. Neither build has a
-confirmed device pass yet, so treat v16 as a test, not an upgrade.
+**Where this stands:** `6.24.7` has been used daily for weeks since the fix, with
+ads stripped and no issues, so it's now a regular supported target. `6.24.13` uses
+the same hook points but hasn't been run on a device yet, so it stays experimental.
 
-- 🧱 **Both ABIs are covered now.** The v16 bundles carry arm64-v8a and
-  armeabi-v7a, and the hook is built for both, so a 64-bit install gets its own
-  hook instead of silently running unstripped. This is new and unverified on
-  hardware — if you run v16 and still see ads, this is still the first thing to
-  check, and a `logcat` line containing `PVNativeHook` tells us whether the hook
-  loaded at all.
-- ✅ **`6.23.23` is still the validated path.** Nothing about v16 changes that.
-- 🙏 **Reports are what move this forward.** If you try either v16 build, please
-  open an issue with the build, your device, and whether ads were suppressed. A
-  `logcat` line containing `PVNativeHook` tells us the hook loaded at all, which
-  is the single most useful detail.
+- 🧱 **Both ABIs are covered.** The v16 bundles carry arm64-v8a and armeabi-v7a,
+  and the hook is built for both, so a 64-bit install gets its own hook instead of
+  silently running unstripped. If you run v16 and still see ads, a `logcat` line
+  containing `PVNativeHook` tells us whether the hook loaded at all.
+- ✅ **`6.23.23` is still the longest-validated build** and remains the default
+  recommendation.
+- 🙏 **Reports help.** If you try `6.24.13`, please open an issue with your
+  device and whether ads were suppressed, plus any `PVNativeHook` logcat lines.
 
 > ℹ️ **Historical note:** the archived post told users to *disable* a "Morphe
 > patches" package-rename option to avoid `INSTALL_FAILED_UPDATE_INCOMPATIBLE`.
@@ -204,8 +201,8 @@ Anything else, please file an issue.
 - ✅ **Do** enable **Disable auto-updates** so the store doesn't replace your
   patched build with an unpatched one.
 - ✅ **Do** use **Clone Prime Video** only if you can't uninstall a system build.
-- ✅ **Do** prefer `6.23.23` / v15.5. v16 works but is experimental — see
-  [v16 (`6.24.x`)](#v16-624x--experimental).
+- ✅ **Do** use `6.23.23` (v15.5) or `6.24.7` (v16). `6.24.13` is still
+  experimental; see [v16 (`6.24.x`)](#v16-624x).
 - 🚫 **Don't** add DNS filter lists, a VPN, or AdGuard alongside it — the native
   hook doesn't need them, and added DNS latency / a local VPN can interfere with
   Ignite session init.
