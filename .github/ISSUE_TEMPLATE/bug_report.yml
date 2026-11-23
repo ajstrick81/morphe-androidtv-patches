@@ -28,21 +28,28 @@ body:
     validations:
       required: true
 
-  - type: input
-    id: app_version
+  - type: textarea
+    id: environment
     attributes:
-      label: App version
-      description: Settings → Apps → the app, or the APK file name.
-      placeholder: "17.2.0"
-    validations:
-      required: true
-
-  - type: input
-    id: patches_version
-    attributes:
-      label: Patch bundle version
-      description: Shown in Morphe Manager as "ajstrick81 Patches x.y.z", or the .mpp file name.
-      placeholder: "1.52.0"
+      label: Environment
+      description: |
+        Fill in the right-hand column of each row, between the `|` characters. Leave a row
+        blank if you don't know.
+        - **App version:** Settings → Apps → the app, or the APK file name.
+        - **Patch bundle:** shown in Morphe Manager as "ajstrick81 Patches x.y.z", or the .mpp file name.
+        - **Patched with:** Morphe Manager or Morphe CLI, with its version.
+        - **Country / region:** ad loads and catalogs differ by region.
+      value: |
+        | Item | Value |
+        | --- | --- |
+        | App version |  |
+        | Patch bundle |  |
+        | Patched with |  |
+        | Device |  |
+        | Android / Fire OS version |  |
+        | Optimize for device architecture | On / Off / Not sure |
+        | Stock app also installed |  |
+        | Country / region |  |
     validations:
       required: true
 
@@ -54,28 +61,6 @@ body:
       placeholder: "Skip ads (v17)"
     validations:
       required: true
-
-  - type: input
-    id: device
-    attributes:
-      label: Device and Android version
-      placeholder: "onn. 4K Plus, Android 14  /  Chromecast with Google TV, Android 12"
-    validations:
-      required: true
-
-  - type: input
-    id: patcher
-    attributes:
-      label: How you patched
-      description: Morphe Manager or Morphe CLI, with its version.
-      placeholder: "Morphe Manager 2.3.0"
-
-  - type: input
-    id: country
-    attributes:
-      label: Country / region
-      description: Ad loads and catalogs differ by region, and so do the ads that slip through.
-      placeholder: "US"
 
   - type: dropdown
     id: kind
