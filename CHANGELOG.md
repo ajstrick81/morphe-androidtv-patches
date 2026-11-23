@@ -1,3 +1,10 @@
+## [1.60.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.60.0...v1.60.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* **peacock:** drop 7.5.102 and 7.6.100 targets (server force-update) ([02ba941](https://github.com/ajstrick81/morphe-androidtv-patches/commit/02ba941969e062f261df9edee7878e2c4a708c07))
+
 # [1.60.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.59.0...v1.60.0) (2026-11-20)
 
 
