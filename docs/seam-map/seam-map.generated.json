@@ -96,7 +96,7 @@
             {
               "fingerprint": "DplayIsAdBreakAlreadyWatchedFingerprint",
               "call": "addInstructions",
-              "smali": "\r\n                const/4 p0, 0x1\r\n                return p0\r\n            "
+              "smali": "\n                const/4 p0, 0x1\n                return p0\n            "
             }
           ]
         },
