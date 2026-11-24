@@ -1,3 +1,10 @@
+## [1.61.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.61.0...v1.61.1) (2026-11-24)
+
+
+### Bug Fixes
+
+* **hbomax:** keep playback speed working with 5.1 E-AC-3 audio ([#314](https://github.com/ajstrick81/morphe-androidtv-patches/issues/314)) ([9fd920d](https://github.com/ajstrick81/morphe-androidtv-patches/commit/9fd920d66872ced432a31056541ad0aa81e34b68))
+
 # [1.61.0](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.60.1...v1.61.0) (2026-11-23)
 
 
