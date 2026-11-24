@@ -53,6 +53,19 @@ public final class PlayerBridge {
     private static Class<?> parametersFor;
     private static Constructor<?> parametersConstructor;
     private static Method parametersSetter;
+    private static Method parametersGetter;
+    /** PlaybackParameters' speed field (obfuscated name, found by probing). */
+    private static Field speedField;
+
+    /**
+     * How often the enforcer checks that the speed stuck. media3's audio sink
+     * resets the speed to 1x while audio is passed through or tunneled, and the
+     * reset also survives the switch to AAC (issue #314), so it is re-applied.
+     */
+    private static final long ENFORCE_INTERVAL_MS = 1000;
+    private static final Runnable ENFORCE = new EnforceRunnable();
+    private static boolean enforcing;
+    private static int revertCount;
 
     private PlayerBridge() {
     }
@@ -106,6 +119,12 @@ public final class PlayerBridge {
      * @return how many live players the change was dispatched to.
      */
     static int setSpeed(final float speed) {
+        revertCount = 0;
+        // Switch audio to a path that can change speed (or back to HBO's own
+        // preference at 1x) before the speed itself is applied.
+        AudioPathGuard.sync(speed);
+        startEnforcing();
+
         List<Object> live = livePlayers();
         if (live.isEmpty()) {
             Logger.i("setSpeed(" + speed + "): no player captured");
@@ -199,6 +218,8 @@ public final class PlayerBridge {
         parametersFor = type;
         parametersConstructor = null;
         parametersSetter = null;
+        parametersGetter = null;
+        speedField = null;
 
         for (Class<?> owner : publicTypes(type)) {
             for (Method getter : owner.getMethods()) {
@@ -213,6 +234,8 @@ public final class PlayerBridge {
 
                 parametersConstructor = constructor;
                 parametersSetter = setter;
+                parametersGetter = getter;
+                speedField = probeSpeedField(constructor);
 
                 Logger.i("Speed bound to " + owner.getName() + "." + setter.getName()
                         + "(" + candidate.getName() + ")");
@@ -222,6 +245,100 @@ public final class PlayerBridge {
 
         Logger.i("No setPlaybackParameters found on " + type.getName());
         return false;
+    }
+
+    /**
+     * The float field that holds the speed. The names are obfuscated and the
+     * field order is not guaranteed, so a probe instance with a distinctive
+     * speed tells which one it is.
+     */
+    private static Field probeSpeedField(Constructor<?> constructor) {
+        try {
+            Object probe = constructor.newInstance(1.75f, 1f);
+            for (Field field : probe.getClass().getFields()) {
+                if (field.getType() == float.class && field.getFloat(probe) == 1.75f) return field;
+            }
+        } catch (Throwable t) {
+            Logger.e("Speed field probe failed", t);
+        }
+        return null;
+    }
+
+    /** Current player speed, or NaN if it cannot be read. Call on the player's looper. */
+    private static float currentSpeed(Object player) {
+        try {
+            if (!resolveParameters(player) || parametersGetter == null || speedField == null) {
+                return Float.NaN;
+            }
+            Object parameters = parametersGetter.invoke(player);
+            return parameters == null ? Float.NaN : speedField.getFloat(parameters);
+        } catch (Throwable t) {
+            return Float.NaN;
+        }
+    }
+
+    // Enforcer ------------------------------------------------------------------
+
+    private static void startEnforcing() {
+        if (enforcing) return;
+        enforcing = true;
+        HboSpeedController.postToMainThreadDelayed(ENFORCE, ENFORCE_INTERVAL_MS);
+    }
+
+    /**
+     * Runs on the main thread once a second while the speed is not 1x (or while
+     * the AAC override still has to be undone). Re-asserts the audio path, then
+     * re-applies the speed on any player whose speed was knocked back.
+     */
+    private static void enforce() {
+        final float target = Prefs.speed();
+        AudioPathGuard.sync(target);
+
+        List<Object> live = livePlayers();
+        boolean normal = Math.abs(target - 1f) < 0.01f;
+        if (live.isEmpty() || (normal && !AudioPathGuard.overriding())) {
+            // Nothing to watch. onPlayerCreated / setSpeed restart it.
+            enforcing = false;
+            return;
+        }
+
+        if (!normal) {
+            for (final Object player : live) {
+                Runnable check = new Runnable() {
+                    @Override
+                    public void run() {
+                        float current = currentSpeed(player);
+                        if (Float.isNaN(current) || Math.abs(current - target) < 0.01f) return;
+
+                        revertCount++;
+                        if (revertCount <= 3 || revertCount % 30 == 0) {
+                            Logger.i("Speed reverted to " + current + " (want " + target
+                                    + ", revert #" + revertCount + "); re-applying. Repeated"
+                                    + " reverts mean the audio is still passthrough/tunneled.");
+                        }
+                        apply(player, target);
+                    }
+                };
+                Looper looper = applicationLooper(player);
+                if (looper == null || looper == Looper.myLooper()) check.run();
+                else new Handler(looper).post(check);
+            }
+        }
+
+        HboSpeedController.postToMainThreadDelayed(ENFORCE, ENFORCE_INTERVAL_MS);
+    }
+
+    /** Named class rather than a lambda/anonymous field (see SpeedWindowCallback). */
+    private static final class EnforceRunnable implements Runnable {
+        @Override
+        public void run() {
+            try {
+                enforce();
+            } catch (Throwable t) {
+                enforcing = false;
+                Logger.e("Speed enforcer failed", t);
+            }
+        }
     }
 
     /** Public classes and interfaces in the player's hierarchy, nearest first. */

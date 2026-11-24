@@ -27,6 +27,18 @@ internal object BeamApplicationOnCreateFingerprint : Fingerprint(
 )
 
 /**
+ * HBO's player-SDK track selector wrapper (unobfuscated, public). The speed
+ * extension uses its public setPreferredAudioCodecs / disableTunneling API to
+ * move audio off E-AC-3 passthrough and tunneling while the speed is not 1x,
+ * because media3's audio sink pins those paths to 1x (issue #314).
+ */
+internal object TrackSelectorWrapperConstructorFingerprint : Fingerprint(
+    definingClass = "Lcom/discovery/player/tracks/DefaultExoPlayerTrackSelectorWrapper;",
+    name = "<init>",
+    returnType = "V",
+)
+
+/**
  * Every constructor of every class implementing media3's ExoPlayer interface.
  *
  * HBO renames the implementation (androidx.media3.exoplayer.d = ExoPlayerImpl)

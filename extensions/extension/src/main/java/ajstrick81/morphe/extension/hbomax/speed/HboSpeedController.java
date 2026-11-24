@@ -88,6 +88,11 @@ public final class HboSpeedController {
         MAIN.post(runnable);
     }
 
+    static void postToMainThreadDelayed(Runnable runnable, long delayMs) {
+        MAIN.removeCallbacks(runnable);
+        MAIN.postDelayed(runnable, delayMs);
+    }
+
     // Remote / pointer input --------------------------------------------------
 
     /**

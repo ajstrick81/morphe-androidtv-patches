@@ -45,6 +45,7 @@ import com.android.tools.smali.dexlib2.Opcode
 private const val EXTENSION = "Lajstrick81/morphe/extension/hbomax/speed"
 private const val CONTROLLER = "$EXTENSION/HboSpeedController;"
 private const val PLAYER_BRIDGE = "$EXTENSION/PlayerBridge;"
+private const val AUDIO_PATH_GUARD = "$EXTENSION/AudioPathGuard;"
 
 @Suppress("unused")
 val hboPlaybackSpeedPatch = bytecodePatch(
@@ -105,6 +106,29 @@ val hboPlaybackSpeedPatch = bytecodePatch(
                 "invoke-static/range { p0 .. p0 }, " +
                     "$PLAYER_BRIDGE->onPlayerCreated(Ljava/lang/Object;)V",
             )
+        }
+
+        // 3. Capture HBO's track selector wrapper (issue #314).
+        //
+        // media3's audio sink pins the speed to 1x while audio is passed through
+        // undecoded (E-AC-3 5.1 over HDMI) or tunneled. The extension uses this
+        // wrapper's public API to prefer AAC (decoded to PCM) and disable
+        // tunneling while the speed is not 1x, and restores HBO's preference at
+        // 1x. Optional: if HBO renames the class, the speed control still works
+        // on stereo/PCM audio, so a miss is not fatal.
+        TrackSelectorWrapperConstructorFingerprint.methodOrNull?.let { wrapper ->
+            wrapper.implementation!!.instructions
+                .withIndex()
+                .filter { (_, instruction) -> instruction.opcode == Opcode.RETURN_VOID }
+                .map { (index, _) -> index }
+                .asReversed()
+                .forEach { index ->
+                    wrapper.addInstructions(
+                        index,
+                        "invoke-static/range { p0 .. p0 }, " +
+                            "$AUDIO_PATH_GUARD->onTrackSelectorCreated(Ljava/lang/Object;)V",
+                    )
+                }
         }
     }
 }
