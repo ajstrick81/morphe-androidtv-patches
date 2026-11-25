@@ -1,3 +1,10 @@
+## [1.61.2](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.61.1...v1.61.2) (2026-11-25)
+
+
+### Bug Fixes
+
+* **pluto:** port semicoloncolonel v17 hook set to keep Continue Watching, target 17.3.0 ([#346](https://github.com/ajstrick81/morphe-androidtv-patches/issues/346)) ([fb3bd2b](https://github.com/ajstrick81/morphe-androidtv-patches/commit/fb3bd2b5294079d4bc0f90a5597fe26dd5dd275e))
+
 ## [1.61.1](https://github.com/ajstrick81/morphe-androidtv-patches/compare/v1.61.0...v1.61.1) (2026-11-24)
 
 
