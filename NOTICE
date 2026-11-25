@@ -112,4 +112,19 @@ Modifications:
   from utv-runtime's adblock patch, reached through farotv-patches' runtime.js.
   Source: https://github.com/DylanDuff/utv-runtime
 
+- tv-morphe-patches (semicoloncolonel/tv-morphe-patches), GPL-3.0
+  Author: semicoloncolonel (github.com/semicoloncolonel)
+  Pluto TV v17 "Skip ads (v17)": the hook set (raw-MPD period filter at
+  AviaDashParser.parse, emptying StitcherSession.adBreaks and
+  PauseAdsResponse.ads as each constructor stores them) and the content-id
+  ad-period rule in PlutoV17MpdFilter are ported from its Pluto TV Skip ads
+  patch and PlutoMpdFilter. That build kept Pluto's Continue Watching working
+  where ours did not (issue #300), and validated the hooks on 17.3.0.
+  semicoloncolonel's patch is itself a port of this repo's earlier Pluto work;
+  both credit headers are kept in the ported files.
+  semicoloncolonel also found the shared IMA pause-ad display anchor
+  (ImaPauseAdFingerprint.kt).
+  Contributed code, used with credit under GPL-3.0.
+  Source: https://github.com/semicoloncolonel/tv-morphe-patches
+
 All original authors retain credit for their contributions.

@@ -94,29 +94,12 @@
 }
 -dontwarn androidx.media3.exoplayer.dash.manifest.**
 
-# Pluto v17 (Paramount+/AVIA rebuild) DASH period strip — skipAdsV17Patch Hooks 3 & 4
-# (see SkipAdsV17Patch.kt). cleanManifestStream is called from injected smali at
-# AviaDashParser.parse, and shouldSuppressDynamicAdFetch from CLID3Processor; both are
-# unreferenced from Java, so R8 would strip or rename them. Uses only platform/XML types
-# (no library deps), so no -dontwarn is needed.
--keep class ajstrick81.morphe.extension.pluto.ads.PlutoV17ManifestProbe {
-    public static java.io.InputStream cleanManifestStream(java.io.InputStream);
-    public static boolean shouldSuppressDynamicAdFetch();
-    # #300. correctContentDuration is called from injected smali (Hook 8, at the
-    # AviaResourceProvider.getContentDuration returns). The mapping entry points are
-    # kept alongside it: they are not currently injected anywhere (the seek remap that
-    # used toStrippedMs was reverted after device testing), but they are covered by
-    # testing/checks/PlutoTimelineMapCheck.java and are the tested basis for any future
-    # coordinate translation, so keep them resolvable rather than silently stripped.
-    public static java.util.ArrayList neutralizeStitcherAdBreaks(java.util.ArrayList);
-    public static java.util.List neutralizeAdBreaks(java.util.List);
-    public static long zeroAdBreakDuration(long);
-    public static long correctContentDuration(long);
-    public static long toStrippedMs(long);
-    public static long toOriginalMs(long);
-    public static boolean hasTimelineMap();
-    public static long getStrippedDurationMs();
-    public static long getOriginalDurationMs();
+# Pluto v17 (Paramount+/AVIA rebuild) DASH period strip — skipAdsV17Patch Hook 1
+# (see SkipAdsV17Patch.kt). filter() is called only from injected smali at
+# AviaDashParser.parse, so R8 would strip or rename it. Uses only platform/XML types.
+# Ported from semicoloncolonel's PlutoMpdFilter (see NOTICE).
+-keep class ajstrick81.morphe.extension.pluto.ads.PlutoV17MpdFilter {
+    public static java.io.InputStream filter(java.io.InputStream);
 }
 
 # Pluto LIVE ad-break mask — liveSlatePatch (see LiveSlatePatch.kt). Its @JvmStatic
