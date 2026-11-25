@@ -17,11 +17,13 @@ object Constants {
     // (same package name, entirely different internals). Every leanback "Skip ads"
     // seam is gone, so the v17 ad-removal patch targets this DISJOINT version set and
     // the two generations coexist: the CLI's version gating drops whichever generation
-    // doesn't match the APK being patched. Tested against 17.2.0 (versionCode 520000962).
+    // doesn't match the APK being patched. Targets 17.3.0 (issue #300), the version
+    // semicoloncolonel's tv-morphe-patches validated this hook set on. Pick the
+    // Android TV build (version code 52…), not the phone build (42…).
     val COMPATIBILITY_V17 = Compatibility(
         name = "Pluto TV Android TV",
         packageName = "tv.pluto.android",
         appIconColor = 0xB8B004,
-        targets = listOf(AppTarget("17.2.0"))
+        targets = listOf(AppTarget("17.3.0"))
     )
 }
