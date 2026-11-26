@@ -107,7 +107,7 @@ Pre-rolls, mid-rolls and the full-screen pause ad are removed in-app by a script
 - **An ad can occasionally reappear.** Netflix's ad logic is downloaded JavaScript, so Netflix can change ad delivery server-side with no app update. The strip covers several delivery paths and is kept updated. If you see an ad, update to the latest patch first; if it persists, open an issue.
 - **Not a subscription bypass.** You need a valid, paid Netflix account and you log in normally.
 
-Read more: [system design teardown](docs/NETFLIX_ATV_SYSTEM_DESIGN.md)
+Read more: [system design teardown](docs/NETFLIX_ATV_SYSTEM_DESIGN.md) · [Fire OS 7 / ARM32 scanner setup and verification](docs/NETFLIX_FIRE_OS_SCANNER.md)
 
 </details>
 

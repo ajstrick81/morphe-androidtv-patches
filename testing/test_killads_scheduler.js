@@ -14,6 +14,7 @@ class P {
   constructor(o) { this.o = Number(o) >>> 0; }
   add(n) { return new P(this.o + Number(n instanceof P ? n.o : n)); }
   sub(n) { return new P((this.o - Number(n instanceof P ? n.o : n)) >>> 0); }
+  compare(p) { return Math.sign(this.o - p.o); }
   chk(n) { if (this.o < 0x1000 || this.o + n > MEM.length) throw new Error('access violation @' + this.o.toString(16)); }
   readU8() { this.chk(1); return MEM[this.o]; }
   readU32() { this.chk(4); return MEM.readUInt32LE(this.o); }
@@ -229,6 +230,23 @@ function runTest() {
   ok(patchedGb.includes('nrdp$1.script.clearScriptCache()/*'), 'patchGibbonBootstrap replaced script listener with clearScriptCache');
   ok(patchedGb.includes('void 0/*..*/'), 'patchGibbonBootstrap neutered e.cache(100) in uiLoaded');
   ok(sandbox._gbDone === true, '_gbDone is true after patchGibbonBootstrap');
+
+  // Async callbacks must not treat copied scratch data as live application memory.
+  const mixedBase = new P(alloc(65536));
+  MEM.write('abc', mixedBase.o, 'latin1');
+  MEM.write('abc', mixedBase.o + 32, 'latin1');
+  sandbox.snapshotScratch = { base: mixedBase.add(32), size: 16 };
+  const ownedHits = [];
+  T.aScanRange({ base: mixedBase, size: 65536 }, '61 62 63', a => ownedHits.push(a.o), () => {});
+  flushAsync();
+  ok(ownedHits.length === 1 && ownedHits[0] === mixedBase.o, 'async scanner ignores matches inside snapshot scratch');
+  MEM.fill(0, mixedBase.o, mixedBase.o + 65536);
+  MEM.write('abc', mixedBase.o + 30, 'latin1');
+  const crossingHits = [];
+  T.aScanRange({ base: mixedBase, size: 65536 }, '61 62 63', a => crossingHits.push(a.o), () => {});
+  flushAsync();
+  ok(crossingHits.length === 0, 'async scanner ignores matches crossing into snapshot scratch');
+  sandbox.snapshotScratch = null;
 
   console.log(fail ? ('\n' + fail + ' FAILED') : '\nALL PASS');
   process.exit(fail ? 1 : 0);

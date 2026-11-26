@@ -18,6 +18,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Netflix scanner host tests
+        run: |
+          node --test testing/test_snapshot_scanner.cjs
+          node testing/test_killads_scheduler.js
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
