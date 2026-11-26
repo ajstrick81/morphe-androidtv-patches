@@ -851,7 +851,3 @@ if(HH_ENABLED){ L('fastHH armed (household prompt suppression, early race-win sc
 if(CLCS_PROBE_ENABLED){ L('clcsProbe armed (DEV recon: locate runtime CLCS interstitial consumer — Nikflix seam)'); setTimeout(clcsProbe,200); }
 if(HH_ENABLED){ L('patchGibbonBootstrap armed (V8ScriptCache auto-clear & neuter)'); setTimeout(patchGibbonBootstrap, 10); }
 if(HH_ENABLED){ L('fastCLCS armed (gate dispatcher race-win)'); setTimeout(fastCLCS,100); }
-
-// LATE-ARM: don't attach until +40s. The hot eval callback isn't hooked during the heavy early boot
-// (so no boot stall), but we're armed before the ~+60s route2/menu eval fires on play. We already have
-// the appboot arg path (implicit_args_[0]); this run is to CATCH the late route2/dispatcher source eval.
