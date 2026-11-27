@@ -29,7 +29,7 @@
 | 🟢 [ViX](#vix) | Ads, incl. server-stitched pre-rolls | [`4.52.0_tv`](https://www.apkmirror.com/apk/univision-communications-inc/vix-cine-y-tv-en-espanol-android-tv/vix-tv-deportes-y-noticias-android-tv-4-52-0_tv-release/) | 11/10/26 |
 | 🟢 [Pluto TV](#pluto-tv) | VOD ads · live breaks masked on `5.66` | [`5.66.0-leanback`](https://www.apkmirror.com/apk/pluto-inc/pluto-tv-android-tv/plutotv-stream-free-movies-tv-android-tv-5-66-0-release/plutotv-stream-free-movies-tv-android-tv-5-66-0-leanback-android-apk-download/) · ⚠️ experimental: [`17.3.0`](https://www.apkmirror.com/apk/pluto-inc/pluto-tv-android-tv/) | 11/25/26 |
 | 🟢 [Paramount+](#paramount) | VOD + pause ads · live untouched | [`16.17.0`](https://www.apkmirror.com/apk/cbs-interactive-inc/paramount-2/paramount-android-tv-16-17-0-release/paramount-android-tv-16-17-0-2-android-apk-download/) · `16.19.0` · ⚠️ experimental: [`17.3.0`](https://www.apkmirror.com/apk/cbs-interactive-inc/paramount-2/paramount-android-tv-17-3-0-release/paramount-android-tv-17-3-0-3-android-apk-download/) | 11/12/26 |
-| 🟢 [Twitch](#twitch) | Ad overlay + blanked live ads · TV build only | [`13.0.0.2`](https://www.apkmirror.com/apk/twitch-interactive-inc/twitch-android-tv/twitch-live-streaming-android-tv-13-0-0-2-release/) | 10/28/26 |
+| 🟢 [Twitch](#twitch) | Ad-free token + blanked live ads · TV build only | [`13.0.0.2`](https://www.apkmirror.com/apk/twitch-interactive-inc/twitch-android-tv/twitch-live-streaming-android-tv-13-0-0-2-release/) | 10/28/26 |
 | 🟢 [ESPN](#espn) | Live breaks masked (slate + mute) · VOD ads | [`6.11.1`](https://www.apkmirror.com/apk/disney/espn-android-tv/espn-android-tv-6-11-1-release/) | 9/28/26 |
 | 🟢 [RTÉ Player](#rte-player) | VOD ads · 🇮🇪 geo-locked | [`3.160.3`](https://www.apkmirror.com/apk/rte/rte-player-android-tv/rte-player-android-tv-3-160-3-release/) | 9/14/26 |
 | 🟢 [RaiPlay](#raiplay) | VOD ads · live-channel 404 fix | `5.0.1` · `5.0.0` | 9/27/26 |
@@ -182,10 +182,10 @@ Read more: [system design teardown](docs/PLUTO_TV_ATV_SYSTEM_DESIGN.md)
 <summary><b>💜 Twitch</b> · Android TV "Starshot" build <code>13.0.0.2</code> only</summary>
 
 - **Version:** exactly [`13.0.0.2`](https://www.apkmirror.com/apk/twitch-interactive-inc/twitch-android-tv/twitch-live-streaming-android-tv-13-0-0-2-release/), the Android TV "Starshot" build. The phone and Fire TV builds are not supported. The release has two bundles and either works; **`arm64-v8a + armeabi-v7a`** is the safe pick.
-- **What it does:** Twitch live ads are server-side stitched (SSAI) and the TV app runs Twitch's web player in a WebView. The patch intercepts the live HLS playlist, strips the ad-pod tags behind the on-screen "Ad · 1 of 3" countdown, and blanks the stitched ad video. DNS filters don't help here.
-- **A brief black gap can remain** during a break, because the ad occupies real live stream time that still has to pass.
+- **What it does:** Twitch live ads are server-side stitched (SSAI) and the TV app runs Twitch's web player in a WebView. Twitch only stitches those ads into the `site` player context, so the patch first swaps the channel's master playlist for one requested under a `popout` playback token, which arrived with no ad segments in the contributor's tests. This is the playerType-spoofing idea from TwitchAdSolutions' `vaft`, contributed by [Lennart Abeln](https://github.com/lennartabeln). DNS filters don't help here.
+- **Experimental:** the patch holds the app's playlist request for at most 3 s while it tries. If the token is refused, or an ad still slips through (e.g. a stitched mid-roll), it falls back to stripping the ad-pod tags behind the "Ad · 1 of 3" countdown and blanking the stitched ad video. In that case a brief black gap can remain, because the ad occupies real live stream time. Details and measurements: [docs/TWITCH_ATV_AD_FREE_TOKEN.md](docs/TWITCH_ATV_AD_FREE_TOKEN.md).
 - **Playback speed controls** are available as an opt-in patch.
-- **Want zero ads and no gap?** Point a VPN at **Albania**. Twitch serves that region ad-free playlists. Verified first-hand with NordVPN.
+- **Backup plan:** point a VPN at **Albania**. Twitch serves that region ad-free playlists. Verified first-hand with NordVPN.
 
 </details>
 
@@ -351,7 +351,7 @@ This patch template is based on the prior work of [ReVanced](https://github.com/
 - [TwitchAdSolutions](https://github.com/pixeltris/TwitchAdSolutions) (pixeltris) — playerType spoofing concept
 - [Xtra for Twitch](https://github.com/crackededed/Xtra) (crackededed) — Android-side Twitch ad mitigation prior art
 
-All Twitch techniques were independently re-derived via dex disassembly and are not copied from these projects' source code. See [NOTICE](NOTICE) for full attribution details.
+Except for Lennart Abeln's contributed code, all Twitch techniques were independently re-derived via dex disassembly and are not copied from these projects' source code. See [NOTICE](NOTICE) for full attribution details.
 
 **Netflix household-prompt suppression** is informed by:
 - [Nikflix](https://github.com/YidirK/Nikflix) (YidirK, GPL-3.0) — identified Netflix's household / "you're traveling" enforcement via the `CLCSInterstitialPlaybackAndPostPlayback` interstitial
